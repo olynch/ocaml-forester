@@ -1,4 +1,4 @@
-open Dream_html_lite
+open Pure_html
 open Forester_core
 
 val reserved_prefix : string

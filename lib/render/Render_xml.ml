@@ -1,10 +1,10 @@
 open Forester_core
 open Forester_prelude
 
-open Dream_html_lite
+open Pure_html
 
 module E = Render_effect.Perform
-module F = Dream_forester
+module F = Xml_forester
 
 module String_map = Map.Make (String)
 module Addr_map = Map.Make (Addr)

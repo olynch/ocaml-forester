@@ -264,12 +264,12 @@ let render_tree ~cfg ~cwd (tree : Sem.tree) =
     Eio.Path.with_open_out ~create path @@ fun flow ->
     Eio.Buf_write.with_flow flow @@ fun writer ->
     let fmt = Eio_util.formatter_of_writer writer in
-    let node = Render_dream.render_tree_top tree in
+    let node = Render_xml.render_tree_top tree in
     Format.fprintf fmt {|<?xml version="1.0" encoding="UTF-8"?>|};
     Format.pp_print_newline fmt ();
     Format.fprintf fmt "<?xml-stylesheet type=\"text/xsl\" href=\"%s\"?>" cfg.stylesheet;
     Format.pp_print_newline fmt ();
-    Dream_html_lite.pp fmt node
+    Pure_html.pp fmt node
   end
 
 let render_json ~cwd docs =
@@ -320,7 +320,7 @@ let render_trees ~cfg ~forest ~render_only : unit =
   Eio_util.ensure_dir_path cwd ["output"; "resources"];
 
   run_renderer ~cfg forest @@ fun () ->
-  Render_dream.with_mainmatter_cache @@ fun () ->
+  Render_xml.with_mainmatter_cache @@ fun () ->
   let trees =
     match render_only with
     | None -> forest.trees |> M.to_seq |> Seq.map snd |> List.of_seq

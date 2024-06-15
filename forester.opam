@@ -26,6 +26,7 @@ depends: [
   "toml" {>= "7.1.0"}
   "repr" {>= "0.7.0"}
   "uri" {>= "4.4.0"}
+  "pure-html" {>= "3.5.0"}
   "odoc" {with-doc}
 ]
 build: [

@@ -1,4 +1,4 @@
-open Dream_html_lite
+open Pure_html
 
 let reserved_prefix = "fr"
 let forester_xmlns = "http://www.jonmsterling.com/jms-005P.xml"
