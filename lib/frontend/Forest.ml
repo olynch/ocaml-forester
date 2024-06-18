@@ -3,130 +3,28 @@ open Forester_prelude
 open Forester_core
 open Forester_render
 
-module A = Analysis
-module M = A.Map
-module Tbl = A.Tbl
-module Gph = A.Gph
+module M = Addr_map
 
 type config =
   {env : Eio_unix.Stdenv.base;
    assets_dirs : Eio.Fs.dir_ty Eio.Path.t list;
    theme_dir : Eio.Fs.dir_ty Eio.Path.t;
    root : string option;
-   base_url : string option;
    stylesheet : string;
    ignore_tex_cache : bool;
    no_assets: bool;
-   no_theme: bool;
-   max_fibers : int}
+   no_theme: bool}
 
 type raw_forest = Code.tree list
 
 type forest =
-  {trees : Sem.tree Analysis.Map.t;
-   analysis : Analysis.analysis}
+  {trees : Sem.tree M.t;
+   run_query : addr Query.t -> Addr_set.t}
 
 module LaTeX_queue = LaTeX_queue.Make ()
 
-let run_renderer ~cfg (forest : forest) (body : unit -> 'a) : 'a =
-  let module S = Set.Make (Addr) in
-  let module H : Render_effect.Handler =
-  struct
-    let analysis = forest.analysis
-
-    let is_root addr =
-      Option.map (fun x -> User_addr x) cfg.root = Some addr
-
-    let route addr =
-      let ext = "xml" in
-      let base =
-        match is_root addr with
-        | true -> "index"
-        | false ->
-          match addr with
-          | User_addr addr -> addr
-          | Machine_addr ix -> Format.sprintf "unstable-%i" ix
-      in
-      Format.asprintf "%s.%s" base ext
-
-    let get_doc addr =
-      M.find_opt addr forest.trees
-
-    let enqueue_latex ~name ~preamble ~source =
-      LaTeX_queue.enqueue ~name ~preamble ~source
-
-    let addr_peek_title scope =
-      Option.bind (M.find_opt scope forest.trees) Sem.Util.peek_title
-
-    let get_sorted_trees addrs : Sem.tree list =
-      let find addr =
-        match M.find_opt addr forest.trees with
-        | None -> []
-        | Some doc -> [doc]
-      in
-      Sem.Util.sort @@ List.concat_map find @@ S.elements addrs
-
-    let is_user_addr =
-      function
-      | User_addr _ -> true
-      | _ -> false
-
-    let get_all_links scope =
-      get_sorted_trees @@ S.filter is_user_addr @@ S.of_list @@ Gph.pred analysis.link_graph scope
-
-    let backlinks scope =
-      get_sorted_trees @@ S.filter is_user_addr @@ S.of_list @@ Gph.succ analysis.link_graph scope
-
-    let related scope =
-      get_all_links scope |> List.filter @@ fun (doc : Sem.tree) ->
-      doc.fm.taxon <> Some "reference"
-
-    let bibliography scope =
-      get_sorted_trees @@
-      S.of_list @@ A.Tbl.find_all analysis.bibliography scope
-
-    let parents scope =
-      get_sorted_trees @@ S.of_list @@ Gph.succ analysis.transclusion_graph scope
-
-    let contributions scope =
-      get_sorted_trees @@ S.of_list @@ Tbl.find_all analysis.author_pages scope
-
-    let contributors scope =
-      try
-        let tree = M.find scope forest.trees in
-        let authors = S.of_list tree.fm.authors in
-        let contributors = S.union (S.of_list tree.fm.contributors) @@ S.of_list @@ Tbl.find_all analysis.contributors scope in
-        let proper_contributors =
-          contributors |> S.filter @@ fun contr ->
-          not @@ S.mem contr authors
-        in
-        let by_title = Compare.under addr_peek_title @@ Compare.option String.compare in
-        (* let compare = Compare.cascade by_title String.compare in *)
-        List.sort by_title @@ S.elements proper_contributors
-      with Not_found -> []
-
-    let run_query query =
-      get_sorted_trees @@ S.of_seq @@ Seq.map fst @@ M.to_seq @@
-      M.filter (fun _ -> Sem.Query.test query) forest.trees
-
-    let last_changed scope =
-      let (let*) = Option.bind in
-      let* tree = M.find_opt scope forest.trees in
-      let* source_path = tree.fm.source_path in
-      let env = cfg.env in
-      let path = Eio.Path.(Eio.Stdenv.fs env / source_path) in
-      let stat  = Eio.Path.stat ~follow:true path in
-      let* mtime = Some stat.mtime in
-      let* ptime = Ptime.of_float_s mtime in
-      let (yyyy, mm, dd) = ptime |> Ptime.to_date_time |> fst in
-      Some (Date.{yyyy; mm = Some mm; dd = Some dd})
-  end
-  in
-  let module Run = Render_effect.Run (H) in
-  Run.run body
-
-
 let plant_forest (trees : raw_forest) : forest =
+  let module Ev = Eval.Make () in
   let add_tree addr tree trees =
     if M.mem addr trees then
       begin
@@ -146,24 +44,24 @@ let plant_forest (trees : raw_forest) : forest =
     List.fold_left alg M.empty trees
   in
 
-  let _, trees =
-    let import_graph = A.build_import_graph trees in
+  let (_, trees) =
+    let import_graph = Import_graph.build_import_graph trees in
     let task addr (units, trees) =
       let tree = M.find_opt addr unexpanded_trees in
       match tree with
       | None -> units, trees
       | Some tree ->
         let units, syn = Expand.expand_tree units tree in
-        let tree, emitted_trees = Eval.eval_tree ~addr ~source_path:tree.source_path syn in
-        let add trees tree =
-          add_tree Sem.(tree.fm.addr) tree trees
+        let tree, emitted_trees = Ev.eval_tree ~addr ~source_path:tree.source_path syn in
+        let add trees (tree : Sem.tree)  =
+          add_tree tree.fm.addr tree trees
         in
         units, List.fold_left add trees @@ tree :: emitted_trees
     in
-    A.Topo.fold task import_graph (Expand.UnitMap.empty, M.empty)
+    Import_graph.Topo.fold task import_graph (Expand.UnitMap.empty, M.empty)
   in
 
-  {trees; analysis = A.analyze_trees trees}
+  {trees; run_query = Ev.run_query}
 
 let rec random_not_in keys =
   let attempt = Random.int (36*36*36*36 - 1) in
@@ -253,25 +151,10 @@ let tags ~forest =
   |> Seq.filter_map (fun (addr, x) -> Addr.to_user_addr addr |> Option.map (fun s -> s, x))
 
 
-module E = Render_effect.Perform
-
-let render_tree ~cfg ~cwd (tree : Sem.tree) =
-  let addr = tree.fm.addr in
-  let create = `Or_truncate 0o644 in
-  let base_url = cfg.base_url in
-  begin
-    let path = Eio.Path.(cwd / "output" / E.route addr) in
-    Eio.Path.with_open_out ~create path @@ fun flow ->
-    Eio.Buf_write.with_flow flow @@ fun writer ->
-    let fmt = Eio_util.formatter_of_writer writer in
-    Serialise_xml_tree.pp ~stylesheet:cfg.stylesheet fmt @@
-    Compile.compile_tree_top tree
-  end
-
-let render_json ~cwd docs =
-  let docs = Sem.Util.sort_for_index @@ List.of_seq @@ Seq.map snd @@ M.to_seq docs in
+let render_json ~cfg ~cwd docs =
+  let root = cfg.root in
   Yojson.Basic.to_file "./output/forest.json" @@
-  Render_json.render_trees ~dev:false docs
+  Render_json.render_trees ~dev:false ~root docs
 
 let is_hidden_file fname =
   String.starts_with ~prefix:"." fname
@@ -308,16 +191,46 @@ let copy_resources ~env =
     if not @@ Eio_util.file_exists Eio.Path.(cwd / dest_dir / fname) then
       Eio_util.copy_to_dir ~cwd ~env ~source:fp ~dest_dir
 
-let render_trees ~cfg ~forest ~render_only : unit =
+let last_changed env forest scope =
+  let (let*) = Option.bind in
+  let* tree = M.find_opt scope forest.trees in
+  let* source_path = tree.fm.source_path in
+  let path = Eio.Path.(Eio.Stdenv.fs env / source_path) in
+  let stat  = Eio.Path.stat ~follow:true path in
+  let* mtime = Some stat.mtime in
+  let* ptime = Ptime.of_float_s mtime in
+  let (yyyy, mm, dd) = ptime |> Ptime.to_date_time |> fst in
+  Some (Date.{yyyy; mm = Some mm; dd = Some dd})
+
+let render_trees ~cfg ~(forest : forest) ~render_only : unit =
   let env = cfg.env in
   let cwd = Eio.Stdenv.cwd env in
 
   Eio_util.ensure_dir @@ Eio.Path.(cwd / "build");
   Eio_util.ensure_dir_path cwd ["output"; "resources"];
 
-  run_renderer ~cfg forest @@ fun () ->
-  Compile.run @@ fun () ->
-  Serialise_xml_tree.run @@ fun () ->
+  let module I =
+  struct
+    let root, trees, run_query, last_changed, enqueue_latex =
+      cfg.root, forest.trees, forest.run_query, last_changed env forest, LaTeX_queue.enqueue
+  end
+
+  in
+
+  let module C = Compile.Make (I) () in
+  let module Sxml = Serialise_xml_tree.Make (I) () in
+
+  let render_tree (tree : Sem.tree) =
+    let addr = tree.fm.addr in
+    let create = `Or_truncate 0o644 in
+    let path = Eio.Path.(cwd / "output" / Serialise_xml_tree.route ~root:cfg.root addr) in
+    Eio.Path.with_open_out ~create path @@ fun flow ->
+    Eio.Buf_write.with_flow flow @@ fun writer ->
+    let fmt = Eio_util.formatter_of_writer writer in
+    Sxml.pp ~stylesheet:cfg.stylesheet fmt @@
+    C.compile_tree tree
+  in
+
   let trees =
     match render_only with
     | None -> forest.trees |> M.to_seq |> Seq.map snd |> List.of_seq
@@ -328,13 +241,14 @@ let render_trees ~cfg ~forest ~render_only : unit =
       | None ->
         Reporter.fatalf Tree_not_found "Could not find tree with address `%a` when rendering forest" pp_addr addr
   in
+
   trees
   |> Sem.Util.sort
-  |> List.iter (render_tree ~cfg ~cwd);
-  render_json ~cwd forest.trees;
+  |> List.iter render_tree;
+  render_json ~cfg ~cwd forest.trees;
   if not cfg.no_assets then
     copy_assets ~env ~assets_dirs:cfg.assets_dirs;
   if not cfg.no_theme then
     copy_theme ~env ~theme_dir:cfg.theme_dir;
-  let _ = LaTeX_queue.process ~env ~max_fibers:cfg.max_fibers ~ignore_tex_cache:cfg.ignore_tex_cache in
+  let _ = LaTeX_queue.process ~env ~ignore_tex_cache:cfg.ignore_tex_cache in
   copy_resources ~env

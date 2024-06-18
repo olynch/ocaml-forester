@@ -1,8 +1,6 @@
 open Forester_prelude
 open Forester_core
 
-module E = Render_effect.Perform
-
 module Printer =
 struct
   module P0 =
@@ -18,30 +16,30 @@ struct
     Format.asprintf "%a" (fun fmt _ -> printer fmt) ()
 end
 
-let rec render_node : Sem.node Range.located -> Printer.t =
+let rec render_node ~trees : Sem.node Range.located -> Printer.t =
   fun node ->
   match node.value with
   | Sem.Text txt | Sem.Verbatim txt ->
     Printer.text txt
   | Sem.Math (_, xs) ->
-    render xs
+    render ~trees xs
   | Sem.Xml_tag (name, _, body) ->
-    render body
+    render ~trees body
   | Sem.Link (addr, None, modifier) ->
-    render @@
+    render ~trees @@
     Option.value ~default:[Range.locate_opt None @@ Sem.Text "Untitled"] @@
-    Option.bind (E.get_doc addr) @@ fun doc ->
-    Option.map (Sem.apply_modifier modifier) doc.fm.title
+    Option.bind (Addr_map.find_opt addr trees) @@ fun (tree : Sem.tree)  ->
+    Option.map (Sem.apply_modifier modifier) tree.fm.title
   | Sem.Link (addr, Some title, modifier) ->
-    render @@ Sem.apply_modifier modifier title
+    render ~trees @@ Sem.apply_modifier modifier title
   | Sem.If_tex (_, y) ->
-    render y
+    render ~trees y
   | Sem.Prim (_, x) ->
-    render x
+    render ~trees x
   | Sem.TeX_cs _ ->
     Printer.nil
   | _ ->
     Reporter.fatal ?loc:node.loc Unhandled_case "unhandled case in plain text renderer"
 
-and render xs =
-  Printer.iter render_node xs
+and render ~trees xs =
+  Printer.iter (render_node ~trees) xs

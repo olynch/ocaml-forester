@@ -1,6 +1,5 @@
 open Eio.Std
 open Forester_prelude
-open Forester_render
 
 type 'a env = 'a constraint 'a = <
     cwd : Eio.Fs.dir_ty Eio.Path.t;
@@ -8,7 +7,6 @@ type 'a env = 'a constraint 'a = <
     stdout : _ Eio.Flow.sink;
     ..
   > as 'a
-
 
 let tex_fp name =
   Format.sprintf "%s.tex" name

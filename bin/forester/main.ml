@@ -15,11 +15,9 @@ let internal_config_from_config ~env (config : Forester_frontend.Config.Forest_c
   Forest.
     {env;
      root = config.root;
-     base_url = config.base_url;
      assets_dirs = make_dirs ~env config.assets;
      theme_dir = make_dir ~env config.theme;
      stylesheet = config.stylesheet;
-     max_fibers = 20;
      ignore_tex_cache = false;
      no_assets = false;
      no_theme = false}
@@ -73,7 +71,7 @@ let new_tree ~env config_filename dest_dir prefix template random =
     Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true input_dirs
   in
   let addrs =
-    Analysis.Map.bindings forest.trees
+    Addr_map.bindings forest.trees
     |> List.to_seq
     |> Seq.map fst
     |> Seq.filter_map Addr.to_user_addr
@@ -126,12 +124,8 @@ let query_all ~env config_filename =
     Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true @@
     make_dirs ~env config.trees
   in
-  let internal_config = internal_config_from_config ~env config in
-  Forest.run_renderer ~cfg:internal_config forest @@ fun () ->
   forest.trees
-  |> Analysis.Map.to_list
-  |> List.map snd
-  |> Forester_render.Render_json.render_trees ~dev:true
+  |> Forester_render.Render_json.render_trees ~root:config.root ~dev:true
   |> Yojson.Basic.to_string
   |> Format.printf "%s"
 
@@ -155,7 +149,6 @@ let init ~env () =
 trees = ["trees" ]                   # The directories in which your trees are stored
 assets = ["assets"]                  # The directories in which your assets are stored
 theme = "theme"                      # The directory in which your theme is stored
-base_url = "https://www.example.com" # The base URL of your site
 |}
   in
 

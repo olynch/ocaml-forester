@@ -8,4 +8,4 @@ sig
   val contents : t -> string
 end
 
-val render : Sem.t -> Printer.t
+val render : trees:Sem.tree Addr_map.t -> Sem.t -> Printer.t

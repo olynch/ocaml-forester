@@ -17,7 +17,7 @@ type node =
   | Verbatim of string
   | Transclude of transclusion_opts * addr
   | Subtree of transclusion_opts * tree
-  | Query of transclusion_opts * t Query.t
+  | Query of transclusion_opts * addr Query.t
   | Link of addr * t option * modifier
   | Xml_tag of xml_resolved_qname * (xml_resolved_qname * t) list * t
   | TeX_cs of TeX_cs.t
@@ -50,6 +50,7 @@ and env = t Env.t
 
 and tree =
   {fm : frontmatter;
+   bm : backmatter_section list;
    body : t}
 [@@deriving show]
 
@@ -66,7 +67,10 @@ and frontmatter =
    designated_parent : addr option;
    source_path : string option;
    number : string option}
+[@@deriving show]
 
+and backmatter_section =
+  | Backmatter_section of {title: t; query : addr Query.t}
 
 type obj_method =
   {body : Syn.t;
@@ -179,30 +183,6 @@ struct
 
 end
 
-module Query =
-struct
-  let rec test query (doc : tree) =
-    match query with
-    | Query.Author [Range.{value = Text addr; _}] ->
-      List.mem (User_addr addr) doc.fm.authors
-    | Query.Tag [{value = Text addr; _}] ->
-      List.mem addr doc.fm.tags
-    | Query.Meta (key, value) ->
-      List.mem (key, value) doc.fm.metas
-    | Query.Taxon [{value = Text taxon; _}] ->
-      doc.fm.taxon = Some taxon
-    | Query.Or qs ->
-      qs |> List.exists @@ fun q -> test q doc
-    | Query.And qs ->
-      qs |> List.for_all @@ fun q -> test q doc
-    | Query.Not q ->
-      not @@ test q doc
-    | Query.True ->
-      true
-    | _ -> false
-
-end
-
 let empty_frontmatter ~addr =
   {addr;
    title = None;
@@ -217,9 +197,41 @@ let empty_frontmatter ~addr =
    source_path = None;
    number = None}
 
+let default_backmatter ~addr =
+  let make_section title query =
+    let title = [Range.locate_opt None @@ Text title] in
+    Backmatter_section {title; query}
+  in
+  [
+    make_section "references" @@
+    Query.isect [
+      Query.union_fam (Query.tree_under addr) `Outgoing `Links;
+      Query.has_taxon "reference"
+    ];
+
+    make_section "context" @@
+    Query.rel `Incoming `Transclusion addr;
+
+    make_section "backlinks" @@
+    Query.rel `Incoming `Links addr;
+
+    make_section "related" @@
+    Query.isect [
+      Query.rel `Outgoing `Links addr;
+      Query.complement @@ Query.has_taxon "reference"
+    ];
+
+    make_section "contributions" @@
+    Query.union [
+      Query.rel `Incoming `Authorship addr;
+      Query.rel `Incoming `Contributorship addr
+    ]
+  ]
+
 let empty_tree ~addr =
   {fm = empty_frontmatter ~addr;
-   body = []}
+   body = [];
+   bm = default_backmatter ~addr}
 
 let default_transclusion_opts : transclusion_opts =
   {title_override = None;

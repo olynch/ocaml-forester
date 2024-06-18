@@ -71,7 +71,6 @@ rule token =
   | "\\query/author" {Grammar.QUERY_AUTHOR }
   | "\\query/tag" {Grammar.QUERY_TAG }
   | "\\query/taxon" {Grammar.QUERY_TAXON }
-  | "\\query/meta" {Grammar.QUERY_META }
   | "\\query" { Grammar.QUERY_TREE }
   | "\\p" { Grammar.PRIM `P }
   | "\\em" { Grammar.PRIM `Em }

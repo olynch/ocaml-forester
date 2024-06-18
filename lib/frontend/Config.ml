@@ -6,7 +6,6 @@ struct
     {trees : string list;
      assets : string list;
      theme : string;
-     base_url : string option;
      root : string option;
      stylesheet : string}
   [@@deriving show]
@@ -16,7 +15,6 @@ let default_forest_config : Forest_config.t =
   {trees = ["trees"];
    assets = [];
    theme = "theme";
-   base_url = None;
    root = None;
    stylesheet = "default.xsl"}
 
@@ -48,7 +46,6 @@ let parse_forest_config_file filename =
       Option.value ~default:default_forest_config.stylesheet @@
       get tbl (forest |-- key "stylesheet" |-- string)
     in
-    let base_url = get tbl (forest |-- key "base_url" |-- string) in
     let root = get tbl (forest |-- key "root" |-- string) in
-    Forest_config.{assets; trees; theme; base_url; root; stylesheet}
+    Forest_config.{assets; trees; theme; root; stylesheet}
 

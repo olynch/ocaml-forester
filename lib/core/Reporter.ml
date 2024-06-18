@@ -14,6 +14,7 @@ struct
     | Internal_error
     | Configuration_error
     | Initialization_warning
+    | Routing_error
     | Profiling
   [@@deriving show]
 
@@ -32,6 +33,7 @@ struct
     | Internal_error -> Bug
     | Configuration_error -> Error
     | Initialization_warning -> Warning
+    | Routing_error -> Error
     | Profiling -> Info
 
   let short_code : t -> string =

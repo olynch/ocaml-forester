@@ -1,4 +1,5 @@
 open Forester_prelude
+open Base
 
 type xml_qname = {
   prefix : string;
@@ -19,7 +20,7 @@ type 'content attribution =
 
 type date =
   | Date of {
-      href : string option;
+      addr : addr option;
       year : int;
       month : int option;
       day : int option
@@ -30,8 +31,6 @@ type 'content meta =
       key : string;
       body : 'content
     }
-
-type link_type = [`Local | `External]
 
 type ('content, 'tree) content_node =
   | Text of string
@@ -44,18 +43,12 @@ type ('content, 'tree) content_node =
   | Prim of Prim.t * 'content
   | Subtree of 'tree
   | Ref of {
-      addr : string;
-      href : string;
+      addr : addr;
       taxon : string option;
       number : string option
     }
-  | Link of {
-      type_ : link_type;
-      href : string;
-      title : string option;
-      addr : string option;
-      content : 'content
-    }
+  | Local_link of {addr : addr; content : 'content; title : string option}
+  | External_link of {href : string; content : 'content; title : string option}
   | TeX of {
       display : [`Inline | `Block];
       body : string
@@ -71,28 +64,17 @@ type ('content, 'tree) content_node =
 
 type 'content frontmatter = {
   title : 'content option;
-  anchor : string;
+  anchor : string option;
   number : string option;
   taxon : string option;
   designated_parent : string option;
   metas : 'content meta list;
-  route : string;
-  addr : string;
+  addr : addr option;
   source_path : string option;
   dates : date list;
   last_changed : date option;
   attributions : 'content attribution list
 }
-
-(* TODO: generalise *)
-type 'tree backmatter_elt =
-  | Contributions of 'tree list
-  | Related of 'tree list
-  | Backlinks of 'tree list
-  | Context of 'tree list
-  | References of 'tree list
-
-type 'tree backmatter = 'tree backmatter_elt list
 
 type tree_options = {
   toc : bool;
@@ -107,7 +89,7 @@ type 'content tree = {
   options : tree_options;
   frontmatter : 'content frontmatter;
   mainmatter : 'content;
-  backmatter : 'content tree backmatter option
+  backmatter : 'content tree list
 }
 
 (* Tie the knot *)

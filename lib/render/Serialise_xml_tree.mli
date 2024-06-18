@@ -1,7 +1,11 @@
 open Forester_core
 
-val run : (unit -> 'a) -> 'a
-(** Initialises a cache for tree mainmatters in the given scope. *)
+val route : root:string option -> addr -> string
 
-val pp : ?stylesheet:string -> Format.formatter -> Xml_tree.tree_ -> unit
-(** Must be called within the scope of {!run}. *)
+module type I = sig val root : string option end
+
+(** Each instance of this generative functor manages its own memo cache. *)
+module Make (_ : I) () :
+sig
+  val pp : ?stylesheet:string -> Format.formatter -> Xml_tree.tree_ -> unit
+end

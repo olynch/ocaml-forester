@@ -43,11 +43,9 @@ let root = bool_attr "root"
 let frontmatter = f_std_tag "frontmatter"
 let mainmatter = f_std_tag "mainmatter"
 let backmatter = f_std_tag "backmatter"
-let contributions = f_std_tag "contributions"
-let context = f_std_tag "context"
-let related = f_std_tag "related"
-let backlinks = f_std_tag "backlinks"
-let references = f_std_tag "references"
+
+let query_tree = f_std_tag "query-tree"
+
 let anchor attrs = f_text_tag "anchor" attrs
 let taxon attrs = f_text_tag "taxon" attrs
 let addr attrs = f_text_tag "addr" attrs

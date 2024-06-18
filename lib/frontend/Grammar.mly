@@ -19,7 +19,7 @@
 %token OBJECT PATCH CALL
 %token TRANSCLUDE SUBTREE SCOPE PUT GET DEFAULT ALLOC REF
 %token LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE
-%token QUERY_AND QUERY_OR QUERY_NOT QUERY_AUTHOR QUERY_TAG QUERY_TAXON QUERY_META
+%token QUERY_AND QUERY_OR QUERY_NOT QUERY_AUTHOR QUERY_TAG QUERY_TAXON
 %token QUERY_TREE
 %token EOF
 
@@ -118,13 +118,12 @@ let ident_with_method_calls :=
 
 
 let query0 :=
-| QUERY_AUTHOR; ~ = arg; <Query.Author>
-| QUERY_TAG; ~ = arg; <Query.Tag>
-| QUERY_TAXON; ~ = arg; <Query.Taxon>
-| QUERY_AND; ~ = braces(queries); <Query.And>
-| QUERY_OR; ~ = braces(queries); <Query.Or>
-| QUERY_NOT; ~ = braces(query); <Query.Not>
-| QUERY_META; k = txt_arg; v = arg; <Query.Meta>
+| QUERY_AUTHOR; x = arg; { Query.Rel (`Incoming, `Authorship, x) }
+| QUERY_TAG; x = arg; { Query.Rel (`Incoming, `Tags, x) }
+| QUERY_TAXON; x = arg; { Query.Rel (`Incoming, `Taxa, x) }
+| QUERY_AND; ~ = braces(queries); <Query.isect>
+| QUERY_OR; ~ = braces(queries); <Query.Union>
+| QUERY_NOT; ~ = braces(query); <Query.complement>
 
 let queries == ws_list(query0)
 

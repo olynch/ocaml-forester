@@ -1,7 +1,17 @@
+open Forester_prelude
 open Forester_core
 
-val run : (unit -> 'a) -> 'a
-(** Initialises a cache for tree mainmatters in the given scope. *)
+module type I =
+sig
+  val root : string option
+  val trees : Sem.tree Addr_map.t
+  val run_query : addr Query.t -> Addr_set.t
+  val last_changed : addr -> Date.t option
+  val enqueue_latex : name:string -> preamble:string -> source:string -> unit
+end
 
-val compile_tree_top : Sem.tree -> Xml_tree.tree_
-(** Must be called in the scope of {!run}. *)
+(** Each instance of this generative functor manages its own memo cache. *)
+module Make (_ : I) () :
+sig
+  val compile_tree : Sem.tree -> Xml_tree.tree_
+end

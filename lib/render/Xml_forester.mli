@@ -25,11 +25,6 @@ val info : std_tag
 val frontmatter : std_tag
 val mainmatter : std_tag
 val backmatter : std_tag
-val contributions : std_tag
-val context : std_tag
-val related : std_tag
-val backlinks : std_tag
-val references : std_tag
 
 val anchor : _ text_tag
 val taxon : _ text_tag

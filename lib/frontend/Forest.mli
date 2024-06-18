@@ -5,18 +5,16 @@ type config =
    assets_dirs : Eio.Fs.dir_ty Eio.Path.t list;
    theme_dir : Eio.Fs.dir_ty Eio.Path.t;
    root : string option;
-   base_url : string option;
    stylesheet : string;
    ignore_tex_cache : bool;
    no_assets: bool;
-   no_theme: bool;
-   max_fibers : int}
+   no_theme: bool}
 
 type raw_forest = Code.tree list
 
 type forest =
-  {trees : Sem.tree Analysis.Map.t;
-   analysis : Analysis.analysis}
+  {trees : Sem.tree Addr_map.t;
+   run_query : addr Query.t -> Addr_set.t}
 
 val plant_forest : raw_forest -> forest
 val render_trees : cfg:config -> forest:forest -> render_only:addr list option -> unit
@@ -26,5 +24,3 @@ val complete : forest:forest -> string -> (string * string) Seq.t
 
 val taxa : forest:forest-> (string * string) Seq.t
 val tags : forest:forest -> (string * string list) Seq.t
-val run_renderer : cfg:config -> forest -> ( unit -> 'a) -> 'a
-val render_json : cwd:[> Eio__.Fs.dir_ty ] Eio.Path.t -> Forester_core.Sem.tree Analysis.Map.t -> unit

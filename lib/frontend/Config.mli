@@ -3,7 +3,6 @@ module Forest_config : sig
     {trees : string list;
      assets : string list;
      theme : string;
-     base_url : string option;
      root : string option;
      stylesheet : string}
 end

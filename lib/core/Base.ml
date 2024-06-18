@@ -1,4 +1,9 @@
-type addr = User_addr of string | Machine_addr of int
+type addr =
+  | User_addr of string
+  (** The address of a tree that can be referenced from user text. *)
+
+  | Machine_addr of int
+  (** The address of an anonymous tree.*)
 
 let pp_addr fmt =
   function
@@ -17,6 +22,10 @@ struct
     | User_addr addr -> Some addr
     | _ -> None
 end
+
+module Addr_map = Map.Make (Addr)
+module Addr_set = Set.Make (Addr)
+module String_map = Map.Make (String)
 
 type delim = Braces | Squares | Parens
 [@@deriving show]
