@@ -3,14 +3,27 @@ open Pure_html
 let reserved_prefix = "fr"
 let forester_xmlns = "http://www.jonmsterling.com/jms-005P.xml"
 
+
+let null = HTML.null
+let null_ = HTML.null_
+
+let optional kont opt =
+  match opt with
+  | Some x -> kont x
+  | None -> null []
+
+let optional_ kont opt =
+  match opt with
+  | Some x -> kont x
+  | None -> null_
+
+
 let register_ns tag attrs =
   let f_xmlns = string_attr ("xmlns:" ^ reserved_prefix) "%s" forester_xmlns in
   tag (f_xmlns :: attrs)
 
 let add_ns name = Format.sprintf "%s:%s" reserved_prefix name
 
-let null = HTML.null
-let null_ = HTML.null_
 
 let f_std_tag name = std_tag @@ add_ns name
 let f_text_tag name = text_tag @@ add_ns name

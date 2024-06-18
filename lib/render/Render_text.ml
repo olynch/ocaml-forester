@@ -18,7 +18,6 @@ struct
     Format.asprintf "%a" (fun fmt _ -> printer fmt) ()
 end
 
-
 let rec render_node : Sem.node Range.located -> Printer.t =
   fun node ->
   match node.value with
