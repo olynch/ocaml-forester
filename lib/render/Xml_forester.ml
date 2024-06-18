@@ -61,7 +61,7 @@ let parent attrs = f_text_tag "parent" attrs
 let meta = f_std_tag "meta"
 let name fmt = string_attr "name" fmt
 
-let tex attrs = f_text_tag "tex" attrs
+let tex attrs = f_text_tag ~raw:true "tex" attrs
 let display fmt = string_attr "display" fmt
 
 let title_ fmt = string_attr "title" fmt
@@ -90,6 +90,6 @@ let img = f_void_tag "img"
 let src fmt = uri_attr "src" fmt
 
 let embedded_tex = f_std_tag "embedded-tex"
-let embedded_tex_preamble attrs = f_text_tag "embedded-tex-preamble" attrs
-let embedded_tex_body attrs = f_text_tag "embedded-tex-body" attrs
+let embedded_tex_preamble attrs = f_text_tag ~raw:true "embedded-tex-preamble" attrs
+let embedded_tex_body attrs = f_text_tag ~raw:true "embedded-tex-body" attrs
 let hash fmt = string_attr "hash" fmt

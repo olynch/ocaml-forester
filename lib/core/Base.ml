@@ -27,5 +27,5 @@ type math_mode = Inline | Display
 type visibility = Private | Public
 [@@deriving show]
 
-type xml_resolved_qname = {prefix : string option; uname : string; xmlns : string option}
+type xml_resolved_qname = {prefix : string; uname : string; xmlns : string option}
 [@@deriving show]

@@ -284,11 +284,11 @@ and expand_sym loc path =
 
 and expand_xml_ident loc (prefix, uname) =
   match prefix with
-  | None -> {xmlns = None; prefix = None; uname}
+  | None -> {xmlns = None; prefix = ""; uname}
   | Some prefix ->
     match Scope.resolve ["xmlns"; prefix] with
     | Some (Xmlns {xmlns; prefix}, ()) ->
-      {xmlns = Some xmlns; prefix = Some prefix; uname}
+      {xmlns = Some xmlns; prefix = prefix; uname}
     | _ ->
       Reporter.fatalf ?loc Resolution_error
         "expected path `%s` to resolve to xmlns"

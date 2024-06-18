@@ -31,8 +31,8 @@ end
 module Xmlns_prefixes = Algaeff.Reader.Make (Xmlns_map)
 
 let rec normalise_prefix ?loc ~prefix ~xmlns kont =
-  match prefix, xmlns with
-  | Some prefix, Some xmlns ->
+  match xmlns with
+  | Some xmlns ->
     begin
       let open Xmlns_map in
       let env = Xmlns_prefixes.read () in
@@ -46,19 +46,19 @@ let rec normalise_prefix ?loc ~prefix ~xmlns kont =
           | None, (None | Some []) ->
             let env = assoc ~prefix ~xmlns env in
             Xmlns_prefixes.run ~env @@ fun () ->
-            kont @@ ([(prefix, xmlns)], Some prefix)
+            kont @@ ([(prefix, xmlns)], prefix)
           | Some xmlns', Some prefixes ->
             if xmlns' = xmlns && List.mem prefix prefixes then
-              kont ([], Some prefix)
+              kont ([], prefix)
             else
               raise Shadowing
           | _, Some (prefix' :: _) ->
-            kont ([], Some prefix')
+            kont ([], prefix')
           | Some xmlns', None ->
             raise Shadowing
         end
       with Shadowing ->
-        normalise_prefix ?loc ~prefix:(Some (prefix ^ "_")) ~xmlns:(Some xmlns) kont
+        normalise_prefix ?loc ~prefix:(prefix ^ "_") ~xmlns:(Some xmlns) kont
     end
   | _ ->
     kont ([], prefix)
@@ -109,7 +109,7 @@ let rec render_located (located : Sem.node Range.located) =
       match mode with
       | Inline -> F.null_
       | Display -> F.display "block"
-    ] "%s" rendered
+    ] "<![CDATA[%s]]>" rendered
 
   | Sem.Link (addr, title, modifier) ->
     begin
@@ -153,8 +153,8 @@ let rec render_located (located : Sem.node Range.located) =
         in
         let tag_name =
           match tag_prefix with
-          | Some prefix -> prefix ^ ":" ^ name.uname
-          | None -> name.uname
+          | "" -> name.uname
+          | prefix -> prefix ^ ":" ^ name.uname
         in
         std_tag
           tag_name
@@ -166,8 +166,8 @@ let rec render_located (located : Sem.node Range.located) =
         let xml_attr =
           let name =
             match prefix with
-            | Some prefix -> prefix ^ ":" ^ k.uname
-            | None -> k.uname
+            | "" -> k.uname
+            | _ -> prefix ^ ":" ^ k.uname
           in
           string_attr name "%s" @@
           Render_text.Printer.contents @@
@@ -197,8 +197,8 @@ let rec render_located (located : Sem.node Range.located) =
     let hash = Digest.to_hex @@ Digest.string @@ preamble ^ source in
     E.enqueue_latex ~name:hash ~preamble ~source;
     F.embedded_tex [F.hash "%s" hash] [
-      F.embedded_tex_preamble [] "%s" preamble;
-      F.embedded_tex_body [] "%s" source
+      F.embedded_tex_preamble [] "<![CDATA[%s]]>" preamble;
+      F.embedded_tex_body [] "<![CDATA[%s]]>" source
     ]
 
   | Sem.Transclude (opts, addr) ->
