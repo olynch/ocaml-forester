@@ -1,3 +1,5 @@
+(** {1 Relation symbols}*)
+
 module Rel :
 sig
   type t
@@ -13,22 +15,33 @@ sig
   val taxa : t
 end
 
+type rel = Rel.t
+
+(** {1 Query modifiers} *)
+
+(** Determines whether we are searching for edges into or out of the supplied vertex. *)
 type polarity =
   | Incoming
   | Outgoing
 [@@deriving show]
 
-type 'addr t
-[@@deriving show]
-
+(** Determines whether we are querying a relation or its transitive closure. *)
 type mode =
   | Edges
   | Paths
 [@@deriving show]
 
+(** {1 Query type} *)
+
+(** The parameters of a relational query. *)
 type rel_query = mode * polarity * Rel.t
 [@@deriving show]
 
+(** The abstract type of queries*)
+type 'addr t
+[@@deriving show]
+
+(** One level of query syntax. *)
 type ('addr, 'r) view =
   | Rel of rel_query * 'addr
   | Isect of 'r list
@@ -37,14 +50,15 @@ type ('addr, 'r) view =
   | Isect_fam of 'r * rel_query
   | Union_fam of 'r * rel_query
 
+(** A view to expose a level of query syntax. *)
 val view : 'addr t -> ('addr, 'addr t) view
 
 val map : ('a -> 'b) -> 'a t -> 'b t
 
+
 (** {1 Smart constructors} *)
 (** These smart constructors may optimise queries under the hood. *)
 
-val tree_under : 'addr -> 'addr t
 val isect : 'addr t list -> 'addr t
 val union : 'addr t list -> 'addr t
 val union_fam : 'addr t -> mode -> polarity -> Rel.t -> 'addr t
@@ -52,8 +66,11 @@ val isect_fam : 'addr t -> mode -> polarity -> Rel.t -> 'addr t
 val rel : mode -> polarity -> Rel.t -> 'addr -> 'addr t
 val complement : 'addr t -> 'addr t
 
-open Base
+(** {1 Built-in queries} *)
+(** These convenience functions construct some useful queries using the smart constructors above. *)
 
+open Base
+val tree_under : 'addr -> 'addr t
 val has_taxon : string -> addr t
 val hereditary_contributors : addr -> addr t
 val references : addr -> addr t

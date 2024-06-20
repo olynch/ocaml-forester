@@ -1,5 +1,3 @@
-open Base
-
 module Rel =
 struct
   type t = Symbol.t
@@ -18,6 +16,8 @@ struct
   let taxa = make_builtin "taxa"
   let tags = make_builtin "tags"
 end
+
+type rel = Rel.t
 
 type mode =
   | Edges
@@ -108,6 +108,10 @@ let isect_fam q mode pol rel =
 
 let union_fam q mode pol rel =
   make @@ Union_fam (q, (mode, pol, rel))
+
+
+
+open Base
 
 let has_taxon taxon =
   rel Edges Incoming Rel.taxa @@ User_addr taxon

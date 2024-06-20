@@ -1,3 +1,5 @@
+module Base = Base
+
 include Base
 
 module Syn = Syn
