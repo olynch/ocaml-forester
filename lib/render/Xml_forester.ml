@@ -89,6 +89,8 @@ let prim p =
     | `Code -> "code"
     | `Blockquote -> "blockquote"
     | `Pre -> "pre"
+    | `Figure -> "figure"
+    | `Figcaption -> "figcaption"
   in
   f_std_tag name
 

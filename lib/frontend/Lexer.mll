@@ -81,6 +81,8 @@ rule token =
   | "\\code" { Grammar.PRIM `Code }
   | "\\blockquote" { Grammar.PRIM `Blockquote }
   | "\\pre" { Grammar.PRIM `Pre }
+  | "\\figure" { Grammar.PRIM `Figure }
+  | "\\figcaption" { Grammar.PRIM `Figcaption }
   | "\\object" { Grammar.OBJECT }
   | "\\patch" { Grammar.PATCH }
   | "\\call" { Grammar.CALL }
