@@ -8,6 +8,12 @@ You need to have [OCaml 5](https://ocaml.org) and [opam](https://opam.ocaml.org)
 
 You can install forester by running `opam install forester`.
 
+### Contributing
+
+Please mail patches by [email](https://git-send-email.io/) to
+<~jonsterling/forester-devel@lists.sr.ht>. General discussion can be mailed to
+<~jonsterling/forester-discuss@lists.sr.ht>.
+
 #### Using nix (Optional)
 
 Forester can also be used with `nix`. To run `forester`, use `nix run sourcehut:~jonsterling/ocaml-forester`. If you are working with a Nix flake-based project and want to include Forester as a build input, you can add it to your `flake.nix`:
