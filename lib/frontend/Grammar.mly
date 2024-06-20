@@ -118,9 +118,9 @@ let ident_with_method_calls :=
 
 
 let query0 :=
-| QUERY_AUTHOR; x = arg; { Query.rel Incoming Query.Rel.authorship x }
-| QUERY_TAG; x = arg; { Query.rel Incoming Query.Rel.tags x }
-| QUERY_TAXON; x = arg; { Query.rel Incoming Query.Rel.taxa x }
+| QUERY_AUTHOR; x = arg; { Query.rel Edges Incoming Query.Rel.authorship x }
+| QUERY_TAG; x = arg; { Query.rel Edges Incoming Query.Rel.tags x }
+| QUERY_TAXON; x = arg; { Query.rel Edges Incoming Query.Rel.taxa x }
 | QUERY_AND; ~ = braces(queries); <Query.isect>
 | QUERY_OR; ~ = braces(queries); <Query.union>
 | QUERY_NOT; ~ = braces(query); <Query.complement>

@@ -18,15 +18,19 @@ type polarity =
   | Outgoing
 [@@deriving show]
 
-type rel_query = polarity * Rel.t
-[@@deriving show]
-
 type 'addr t
 [@@deriving show]
 
+type mode =
+  | Edges
+  | Paths
+[@@deriving show]
+
+type rel_query = mode * polarity * Rel.t
+[@@deriving show]
+
 type ('addr, 'r) view =
-  | Rel of polarity * Rel.t * 'addr
-  | Tree_under of 'addr
+  | Rel of rel_query * 'addr
   | Isect of 'r list
   | Union of 'r list
   | Complement of 'r
@@ -43,9 +47,9 @@ val map : ('a -> 'b) -> 'a t -> 'b t
 val tree_under : 'addr -> 'addr t
 val isect : 'addr t list -> 'addr t
 val union : 'addr t list -> 'addr t
-val union_fam : 'addr t -> polarity -> Rel.t -> 'addr t
-val isect_fam : 'addr t -> polarity -> Rel.t -> 'addr t
-val rel : polarity -> Rel.t -> 'addr -> 'addr t
+val union_fam : 'addr t -> mode -> polarity -> Rel.t -> 'addr t
+val isect_fam : 'addr t -> mode -> polarity -> Rel.t -> 'addr t
+val rel : mode -> polarity -> Rel.t -> 'addr -> 'addr t
 val complement : 'addr t -> 'addr t
 
 open Base

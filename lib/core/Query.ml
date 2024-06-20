@@ -19,17 +19,21 @@ struct
   let tags = make_builtin "tags"
 end
 
+type mode =
+  | Edges
+  | Paths
+[@@deriving show]
+
 type polarity =
   | Incoming
   | Outgoing
 [@@deriving show]
 
-type rel_query = polarity * Rel.t
+type rel_query = mode * polarity * Rel.t
 [@@deriving show]
 
 type ('addr, 'r) view =
-  | Rel of polarity * Rel.t * 'addr
-  | Tree_under of 'addr
+  | Rel of rel_query * 'addr
   | Isect of 'r list
   | Union of 'r list
   | Complement of 'r
@@ -45,8 +49,7 @@ let make q = Q q
 
 let rec map_view f =
   function
-  | Rel (pol, rel, x) -> Rel (pol, rel, f x)
-  | Tree_under x -> Tree_under (f x)
+  | Rel (rq, x) -> Rel (rq, f x)
   | Isect qs -> Isect (List.map (map f) qs)
   | Union qs -> Union (List.map (map f) qs)
   | Isect_fam (q, rq) -> Isect_fam (map f q, rq)
@@ -60,7 +63,6 @@ and map f (Q q) =
 (** A heuristic for computing an intersection of queries. *)
 let rec query_cost q =
   match view q with
-  | Tree_under _ -> 100
   | Rel _ -> 200
   | Isect qs ->
     List.fold_left (fun i q -> min (query_cost q) i) 1000 qs
@@ -95,20 +97,20 @@ let rec complement =
   | Q (Complement q) -> q
   | q -> make @@ Complement q
 
-let rel pol rel addr =
-  make @@ Rel (pol, rel, addr)
+let rel mode pol rel addr =
+  make @@ Rel ((mode, pol, rel), addr)
 
 let tree_under x =
-  make @@ Tree_under x
+  rel Paths Outgoing Rel.transclusion x
 
-let isect_fam q pol rel =
-  make @@ Isect_fam (q, (pol, rel))
+let isect_fam q mode pol rel =
+  make @@ Isect_fam (q, (mode, pol, rel))
 
-let union_fam q pol rel =
-  make @@ Union_fam (q, (pol, rel))
+let union_fam q mode pol rel =
+  make @@ Union_fam (q, (mode, pol, rel))
 
 let has_taxon taxon =
-  rel Incoming Rel.taxa @@ User_addr taxon
+  rel Edges Incoming Rel.taxa @@ User_addr taxon
 
 let hereditary_contributors addr =
   let q_non_ref_under =
@@ -120,33 +122,34 @@ let hereditary_contributors addr =
   let q_all_contributors =
     union_fam
       q_non_ref_under
+      Edges
       Outgoing
       Rel.contributorship
   in
-  let q_authors = rel Outgoing Rel.authorship addr in
+  let q_authors = rel Edges Outgoing Rel.authorship addr in
   isect [q_all_contributors; complement q_authors]
 
 
 let references addr =
   isect [
-    union_fam (tree_under addr) Outgoing Rel.links;
+    union_fam (tree_under addr) Edges Outgoing Rel.links;
     has_taxon "reference"
   ]
 
 let context addr =
-  rel Incoming Rel.transclusion addr
+  rel Edges Incoming Rel.transclusion addr
 
 let backlinks addr =
-  rel Incoming Rel.links addr
+  rel Edges Incoming Rel.links addr
 
 let related addr =
   isect [
-    rel Outgoing Rel.links addr;
+    rel Edges Outgoing Rel.links addr;
     complement @@ has_taxon "reference"
   ]
 
 let contributions addr =
   union [
-    rel Incoming Rel.authorship addr;
-    rel Incoming Rel.contributorship addr
+    rel Edges Incoming Rel.authorship addr;
+    rel Edges Incoming Rel.contributorship addr
   ]

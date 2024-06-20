@@ -33,7 +33,7 @@ struct
     let rel_to_graph : (Q.Rel.t, G.t) Hashtbl.t =
       Hashtbl.create 20
 
-    let rel_to_rtgraph : (Q.Rel.t, G.t) Hashtbl.t =
+    let rel_to_preorder : (Q.Rel.t, G.t) Hashtbl.t =
       Hashtbl.create 20
 
     let get_graph rel =
@@ -44,59 +44,62 @@ struct
         gph
       | Some gph -> gph
 
-    let get_rtgraph rel =
-      match Hashtbl.find_opt rel_to_rtgraph rel with
+    let get_preorder rel =
+      match Hashtbl.find_opt rel_to_preorder rel with
       | None ->
         let gph = G.transitive_closure ~reflexive:true @@ get_graph rel in
-        Hashtbl.add rel_to_rtgraph rel gph;
+        Hashtbl.add rel_to_preorder rel gph;
         gph
       | Some gph -> gph
 
+    let get (mode : Q.mode) =
+      match mode with
+      | Edges -> get_graph
+      | Paths -> get_preorder
+
     let register_addr addr =
-      Hashtbl.clear rel_to_rtgraph;
+      Hashtbl.clear rel_to_preorder;
       all_addrs_ref := Addr_set.add addr !all_addrs_ref
 
     let add_edge rel ~source ~target =
-      Hashtbl.remove rel_to_rtgraph rel;
+      Hashtbl.remove rel_to_preorder rel;
       let gph = get_graph rel in
       G.add_edge gph source target
   end
 
   module Query_engine =
   struct
-    let query_rel pol rel addr =
+    let query_rel mode pol rel addr =
       let fn =
         match pol with
         | Q.Incoming -> G.safe_pred
         | Q.Outgoing -> G.safe_succ
       in
-      let gph = Graphs.get_graph rel in
+      let gph = Graphs.get mode rel in
       Addr_set.of_list @@ fn gph addr
 
-    let check_rel pol rel addr addr' =
-      let gph = Graphs.get_graph rel in
+    let check_rel mode pol rel addr addr' =
+      let gph = Graphs.get mode rel in
       match pol with
       | Q.Incoming -> G.mem_edge gph addr' addr
       | Q.Outgoing -> G.mem_edge gph addr addr'
 
     let rec check_query q addr =
       match Q.view q with
-      | Q.Tree_under root ->
-        G.mem_edge (Graphs.get_rtgraph Q.Rel.transclusion) root addr
-      | Q.Rel (pol, rel, addr') ->
-        check_rel pol rel addr' addr
+      | Q.Rel ((mode, pol, rel), addr') ->
+        check_rel mode pol rel addr' addr
       | Q.Isect qs -> check_isect qs addr
       | Q.Union qs -> check_union qs addr
       | Q.Complement q ->
         not @@ check_query q addr
-      | Q.Isect_fam (q, (pol, rel)) ->
+      | Q.Isect_fam (q, (mode, pol, rel)) ->
         let xs = Addr_set.to_list @@ run_query q in
         xs |> List.for_all @@ fun x ->
-        check_rel pol rel x addr
-      | Q.Union_fam (q, (pol, rel)) ->
+        check_rel mode pol rel x addr
+      | Q.Union_fam (q, (mode, pol, rel)) ->
         let xs = Addr_set.to_list @@ run_query q in
         xs |> List.exists @@ fun x ->
-        check_rel pol rel x addr
+        check_rel mode pol rel x addr
 
     and check_isect qs addr =
       qs |> List.for_all @@ fun q ->
@@ -109,24 +112,18 @@ struct
 
     and run_query q =
       match Q.view q with
-      | Q.Tree_under addr ->
-        G.safe_fold_succ
-          Addr_set.add
-          (Graphs.get_rtgraph Q.Rel.transclusion)
-          addr
-          Addr_set.empty
-      | Q.Rel (pol, rel, addr) ->
-        query_rel pol rel addr
+      | Q.Rel ((mode, pol, rel), addr) ->
+        query_rel mode pol rel addr
       | Q.Isect qs -> run_isect qs
       | Q.Union qs -> run_union qs
       | Q.Complement q ->
         Addr_set.diff !Graphs.all_addrs_ref @@ run_query q
-      | Q.Isect_fam (q, (pol, rel)) ->
+      | Q.Isect_fam (q, (mode, pol, rel)) ->
         let xs = Addr_set.to_list @@ run_query q in
-        run_isect @@ List.map (Q.rel pol rel) xs
-      | Q.Union_fam (q, (pol, rel)) ->
+        run_isect @@ List.map (Q.rel mode pol rel) xs
+      | Q.Union_fam (q, (mode, pol, rel)) ->
         let xs = Addr_set.to_list @@ run_query q in
-        run_union @@ List.map (Q.rel pol rel) xs
+        run_union @@ List.map (Q.rel mode pol rel) xs
 
     and run_isect =
       function
