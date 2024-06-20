@@ -30,10 +30,10 @@ struct
     let all_addrs_ref : Addr_set.t ref =
       ref Addr_set.empty
 
-    let rel_to_graph : (Query.rel_name, G.t) Hashtbl.t =
+    let rel_to_graph : (Q.Rel.t, G.t) Hashtbl.t =
       Hashtbl.create 20
 
-    let rel_to_rtgraph : (Query.rel_name, G.t) Hashtbl.t =
+    let rel_to_rtgraph : (Q.Rel.t, G.t) Hashtbl.t =
       Hashtbl.create 20
 
     let get_graph rel =
@@ -67,8 +67,8 @@ struct
     let query_rel pol rel addr =
       let fn =
         match pol with
-        | `Incoming -> G.safe_pred
-        | `Outgoing -> G.safe_succ
+        | Q.Incoming -> G.safe_pred
+        | Q.Outgoing -> G.safe_succ
       in
       let gph = Graphs.get_graph rel in
       Addr_set.of_list @@ fn gph addr
@@ -76,13 +76,13 @@ struct
     let check_rel pol rel addr addr' =
       let gph = Graphs.get_graph rel in
       match pol with
-      | `Incoming -> G.mem_edge gph addr' addr
-      | `Outgoing -> G.mem_edge gph addr addr'
+      | Q.Incoming -> G.mem_edge gph addr' addr
+      | Q.Outgoing -> G.mem_edge gph addr addr'
 
     let rec check_query q addr =
-      match q with
+      match Q.view q with
       | Q.Tree_under root ->
-        G.mem_edge (Graphs.get_rtgraph `Transclusion) root addr
+        G.mem_edge (Graphs.get_rtgraph Q.Rel.transclusion) root addr
       | Q.Rel (pol, rel, addr') ->
         check_rel pol rel addr' addr
       | Q.Isect qs -> check_isect qs addr
@@ -107,12 +107,12 @@ struct
       check_query q addr
 
 
-    and run_query =
-      function
+    and run_query q =
+      match Q.view q with
       | Q.Tree_under addr ->
         G.safe_fold_succ
           Addr_set.add
-          (Graphs.get_rtgraph `Transclusion)
+          (Graphs.get_rtgraph Q.Rel.transclusion)
           addr
           Addr_set.empty
       | Q.Rel (pol, rel, addr) ->
@@ -123,10 +123,10 @@ struct
         Addr_set.diff !Graphs.all_addrs_ref @@ run_query q
       | Q.Isect_fam (q, (pol, rel)) ->
         let xs = Addr_set.to_list @@ run_query q in
-        run_isect @@ List.map (fun x -> Q.Rel (pol, rel, x)) xs
+        run_isect @@ List.map (Q.rel pol rel) xs
       | Q.Union_fam (q, (pol, rel)) ->
         let xs = Addr_set.to_list @@ run_query q in
-        run_union @@ List.map (fun x -> Q.Rel (pol, rel, x)) xs
+        run_union @@ List.map (Q.rel pol rel) xs
 
     and run_isect =
       function
@@ -186,14 +186,14 @@ struct
     | Link {title; dest} ->
       let scope = Scope.get () in
       let dest = eval_addr dest in
-      Graphs.add_edge `Links ~source:scope ~target:dest;
+      Graphs.add_edge Q.Rel.links ~source:scope ~target:dest;
       let title = Option.map eval title in
       {node with value = Sem.Link (dest, title, Identity)} :: eval rest
 
     | Ref dest ->
       let scope = Scope.get () in
       let dest = eval_addr dest in
-      Graphs.add_edge `Links ~source:scope ~target:dest;
+      Graphs.add_edge Q.Rel.links ~source:scope ~target:dest;
       {node with value = Sem.Ref dest} :: eval rest
 
     | Math (mmode, e) ->
@@ -222,7 +222,7 @@ struct
     | Transclude addr ->
       let addr = eval_addr addr in
       let scope = Scope.get () in
-      Graphs.add_edge `Transclusion ~source:scope ~target:addr;
+      Graphs.add_edge Q.Rel.transclusion ~source:scope ~target:addr;
       let opts = get_transclusion_opts () in
       {node with value = Sem.Transclude (opts, addr)} :: eval rest
 
@@ -233,7 +233,7 @@ struct
         | None -> Machine_addr (Oo.id (object end))
       in
       let scope = Scope.get () in
-      Graphs.add_edge `Transclusion ~source:scope ~target:addr;
+      Graphs.add_edge Q.Rel.transclusion ~source:scope ~target:addr;
       let opts = get_transclusion_opts () in
       let subtree = eval_tree_inner ~addr nodes in
       let fm = Fm.get () in
@@ -256,7 +256,7 @@ struct
         | None -> {opts with show_heading = false; toc = false}
         | Some _ -> opts
       in
-      let query = Query.map eval_addr query in
+      let query = Q.map eval_addr query in
       {node with value = Sem.Query (opts, query)} :: eval rest
 
     | Embed_tex {preamble; source} ->
@@ -409,20 +409,20 @@ struct
     | Author author ->
       let scope = Scope.get () in
       let addr = User_addr author in
-      Graphs.add_edge `Authorship ~source:scope ~target:addr;
+      Graphs.add_edge Q.Rel.authorship ~source:scope ~target:addr;
       Fm.modify (fun fm -> {fm with authors = fm.authors @ [addr]});
       eval rest
 
     | Contributor author ->
       let scope = Scope.get () in
       let addr = User_addr author in
-      Graphs.add_edge `Contributorship ~source:scope ~target:addr;
+      Graphs.add_edge Q.Rel.contributorship ~source:scope ~target:addr;
       Fm.modify (fun fm -> {fm with contributors = fm.contributors @ [addr]});
       eval rest
 
     | Tag tag ->
       let scope = Scope.get () in
-      Graphs.add_edge `Tags ~source:scope ~target:(User_addr tag);
+      Graphs.add_edge Q.Rel.tags ~source:scope ~target:(User_addr tag);
       Fm.modify (fun fm -> {fm with tags = fm.tags @ [tag]});
       eval rest
 
@@ -442,7 +442,7 @@ struct
 
     | Taxon taxon ->
       let scope = Scope.get () in
-      Graphs.add_edge `Taxa ~source:scope ~target:(User_addr taxon);
+      Graphs.add_edge Q.Rel.taxa ~source:scope ~target:(User_addr taxon);
       Fm.modify (fun fm -> {fm with taxon = Some taxon});
       eval rest
 

@@ -105,20 +105,7 @@ struct
       Compare.option String.compare
     in
     List.sort by_title @@ S.elements @@ I.run_query @@
-    let q_non_ref_under =
-      Query.isect [
-        Query.tree_under scope;
-        Query.complement @@ Query.has_taxon "reference"
-      ]
-    in
-    let q_all_contributors =
-      Query.union_fam
-        q_non_ref_under
-        `Outgoing
-        `Contributorship
-    in
-    let q_authors = Query.rel `Outgoing `Authorship scope in
-    Query.isect [q_all_contributors; Query.complement q_authors]
+    Query.hereditary_contributors scope
 
 
   let compile_date (date : Date.t) =

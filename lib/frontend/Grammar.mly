@@ -118,11 +118,11 @@ let ident_with_method_calls :=
 
 
 let query0 :=
-| QUERY_AUTHOR; x = arg; { Query.Rel (`Incoming, `Authorship, x) }
-| QUERY_TAG; x = arg; { Query.Rel (`Incoming, `Tags, x) }
-| QUERY_TAXON; x = arg; { Query.Rel (`Incoming, `Taxa, x) }
+| QUERY_AUTHOR; x = arg; { Query.rel Incoming Query.Rel.authorship x }
+| QUERY_TAG; x = arg; { Query.rel Incoming Query.Rel.tags x }
+| QUERY_TAXON; x = arg; { Query.rel Incoming Query.Rel.taxa x }
 | QUERY_AND; ~ = braces(queries); <Query.isect>
-| QUERY_OR; ~ = braces(queries); <Query.Union>
+| QUERY_OR; ~ = braces(queries); <Query.union>
 | QUERY_NOT; ~ = braces(query); <Query.complement>
 
 let queries == ws_list(query0)

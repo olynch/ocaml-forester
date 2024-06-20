@@ -202,31 +202,11 @@ let default_backmatter ~addr =
     let title = [Range.locate_opt None @@ Text title] in
     Backmatter_section {title; query}
   in
-  [
-    make_section "references" @@
-    Query.isect [
-      Query.union_fam (Query.tree_under addr) `Outgoing `Links;
-      Query.has_taxon "reference"
-    ];
-
-    make_section "context" @@
-    Query.rel `Incoming `Transclusion addr;
-
-    make_section "backlinks" @@
-    Query.rel `Incoming `Links addr;
-
-    make_section "related" @@
-    Query.isect [
-      Query.rel `Outgoing `Links addr;
-      Query.complement @@ Query.has_taxon "reference"
-    ];
-
-    make_section "contributions" @@
-    Query.union [
-      Query.rel `Incoming `Authorship addr;
-      Query.rel `Incoming `Contributorship addr
-    ]
-  ]
+  [make_section "references" @@ Query.references addr;
+   make_section "context" @@ Query.context addr;
+   make_section "backlinks" @@ Query.backlinks addr;
+   make_section "related" @@ Query.related addr;
+   make_section "contributions" @@ Query.contributions addr]
 
 let empty_tree ~addr =
   {fm = empty_frontmatter ~addr;
