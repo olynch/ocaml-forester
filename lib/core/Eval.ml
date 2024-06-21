@@ -59,7 +59,9 @@ struct
 
     let register_addr addr =
       Hashtbl.clear rel_to_preorder;
-      all_addrs_ref := Addr_set.add addr !all_addrs_ref
+      all_addrs_ref := Addr_set.add addr !all_addrs_ref;
+      rel_to_graph |> Hashtbl.iter @@ fun _ gph ->
+      G.add_vertex gph addr
 
     let add_edge rel ~source ~target =
       Hashtbl.remove rel_to_preorder rel;
