@@ -8,9 +8,7 @@ type node =
   | Math of math_mode * t
   | Ident of Trie.path * string list
   | Xml_tag of (string option * string) * ((string option * string) * t) list * t
-  | Transclude of t
   | Subtree of string option * t
-  | Embed_tex of t * t
   | Let of Trie.path * Trie.path list * t
   | Open of Trie.path
   | Scope of t
@@ -18,9 +16,6 @@ type node =
   | Default of Trie.path * t
   | Get of Trie.path
   | If_tex of t * t
-  | Prim of Prim.t * t
-
-  | Ref of t
 
   | Object of {self : Trie.path option; methods : (string * t) list}
   | Patch of {obj : t; self : Trie.path option; methods: (string * t) list}
@@ -34,16 +29,6 @@ type node =
   | Alloc of Trie.path
 
   | Namespace of Trie.path * t
-
-  | Title of t
-  | Taxon of string
-  | Meta of string * t
-  | Author of string
-  | Contributor of string
-  | Tag of string
-  | Date of string
-  | Parent of string
-  | Number of string
 [@@deriving show]
 
 and t = node Range.located list

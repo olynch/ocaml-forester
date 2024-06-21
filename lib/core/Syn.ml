@@ -7,10 +7,8 @@ type node =
   | Group of delim * t
   | Math of math_mode * t
   | Link of {dest : t; title : t option}
-  | Transclude of t
   | Subtree of string option * tree
   | Query of t Query.t
-  | Embed_tex of {preamble : t; source : t}
   | Lam of Symbol.t list * t
   | Var of Symbol.t
   | Put of Symbol.t * t * t
@@ -19,21 +17,24 @@ type node =
   | If_tex of t * t
   | Xml_tag of xml_resolved_qname * (xml_resolved_qname * t) list * t
   | TeX_cs of TeX_cs.t
-  | Prim of Prim.t * t
+  | Prim of Prim.t
   | Object of {self : Symbol.t; methods: (string * t) list}
   | Patch of {obj : t; self : Symbol.t; super : Symbol.t; methods : (string * t) list}
   | Call of t * string
-  | Ref of t
 
-  | Title of t
-  | Parent of string
-  | Taxon of string
-  | Meta of string * t
-  | Author of string
-  | Contributor of string
-  | Tag of string
-  | Date of string
-  | Number of string
+  | Transclude
+  | Embed_tex
+  | Ref
+
+  | Title
+  | Parent
+  | Taxon
+  | Meta
+  | Author
+  | Contributor
+  | Tag
+  | Date
+  | Number
 
 [@@deriving show]
 

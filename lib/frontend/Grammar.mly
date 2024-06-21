@@ -14,10 +14,9 @@
 %token <string> TEXT VERBATIM
 %token <string> WHITESPACE
 %token <string> IDENT
-%token <Forester_core.Prim.t> PRIM
-%token TITLE PARENT IMPORT EXPORT DEF TAXON AUTHOR CONTRIBUTOR TAG DATE NUMBER NAMESPACE LET TEX META OPEN
+%token IMPORT EXPORT DEF NAMESPACE LET OPEN
 %token OBJECT PATCH CALL
-%token TRANSCLUDE SUBTREE SCOPE PUT GET DEFAULT ALLOC REF
+%token SUBTREE SCOPE PUT GET DEFAULT ALLOC
 %token LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE
 %token QUERY_AND QUERY_OR QUERY_NOT QUERY_AUTHOR QUERY_TAG QUERY_TAXON
 %token QUERY_TREE
@@ -54,24 +53,13 @@ let code_expr == ws_list(locate(head_node))
 let textual_expr == list(locate(textual_node))
 
 let head_node :=
-| TITLE; ~ = arg; <Code.Title>
-| PARENT; ~ = txt_arg; <Code.Parent>
-| AUTHOR; ~ = txt_arg; <Code.Author>
-| CONTRIBUTOR; ~ = txt_arg; <Code.Contributor>
-| DATE; ~ = txt_arg; <Code.Date>
-| NUMBER; ~ = txt_arg; <Code.Number>
 | DEF; (~,~,~) = fun_spec; <Code.Def>
 | ALLOC; ~ = ident; <Code.Alloc>
-| TAXON; ~ = txt_arg; <Code.Taxon>
-| META; ~ = txt_arg; ~ = arg; <Code.Meta>
 | IMPORT; ~ = txt_arg; <Code.import_private>
 | EXPORT; ~ = txt_arg; <Code.import_public>
-| TAG; ~ = txt_arg; <Code.Tag>
 | NAMESPACE; ~ = ident; ~ = braces(code_expr); <Code.Namespace>
-| TRANSCLUDE; ~ = arg; <Code.Transclude>
 | SUBTREE; addr = option(squares(wstext)); body = braces(ws_list(locate(head_node))); <Code.Subtree>
 | LET; (~,~,~) = fun_spec; <Code.Let>
-| TEX; pkgs = arg; src = arg; <Code.Embed_tex>
 | (~,~) = ident_with_method_calls; <Code.Ident>
 | SCOPE; ~ = arg; <Code.Scope>
 | PUT; ~ = ident; ~ = arg; <Code.Put>
@@ -87,8 +75,6 @@ let head_node :=
 | OBJECT; self = option(squares(bvar)); methods = braces(ws_list(method_decl)); { Code.Object {self;  methods } }
 | PATCH; obj = braces(code_expr); self = option(squares(bvar)); methods = braces(ws_list(method_decl)); { Code.Patch {obj; self; methods} }
 | CALL; ~ = braces(code_expr); ~ = txt_arg; <Code.Call>
-| ~ = PRIM; ~ = arg; <Code.Prim>
-| REF; ~ = arg; <Code.Ref>
 | ~ = delimited(HASH_LBRACE, textual_expr, RBRACE); <Code.inline_math>
 | ~ = delimited(HASH_HASH_LBRACE, textual_expr, RBRACE); <Code.display_math>
 | ~ = braces(textual_expr); <Code.braces>

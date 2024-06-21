@@ -41,29 +41,17 @@ rule token =
   | "\\verb" { custom_verbatim_herald lexbuf }
   | "\\startverb" { custom_verbatim "\\stopverb" (Buffer.create 2000) lexbuf }
   | "\\ " { Grammar.IDENT {| |} }
-  | "\\title" { Grammar.TITLE }
-  | "\\parent" { Grammar.PARENT }
-  | "\\taxon" { Grammar.TAXON }
-  | "\\author" { Grammar.AUTHOR }
-  | "\\contributor" { Grammar.CONTRIBUTOR }
   | "\\scope" { Grammar.SCOPE }
   | "\\put" { Grammar.PUT }
   | "\\put?" { Grammar.DEFAULT }
   | "\\get" { Grammar.GET }
-  | "\\tag" { Grammar.TAG }
-  | "\\ref" { Grammar.REF }
-  | "\\date" { Grammar.DATE }
-  | "\\number" { Grammar.NUMBER }
   | "\\import" { Grammar.IMPORT }
   | "\\export" { Grammar.EXPORT }
   | "\\namespace" { Grammar.NAMESPACE }
   | "\\open" { Grammar.OPEN }
-  | "\\meta" { Grammar.META }
   | "\\def" { Grammar.DEF }
   | "\\alloc" { Grammar.ALLOC }
   | "\\let" { Grammar.LET }
-  | "\\tex" { Grammar.TEX }
-  | "\\transclude" { Grammar.TRANSCLUDE }
   | "\\subtree" { Grammar.SUBTREE }
   | "\\query/and" {Grammar.QUERY_AND }
   | "\\query/or" {Grammar.QUERY_OR }
@@ -72,17 +60,6 @@ rule token =
   | "\\query/tag" {Grammar.QUERY_TAG }
   | "\\query/taxon" {Grammar.QUERY_TAXON }
   | "\\query" { Grammar.QUERY_TREE }
-  | "\\p" { Grammar.PRIM `P }
-  | "\\em" { Grammar.PRIM `Em }
-  | "\\strong" { Grammar.PRIM `Strong }
-  | "\\li" { Grammar.PRIM `Li }
-  | "\\ul" { Grammar.PRIM `Ul }
-  | "\\ol" { Grammar.PRIM `Ol }
-  | "\\code" { Grammar.PRIM `Code }
-  | "\\blockquote" { Grammar.PRIM `Blockquote }
-  | "\\pre" { Grammar.PRIM `Pre }
-  | "\\figure" { Grammar.PRIM `Figure }
-  | "\\figcaption" { Grammar.PRIM `Figcaption }
   | "\\object" { Grammar.OBJECT }
   | "\\patch" { Grammar.PATCH }
   | "\\call" { Grammar.CALL }
@@ -120,19 +97,19 @@ and custom_verbatim_herald =
     { let buffer = Buffer.create 2000 in
       eat_verbatim_herald_sep (custom_verbatim herald buffer) lexbuf }
   | newline
-    { Lexing.new_line lexbuf; 
+    { Lexing.new_line lexbuf;
       raise_err lexbuf }
-  | _ 
+  | _
     { raise_err lexbuf }
 
-and eat_verbatim_herald_sep kont = 
-  parse 
-  | verbatim_herald_sep 
+and eat_verbatim_herald_sep kont =
+  parse
+  | verbatim_herald_sep
     { kont lexbuf }
   | newline
-    { Lexing.new_line lexbuf; 
+    { Lexing.new_line lexbuf;
       raise_err lexbuf }
-  | _ 
+  | _
     { raise_err lexbuf }
 
 and custom_verbatim herald buffer =
@@ -160,25 +137,25 @@ and xml_qname =
   parse
   | xml_qname as qname { qname }
   | newline
-    { Lexing.new_line lexbuf; 
+    { Lexing.new_line lexbuf;
       raise_err lexbuf }
-  | _ 
+  | _
     { raise_err lexbuf }
 
 and xml_base_ident =
   parse
   | xml_base_ident as x { x }
   | newline
-    { Lexing.new_line lexbuf; 
+    { Lexing.new_line lexbuf;
       raise_err lexbuf }
-  | _ 
+  | _
     { raise_err lexbuf }
 
 and rangle =
   parse
   | ">" { () }
     | newline
-    { Lexing.new_line lexbuf; 
+    { Lexing.new_line lexbuf;
       raise_err lexbuf }
-  | _ 
+  | _
     { raise_err lexbuf }

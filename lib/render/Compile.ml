@@ -199,7 +199,7 @@ struct
 
     | Sem.TeX_cs name ->
       Reporter.fatalf ?loc:located.loc Resolution_error
-        "unresolved TeX control sequence `\\%a`" TeX_cs.pp name
+        "unresolved control sequence `\\%a`" TeX_cs.pp name
 
     | Sem.Object _ ->
       Reporter.fatal ?loc:located.loc Type_error

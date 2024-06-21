@@ -173,6 +173,15 @@ struct
     let show_metadata = get_bool Expand.Builtins.Transclude.show_metadata_sym false in
     Sem.{title_override; taxon_override; toc; show_heading; expanded; numbered; show_metadata}
 
+  let pop_arg ~loc rest =
+    match rest with
+    | Range.{value = Syn.Group (Braces, arg); _} :: rest ->
+      arg, rest
+    | Range.{value = Syn.Verbatim str; _} as node :: rest ->
+      [node], rest
+    | _ ->
+      Reporter.fatalf ?loc Type_error "Expected argument"
+
   let rec eval : Syn.t -> Sem.t =
     function
     | [] -> []
@@ -189,7 +198,8 @@ struct
       let title = Option.map eval title in
       {node with value = Sem.Link (dest, title, Identity)} :: eval rest
 
-    | Ref dest ->
+    | Ref ->
+      let dest, rest = pop_arg ~loc:node.loc rest in
       let scope = Scope.get () in
       let dest = eval_addr dest in
       Graphs.add_edge Q.Rel.links ~source:scope ~target:dest;
@@ -198,8 +208,9 @@ struct
     | Math (mmode, e) ->
       {node with value = Sem.Math (mmode, eval e)} :: eval rest
 
-    | Prim (p, body) ->
-      {node with value = Sem.Prim (p, eval_trim body)} :: eval rest
+    | Prim p ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      {node with value = Sem.Prim (p, eval_trim arg)} :: eval rest
 
     | Xml_tag (name, attrs, body) ->
       let rec process attrs = match attrs with
@@ -218,8 +229,9 @@ struct
     | TeX_cs cs ->
       {node with value = Sem.TeX_cs cs} :: eval rest
 
-    | Transclude addr ->
-      let addr = eval_addr addr in
+    | Transclude ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      let addr = eval_addr arg in
       let scope = Scope.get () in
       Graphs.add_edge Q.Rel.transclusion ~source:scope ~target:addr;
       let opts = get_transclusion_opts () in
@@ -258,7 +270,9 @@ struct
       let query = Q.map eval_addr query in
       {node with value = Sem.Query (opts, query)} :: eval rest
 
-    | Embed_tex {preamble; source} ->
+    | Embed_tex ->
+      let preamble, rest = pop_arg ~loc:node.loc rest in
+      let source, rest = pop_arg ~loc:node.loc rest in
       {node with value = Sem.Embed_tex {preamble = eval preamble; source = eval source}} :: eval rest
 
     | Lam (xs, body) ->
@@ -391,41 +405,53 @@ struct
     | Group _ | Text _ ->
       eval_textual @@ node :: rest
 
-    | Title title ->
+    | Title ->
+      let title, rest = pop_arg ~loc:node.loc rest in
       let title = eval title in
       Fm.modify (fun fm -> {fm with title = Some title});
       eval rest
 
-    | Parent addr ->
-      Fm.modify (fun fm -> {fm with designated_parent = Some (User_addr addr)});
+    | Parent ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      let addr = eval_addr arg in
+      Fm.modify (fun fm -> {fm with designated_parent = Some addr});
       eval rest
 
-    | Meta (k, v) ->
-      let v = eval v in
+    | Meta ->
+      let argk, rest = pop_arg ~loc:node.loc rest in
+      let argv, rest = pop_arg ~loc:node.loc rest in
+      let k = eval_as_string argk in
+      let v = eval argv in
       Fm.modify (fun fm -> {fm with metas = fm.metas @ [k,v]});
       eval rest
 
-    | Author author ->
+    | Author ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      let addr = eval_addr arg in
       let scope = Scope.get () in
-      let addr = User_addr author in
       Graphs.add_edge Q.Rel.authorship ~source:scope ~target:addr;
       Fm.modify (fun fm -> {fm with authors = fm.authors @ [addr]});
       eval rest
 
-    | Contributor author ->
+    | Contributor ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      let addr = eval_addr arg in
       let scope = Scope.get () in
-      let addr = User_addr author in
       Graphs.add_edge Q.Rel.contributorship ~source:scope ~target:addr;
       Fm.modify (fun fm -> {fm with contributors = fm.contributors @ [addr]});
       eval rest
 
-    | Tag tag ->
+    | Tag ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      let tag = eval_as_string arg in
       let scope = Scope.get () in
       Graphs.add_edge Q.Rel.tags ~source:scope ~target:(User_addr tag);
       Fm.modify (fun fm -> {fm with tags = fm.tags @ [tag]});
       eval rest
 
-    | Date date ->
+    | Date ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      let date = eval_as_string arg in
       begin
         match Date.parse date with
         | None ->
@@ -435,11 +461,15 @@ struct
           eval rest
       end
 
-    | Number num ->
+    | Number ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      let num = eval_as_string arg in
       Fm.modify (fun fm -> {fm with number = Some num});
       eval rest
 
-    | Taxon taxon ->
+    | Taxon ->
+      let arg, rest = pop_arg ~loc:node.loc rest in
+      let taxon = eval_as_string arg in
       let scope = Scope.get () in
       Graphs.add_edge Q.Rel.taxa ~source:scope ~target:(User_addr taxon);
       Fm.modify (fun fm -> {fm with taxon = Some taxon});
