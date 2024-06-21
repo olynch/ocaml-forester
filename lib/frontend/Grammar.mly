@@ -18,8 +18,6 @@
 %token OBJECT PATCH CALL
 %token SUBTREE SCOPE PUT GET DEFAULT ALLOC
 %token LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE
-%token QUERY_AND QUERY_OR QUERY_NOT QUERY_AUTHOR QUERY_TAG QUERY_TAXON
-%token QUERY_TREE
 %token EOF
 
 %start <Code.t> main
@@ -66,7 +64,6 @@ let head_node :=
 | DEFAULT; ~ = ident; ~ = arg; <Code.Default>
 | GET; ~ = ident; <Code.Get>
 | OPEN; ~ = ident; <Code.Open>
-| QUERY_TREE; ~ = braces(query); <Code.Query>
 | name = XML_ELT_IDENT; attrs = list(xml_attr); body = arg; {
   let name = split_xml_qname name in
   Code.Xml_tag (name, attrs, body)
@@ -102,18 +99,6 @@ let ident_with_method_calls :=
     | [] -> [], []
    }
 
-
-let query0 :=
-| QUERY_AUTHOR; x = arg; { Query.rel Edges Incoming Query.Rel.authorship x }
-| QUERY_TAG; x = arg; { Query.rel Edges Incoming Query.Rel.tags x }
-| QUERY_TAXON; x = arg; { Query.rel Edges Incoming Query.Rel.taxa x }
-| QUERY_AND; ~ = braces(queries); <Query.isect>
-| QUERY_OR; ~ = braces(queries); <Query.union>
-| QUERY_NOT; ~ = braces(query); <Query.complement>
-
-let queries == ws_list(query0)
-
-let query := list(WHITESPACE); q = query0; list(WHITESPACE); {q}
 
 let ws_or_text :=
 | x = TEXT; { x }

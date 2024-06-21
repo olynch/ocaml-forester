@@ -17,7 +17,8 @@ type node =
   | Verbatim of string
   | Transclude of transclusion_opts * addr
   | Subtree of transclusion_opts * tree
-  | Query of transclusion_opts * addr Query.t
+  | Query_tree of transclusion_opts * addr Query.t
+  | Query of addr Query.t
   | Link of addr * t option * modifier
   | Xml_tag of xml_resolved_qname * (xml_resolved_qname * t) list * t
   | TeX_cs of TeX_cs.t
@@ -27,6 +28,9 @@ type node =
   | Prim of Prim.t * t
   | Object of Symbol.t
   | Ref of addr
+  | Sym of Symbol.t
+  | Query_polarity of Query.polarity
+  | Query_mode of Query.mode
 [@@deriving show]
 
 and embedded_tex = {preamble : t; source : t}
@@ -121,8 +125,6 @@ let apply_modifier =
   | Text_modifier.Sentence_case -> sentence_case
   | Text_modifier.Identity -> Fun.id
 
-
-
 (** Best-effort rendering of a nodes as a string, to use in text-only contexts.*)
 let string_of_nodes =
   let rec render nodes =
@@ -136,7 +138,7 @@ let string_of_nodes =
     | Xml_tag (_, _, bdy) | Math (_, bdy) -> Some (render bdy)
     | Embed_tex {source; _} -> Some (render source)
     | Prim (_, x) -> Some (render x)
-    | Transclude _ | Subtree _ | Query _ | TeX_cs _ | Img _ | Object _ | Link _ | Ref _ -> None
+    | Transclude _ | Subtree _ | Query_tree _ | TeX_cs _ | Img _ | Object _ | Link _ | Ref _ | Query _ | Query_mode _ | Query_polarity _ | Sym _ -> None
   in
   render
 

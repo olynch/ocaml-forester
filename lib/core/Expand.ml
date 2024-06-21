@@ -14,7 +14,8 @@ struct
   let create_sym path =
     let sym = Symbol.fresh path in
     sym, fun () ->
-      Resolver.Scope.include_singleton path @@ Sym sym
+      Resolver.Scope.include_singleton path @@
+      Term [Range.locate_opt None (Syn.Sym sym)]
 
   let register_builtin path node =
     Resolver.Scope.include_singleton path @@
@@ -23,6 +24,13 @@ struct
   let register_builtins builtins =
     let make (path, node) =
       path, (P.Term [Range.locate_opt None node], ())
+    in
+    Resolver.Scope.include_subtree [] @@ Yuujinchou.Trie.of_seq @@
+    Seq.map make @@ List.to_seq builtins
+
+  let register_symbols builtins =
+    let make (path, sym) =
+      path, (P.Term [Range.locate_opt None (Syn.Sym sym)], ())
     in
     Resolver.Scope.include_subtree [] @@ Yuujinchou.Trie.of_seq @@
     Seq.map make @@ List.to_seq builtins
@@ -83,9 +91,6 @@ let rec expand : Code.t -> Syn.t =
     let subtree = expand_tree_inner @@ Code.{source_path = None; addr = addr; code = nodes} in
     {value = Syn.Subtree (addr, subtree); loc} :: expand rest
 
-  | {value = Query query; loc} :: rest ->
-    {value = Syn.Query (Query.map expand query); loc} :: expand rest
-
   | {value = Math (m, xs); loc} :: rest ->
     {value = Syn.Math (m, expand xs); loc} :: expand rest
 
@@ -106,17 +111,17 @@ let rec expand : Code.t -> Syn.t =
     body @ expand rest
 
   | {value = Put (k, v); loc} :: rest ->
-    let k = expand_sym loc k in
+    let k = expand_ident loc k in
     let v = expand v in
     [{value = Syn.Put (k, v, expand rest); loc}]
 
   | {value = Default (k, v); loc} :: rest ->
-    let k = expand_sym loc k in
+    let k = expand_ident loc k in
     let v = expand v in
     [{value = Syn.Default (k, v, expand rest); loc}]
 
   | {value = Get k; loc} :: rest ->
-    let k = expand_sym loc k in
+    let k = expand_ident loc k in
     {value = Syn.Get k; loc} :: expand rest
 
   | {value = Object {self; methods}; loc} :: rest ->
@@ -193,7 +198,7 @@ let rec expand : Code.t -> Syn.t =
 
   | {value = Alloc path; loc} :: rest ->
     let symbol = Symbol.fresh path in
-    Resolver.Scope.include_singleton path @@ Sym symbol;
+    Resolver.Scope.include_singleton path @@ Term [Range.locate_opt loc (Syn.Sym symbol)];
     expand rest
 
 and expand_method (key, body) =
@@ -229,25 +234,12 @@ and expand_ident loc path =
   | Some (Term x, ()), _ ->
     let relocate Range.{value; _} = Range.{value; loc} in
     List.map relocate x
-  | Some (Sym x, ()), _ ->
-    Reporter.fatalf ?loc Resolution_error
-      "path %a resolved to symbol %a instead of term"
-      Trie.pp_path path
-      Symbol.pp x
   | Some (Xmlns {xmlns; prefix}, ()), _ ->
     Reporter.fatalf ?loc Resolution_error
       "path %a resolved to xmlns:%s=\"%s\" instead of term"
       Trie.pp_path path
       xmlns
       prefix
-
-and expand_sym loc path =
-  match Scope.resolve path, path with
-  | Some (Sym x, ()), _ -> x
-  | _ ->
-    Reporter.fatalf ?loc Resolution_error
-      "expected path `%a` to resolve to symbol"
-      Trie.pp_path path
 
 and expand_xml_ident loc (prefix, uname) =
   match prefix with
@@ -310,6 +302,20 @@ let expand_tree (units : exports UnitMap.t) (tree : Code.tree) =
     ["parent"], Syn.Parent;
     ["number"], Syn.Number;
     ["tag"], Syn.Tag;
+    ["query"], Syn.Query_tree;
+    ["query"; "rel"], Syn.Query_rel;
+    ["query"; "union"], Syn.Query_union;
+    ["query"; "isect"], Syn.Query_isect;
+    ["query"; "isect-fam"], Syn.Query_isect_fam;
+    ["query"; "union-fam"], Syn.Query_union_fam;
+    ["query"; "compl"], Syn.Query_compl;
+    ["query"; "tag"], Syn.Query_builtin `Tag;
+    ["query"; "taxon"], Syn.Query_builtin `Taxon;
+    ["query"; "author"], Syn.Query_builtin `Author;
+    ["query"; "incoming"], Syn.Query_polarity Incoming;
+    ["query"; "outgoing"], Syn.Query_polarity Outgoing;
+    ["query"; "edges"], Syn.Query_mode Edges;
+    ["query"; "paths"], Syn.Query_mode Paths;
   ];
 
   Builtins.Transclude.alloc_title ();
@@ -319,6 +325,15 @@ let expand_tree (units : exports UnitMap.t) (tree : Code.tree) =
   Builtins.Transclude.alloc_toc ();
   Builtins.Transclude.alloc_numbered ();
   Builtins.Transclude.alloc_show_metadata ();
+
+  Builtins.register_symbols [
+    ["rel"; "tags"], Query.Rel.tags;
+    ["rel"; "taxa"], Query.Rel.taxa;
+    ["rel"; "authors"], Query.Rel.authors;
+    ["rel"; "contributors"], Query.Rel.authors;
+    ["rel"; "transclusion"], Query.Rel.transclusion;
+    ["rel"; "links"], Query.Rel.links;
+  ];
 
   let tree = expand_tree_inner tree in
   let units = U.get () in

@@ -20,8 +20,6 @@ type node =
   | Patch of {obj : t; self : Trie.path option; methods: (string * t) list}
   | Call of t * string
 
-  | Query of t Query.t
-
   | Import of visibility * string
   | Def of Trie.path * Trie.path list * t
   | Decl_xmlns of string * string

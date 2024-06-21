@@ -2,15 +2,12 @@
 
 module Rel :
 sig
-  type t
-  [@@deriving show]
-
-  val symbol : Symbol.t -> t
+  type t = Symbol.t
 
   val links : t
   val transclusion : t
-  val authorship : t
-  val contributorship : t
+  val authors : t
+  val contributors : t
   val tags : t
   val taxa : t
 end
@@ -49,6 +46,7 @@ type ('addr, 'r) view =
   | Complement of 'r
   | Isect_fam of 'r * rel_query
   | Union_fam of 'r * rel_query
+[@@deriving show]
 
 (** A view to expose a level of query syntax. *)
 val view : 'addr t -> ('addr, 'addr t) view

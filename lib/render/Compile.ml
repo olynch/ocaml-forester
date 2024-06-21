@@ -194,14 +194,6 @@ struct
       [normalise_prefix ~prefix:name.prefix ~xmlns:name.xmlns @@ fun (updates, tag_prefix) ->
        fold_attrs tag_prefix updates [] attrs]
 
-    | Sem.TeX_cs name ->
-      Reporter.fatalf ?loc:located.loc Resolution_error
-        "unresolved control sequence `\\%a`" TeX_cs.pp name
-
-    | Sem.Object _ ->
-      Reporter.fatal ?loc:located.loc Type_error
-        "tried to compile object closure to XML"
-
     | Sem.Embed_tex {preamble; source} ->
       let as_tex x =
         Render_TeX_like.Printer.contents @@
@@ -225,7 +217,7 @@ struct
     | Sem.Subtree (opts, subtree) ->
       compile_transclusion ~opts subtree
 
-    | Sem.Query (opts, query) ->
+    | Sem.Query_tree (opts, query) ->
       begin
         match get_trees_from_query query with
         | [] ->
@@ -235,6 +227,26 @@ struct
           let opts = Sem.{expanded = false; show_heading = true; title_override = None; taxon_override = None; toc = false; numbered = false; show_metadata = true} in
           compile_transclusion ~opts tree
       end
+
+    | Sem.TeX_cs name ->
+      Reporter.fatalf ?loc:located.loc Resolution_error
+        "unresolved control sequence `\\%a`" TeX_cs.pp name
+
+    | Sem.Object _ ->
+      Reporter.fatal ?loc:located.loc Type_error
+        "tried to compile object closure to XML"
+
+    | Sem.Query _ ->
+      Reporter.fatal ?loc:located.loc Type_error
+        "tried to compile query constructor to XML"
+
+    | Sem.Query_polarity _ | Sem.Query_mode _ ->
+      Reporter.fatal ?loc:located.loc Type_error
+        "tried to constant to XML"
+
+    | Sem.Sym _ ->
+      Reporter.fatal ?loc:located.loc Type_error
+        "tried to symbol to XML"
 
   and compile_transclusion ~opts (tree : Sem.tree) =
     let current = Current_addr.read () in

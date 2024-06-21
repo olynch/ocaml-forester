@@ -53,13 +53,6 @@ rule token =
   | "\\alloc" { Grammar.ALLOC }
   | "\\let" { Grammar.LET }
   | "\\subtree" { Grammar.SUBTREE }
-  | "\\query/and" {Grammar.QUERY_AND }
-  | "\\query/or" {Grammar.QUERY_OR }
-  | "\\query/not" {Grammar.QUERY_NOT }
-  | "\\query/author" {Grammar.QUERY_AUTHOR }
-  | "\\query/tag" {Grammar.QUERY_TAG }
-  | "\\query/taxon" {Grammar.QUERY_TAXON }
-  | "\\query" { Grammar.QUERY_TREE }
   | "\\object" { Grammar.OBJECT }
   | "\\patch" { Grammar.PATCH }
   | "\\call" { Grammar.CALL }

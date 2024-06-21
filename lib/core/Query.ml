@@ -4,15 +4,12 @@ struct
   let pp = Symbol.pp
   let show = Symbol.show
 
-  let symbol x = x
-
   let make_builtin name =
-    Symbol.fresh ["forester"; "graph"; name]
-
+    Symbol.fresh ["rel"; name]
   let links = make_builtin "links"
   let transclusion = make_builtin "transclusion"
-  let authorship = make_builtin "authorship"
-  let contributorship = make_builtin "contributorship"
+  let authors = make_builtin "authors"
+  let contributors = make_builtin "contributors"
   let taxa = make_builtin "taxa"
   let tags = make_builtin "tags"
 end
@@ -139,9 +136,9 @@ let hereditary_contributors addr =
       q_non_ref_under
       Edges
       Outgoing
-      Rel.contributorship
+      Rel.contributors
   in
-  let q_authors = rel Edges Outgoing Rel.authorship addr in
+  let q_authors = rel Edges Outgoing Rel.authors addr in
   isect [q_all_contributors; complement q_authors]
 
 
@@ -165,6 +162,6 @@ let related addr =
 
 let contributions addr =
   union [
-    rel Edges Incoming Rel.authorship addr;
-    rel Edges Incoming Rel.contributorship addr
+    rel Edges Incoming Rel.authors addr;
+    rel Edges Incoming Rel.contributors addr
   ]
