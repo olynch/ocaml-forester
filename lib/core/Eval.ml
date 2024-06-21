@@ -255,11 +255,6 @@ struct
       end;
       {node with value = Sem.Subtree (opts, subtree)} :: eval rest
 
-    | If_tex (x , y) ->
-      let x = eval x in
-      let y = eval y in
-      {node with value = Sem.If_tex (x, y)} :: eval rest
-
     | Query query ->
       let opts = get_transclusion_opts () in
       let opts =

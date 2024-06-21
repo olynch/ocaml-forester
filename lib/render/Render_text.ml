@@ -32,8 +32,6 @@ let rec render_node ~trees : Sem.node Range.located -> Printer.t =
     Option.map (Sem.apply_modifier modifier) tree.fm.title
   | Sem.Link (addr, Some title, modifier) ->
     render ~trees @@ Sem.apply_modifier modifier title
-  | Sem.If_tex (_, y) ->
-    render ~trees y
   | Sem.Prim (_, x) ->
     render ~trees x
   | Sem.TeX_cs _ ->

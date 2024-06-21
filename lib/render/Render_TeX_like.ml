@@ -43,8 +43,6 @@ let rec render_node ~cfg : Sem.node Range.located -> Printer.t =
     render ~cfg xs;
   | Sem.Xml_tag (_, _, body) ->
     render ~cfg body
-  | Sem.If_tex (x , y) ->
-    if cfg.tex then render ~cfg x else render ~cfg y
   | Sem.TeX_cs (Symbol x) ->
     Printer.text @@ Format.sprintf "\\%c" x
   | Sem.TeX_cs (Word x) ->

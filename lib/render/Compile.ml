@@ -165,9 +165,6 @@ struct
     | Sem.Img path ->
       [X.Img {src = path}]
 
-    | Sem.If_tex (_, xs) ->
-      X.splice @@ compile_nodes xs
-
     | Sem.Xml_tag (name, attrs, xs) ->
       let rec fold_attrs tag_prefix updates acc attrs  =
         match attrs with

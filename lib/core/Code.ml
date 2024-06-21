@@ -15,7 +15,6 @@ type node =
   | Put of Trie.path * t
   | Default of Trie.path * t
   | Get of Trie.path
-  | If_tex of t * t
 
   | Object of {self : Trie.path option; methods : (string * t) list}
   | Patch of {obj : t; self : Trie.path option; methods: (string * t) list}

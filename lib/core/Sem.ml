@@ -24,7 +24,6 @@ type node =
   | Math of math_mode * t
   | Embed_tex of embedded_tex
   | Img of string
-  | If_tex of t * t
   | Prim of Prim.t * t
   | Object of Symbol.t
   | Ref of addr
@@ -136,7 +135,6 @@ let string_of_nodes =
     | Link (_, Some title, _) -> Some (render title)
     | Xml_tag (_, _, bdy) | Math (_, bdy) -> Some (render bdy)
     | Embed_tex {source; _} -> Some (render source)
-    | If_tex (_, x) -> Some (render x)
     | Prim (_, x) -> Some (render x)
     | Transclude _ | Subtree _ | Query _ | TeX_cs _ | Img _ | Object _ | Link _ | Ref _ -> None
   in

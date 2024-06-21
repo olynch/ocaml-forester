@@ -14,7 +14,6 @@ type node =
   | Put of Symbol.t * t * t
   | Default of Symbol.t * t * t
   | Get of Symbol.t
-  | If_tex of t * t
   | Xml_tag of xml_resolved_qname * (xml_resolved_qname * t) list * t
   | TeX_cs of TeX_cs.t
   | Prim of Prim.t

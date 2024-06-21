@@ -152,11 +152,6 @@ let rec expand : Code.t -> Syn.t =
   | {value = Call (obj, method_name); loc} :: rest ->
     {value = Syn.Call (expand obj, method_name); loc} :: expand rest
 
-  | {value = If_tex (x, y); loc} :: rest ->
-    let x = expand x in
-    let y = expand y in
-    {value = Syn.If_tex (x, y); loc} :: expand rest
-
   | {value = Xml_tag (title, attrs, body); loc} :: rest ->
     let title = expand_xml_ident loc title in
     let attrs =
