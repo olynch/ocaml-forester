@@ -26,7 +26,7 @@
           ${package} =
             prev.${package}.overrideAttrs (_: { doNixSupport = false; });
         };
-        scope' = scope.overrideScope' overlay;
+        scope' = scope.overrideScope overlay;
         main = scope'.${package};
         devPackages = builtins.attrValues
           (pkgs.lib.getAttrs (builtins.attrNames devPackagesQuery) scope');
