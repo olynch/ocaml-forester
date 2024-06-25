@@ -107,7 +107,7 @@ let query_taxon ~env filter_taxa config_filename =
   |> Seq.iter @@ fun (addr, taxon) ->
   Format.printf "%s, %s\n" addr taxon
 
-let query_tag ~env config_filename =
+let query_tag ~env filter_tags config_filename =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   let forest =
     Forest.plant_forest @@
@@ -115,7 +115,10 @@ let query_tag ~env config_filename =
     make_dirs ~env config.trees
   in
   let tags = Forest.tags ~forest in
-  tags |> Seq.iter @@ fun (addr, tags) ->
+  (match filter_tags with
+  | [] -> tags
+  | ts -> tags |> Seq.filter (fun (_, tags) -> List.(for_all (fun t -> mem t tags) ts)))
+  |> Seq.iter @@ fun (addr, tags) ->
   let rec tag_string = function
     | [] -> ""
     | hd :: tl -> ", " ^ hd ^ tag_string tl
@@ -314,9 +317,12 @@ let query_taxon_cmd ~env =
   Cmd.v info Term.(const (query_taxon ~env) $ arg_taxa $ arg_config)
 
 let query_tag_cmd ~env =
+  let arg_tags =
+      Arg.(value @@ pos_all string [] @@ info [] ~docv:"TAG")
+  in
   let doc = "List all trees with tag TAG" in
   let info = Cmd.info "tag" ~version ~doc in
-  Cmd.v info Term.(const (query_tag ~env) $ arg_config)
+  Cmd.v info Term.(const (query_tag ~env) $ arg_tags $ arg_config)
 
 let query_all_cmd ~env =
   let doc = "List all trees in JSON format" in
