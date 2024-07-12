@@ -99,9 +99,11 @@ let query_taxon ~env filter_taxa config_filename =
     make_dirs ~env config.trees
   in
   let taxa = Forest.taxa ~forest in
-  (match filter_taxa with
-  | [] -> taxa
-  | ts -> taxa |> Seq.filter (fun (_, taxon) -> List.mem taxon ts))
+  let filtered_taxa =
+    taxa |> Seq.filter @@ fun (_, taxon) ->
+    List.mem taxon filter_taxa
+  in
+  filtered_taxa
   |> Seq.iter @@ fun (addr, taxon) ->
   Format.printf "%s, %s\n" addr taxon
 
@@ -305,7 +307,7 @@ let complete_cmd ~env =
 
 let query_taxon_cmd ~env =
   let arg_taxa =
-      Arg.(value @@ pos_all string [] @@ info [] ~docv:"TAXON")
+    Arg.(value @@ pos_all string [] @@ info [] ~docv:"TAXON")
   in
   let doc = "List all trees of taxon TAXON" in
   let info = Cmd.info "taxon" ~version ~doc in
