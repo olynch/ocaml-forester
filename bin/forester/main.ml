@@ -115,9 +115,11 @@ let query_tag ~env filter_tags config_filename =
     make_dirs ~env config.trees
   in
   let tags = Forest.tags ~forest in
-  (match filter_tags with
-  | [] -> tags
-  | ts -> tags |> Seq.filter (fun (_, tags) -> List.(for_all (fun t -> mem t tags) ts)))
+  let filtered =
+    tags |> Seq.filter @@ fun (_, ts) ->
+    List.for_all (fun t -> List.mem t ts) ts
+  in
+  filtered
   |> Seq.iter @@ fun (addr, tags) ->
   let rec tag_string = function
     | [] -> ""
@@ -318,7 +320,7 @@ let query_taxon_cmd ~env =
 
 let query_tag_cmd ~env =
   let arg_tags =
-      Arg.(value @@ pos_all string [] @@ info [] ~docv:"TAG")
+    Arg.(value @@ pos_all string [] @@ info [] ~docv:"TAG")
   in
   let doc = "List all trees with tag TAG" in
   let info = Cmd.info "tag" ~version ~doc in
