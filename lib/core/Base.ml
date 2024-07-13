@@ -4,6 +4,7 @@ type addr =
 
   | Machine_addr of int
   (** The address of an anonymous tree.*)
+[@@deriving repr]
 
 let pp_addr fmt =
   function
