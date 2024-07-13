@@ -1,7 +1,7 @@
 (library
  (name Forester_core)
  (preprocess
-  (pps ppx_deriving.show))
+  (pps ppx_deriving.show ppx_repr))
  (libraries forester.prelude yuujinchou asai repr ocamlgraph)
  (public_name forester.core))
 

@@ -55,6 +55,7 @@ val view : 'addr t -> ('addr, 'addr t) view
 
 val map : ('a -> 'b) -> 'a t -> 'b t
 
+val query_t : 'a Repr.ty -> 'a t Repr.ty
 
 (** {1 Smart constructors} *)
 (** These smart constructors may optimise queries under the hood. *)

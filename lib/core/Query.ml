@@ -22,15 +22,19 @@ type rel = Rel.t
 type mode =
   | Edges
   | Paths
-[@@deriving show]
+[@@deriving show, repr]
 
 type polarity =
   | Incoming
   | Outgoing
-[@@deriving show]
+[@@deriving show, repr]
 
 type rel_query = mode * polarity * Rel.t
 [@@deriving show]
+
+let rel_query_t =
+  let open Repr in
+  triple mode_t polarity_t Symbol.repr
 
 type ('addr, 'r) view =
   | Rel of rel_query * 'addr
@@ -39,10 +43,18 @@ type ('addr, 'r) view =
   | Complement of 'r
   | Isect_fam of 'r * rel_query
   | Union_fam of 'r * rel_query
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'addr t = Q of ('addr, 'addr t) view
 [@@deriving show]
+
+let query_t addr_t =
+  let open Repr in
+  mu 
+    (fun query_t -> variant "query"
+      (fun q -> function | Q x -> q x)
+      |~ case1 "Q" (view_t addr_t query_t) (fun x -> Q x)
+      |> sealv)
 
 let view (Q q) = q
 let make q = Q q
