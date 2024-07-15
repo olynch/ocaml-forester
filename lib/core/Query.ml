@@ -50,11 +50,10 @@ type 'addr t = Q of ('addr, 'addr t) view
 
 let query_t addr_t =
   let open Repr in
-  mu 
-    (fun query_t -> variant "query"
-      (fun q -> function | Q x -> q x)
-      |~ case1 "Q" (view_t addr_t query_t) (fun x -> Q x)
-      |> sealv)
+  mu @@ fun query_t ->
+  variant "query" (fun q -> fun (Q x) -> q x)
+  |~ case1 "Q" (view_t addr_t query_t) (fun x -> Q x)
+  |> sealv
 
 let view (Q q) = q
 let make q = Q q
