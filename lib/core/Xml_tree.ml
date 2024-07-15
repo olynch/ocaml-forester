@@ -22,11 +22,11 @@ type 'content attribution =
 [@@deriving repr]
 
 type date_ = {
-    addr : addr option;
-    year : int;
-    month : int option;
-    day : int option
-  }
+  addr : addr option;
+  year : int;
+  month : int option;
+  day : int option
+}
 [@@deriving repr]
 
 type date =
@@ -34,9 +34,9 @@ type date =
 [@@deriving repr]
 
 type 'content meta_ = {
-    key : string;
-    body : 'content
-  }
+  key : string;
+  body : 'content
+}
 [@@deriving repr]
 
 type 'content meta =
@@ -44,49 +44,49 @@ type 'content meta =
 [@@deriving repr]
 
 type 'content xml_tag = {
-    name : xml_qname;
-    attrs : xml_attr list;
-    content : 'content
-  }
+  name : xml_qname;
+  attrs : xml_attr list;
+  content : 'content
+}
 [@@deriving repr]
 
 type ref = {
-    addr : addr;
-    taxon : string option;
-    number : string option
-  }
+  addr : addr;
+  taxon : string option;
+  number : string option
+}
 [@@deriving repr]
 
 type 'content local_link = {
-    addr : addr;
-    content : 'content;
-    title : string option
-  }
+  addr : addr;
+  content : 'content;
+  title : string option
+}
 [@@deriving repr]
 
 type 'content external_link = {
-    href : string;
-    content : 'content;
-    title : string option;
-  }
+  href : string;
+  content : 'content;
+  title : string option;
+}
 [@@deriving repr]
 
 type tex = {
-    display : [`Inline | `Block];
-    body : string
-  }
+  display : [`Inline | `Block];
+  body : string
+}
 [@@deriving repr]
 
 type img = {
-    src : string;
-  }
+  src : string;
+}
 [@@deriving repr]
 
 type embedded_tex = {
-    hash : string;
-    preamble : string;
-    source : string
-  }
+  hash : string;
+  preamble : string;
+  source : string
+}
 [@@deriving repr]
 
 type ('content, 'tree) content_node =
@@ -139,24 +139,24 @@ type 'content tree = {
 
 let tree_t content_t =
   let open Repr in
-  mu (fun tree_t ->
-    record "tree"
-      (fun
-        options
-        frontmatter
-        mainmatter
-        backmatter
+  mu @@ fun tree_t ->
+  record "tree"
+    (fun
+      options
+      frontmatter
+      mainmatter
+      backmatter
       -> {
           options;
           frontmatter;
           mainmatter;
           backmatter;
         })
-      |+ field "options" tree_options_t (fun t -> t.options)
-      |+ field "frontmatter" (frontmatter_t content_t)(fun t -> t.frontmatter)
-      |+ field "mainmatter" content_t(fun t -> t.mainmatter)
-      |+ field "backmatter" (list (tree_t))(fun t -> t.backmatter)
-      |> sealr)
+  |+ field "options" tree_options_t (fun t -> t.options)
+  |+ field "frontmatter" (frontmatter_t content_t)(fun t -> t.frontmatter)
+  |+ field "mainmatter" content_t(fun t -> t.mainmatter)
+  |+ field "backmatter" (list (tree_t))(fun t -> t.backmatter)
+  |> sealr
 
 (* Tie the knot *)
 type tree_ = Tree of content tree
