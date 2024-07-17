@@ -178,7 +178,7 @@ struct
     match rest with
     | Range.{value = Syn.Group (Braces, arg); _} as node :: rest ->
       Some ({node with value = arg}, rest)
-    | Range.{value = (Syn.Sym _ | Syn.Verbatim _ | Syn.Var _); _} as node :: rest ->
+    | Range.{value = (Syn.Sym _ | Syn.Verbatim _ | Syn.Var _ | Syn.Math _); _} as node :: rest ->
       Some ({node with value = [node]}, rest)
     | _ -> None
 
@@ -293,19 +293,19 @@ struct
 
     | Lam (xs, body) ->
       let rec loop xs rest =
-        match xs, rest with
-        | [], rest -> eval body, rest
-        | x :: xs, Range.{value = Syn.Group (Braces, u); loc = loc'} :: rest ->
-          Lex_env.scope (Env.add x (eval u)) @@ fun () ->
-          loop xs rest
-        | x :: xs, Range.{value = Syn.Verbatim str; loc = loc'} :: rest ->
-          let verb = [Range.{value = Sem.Verbatim str; loc = loc'}] in
-          Lex_env.scope (Env.add x verb) @@ fun () ->
-          loop xs rest
-        | _ ->
-          Reporter.fatalf Type_error ?loc:node.loc
-            "expected function to be applied to `%i` additional arguments"
-            (List.length xs)
+        match xs with
+        | [] -> eval body, rest
+        | x :: xs ->
+          begin
+            match pop_arg_opt rest with
+            | Some (u, rest) ->
+              Lex_env.scope (Env.add x (eval u.value)) @@ fun () ->
+              loop xs rest
+            | None ->
+              Reporter.fatalf Type_error ?loc:node.loc
+                "expected function to be applied to `%i` additional arguments"
+                (List.length xs)
+          end
       in
       let body, rest = loop xs rest in
       body @ eval rest
