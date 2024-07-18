@@ -134,6 +134,7 @@ struct
     | X.Ref ref ->
       F.ref [
         F.addr_ "%s" (addr_to_string ref.addr);
+        F.href "%s" @@ route ref.addr;
         ref.taxon |> F.optional_ @@ F.taxon_ "%s";
         ref.number |> F.optional_ @@ F.number_ "%s"
       ]
