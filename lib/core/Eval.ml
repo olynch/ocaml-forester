@@ -304,7 +304,7 @@ struct
             | None ->
               Reporter.fatalf Type_error ?loc:node.loc
                 "expected function to be applied to `%i` additional arguments"
-                (List.length xs)
+                (List.length (x :: xs))
           end
       in
       let body, rest = loop xs rest in
