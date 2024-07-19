@@ -9,19 +9,21 @@ type node =
   | Ident of Trie.path * string list
   | Xml_tag of (string option * string) * ((string option * string) * t) list * t
   | Subtree of string option * t
-  | Let of Trie.path * Trie.path list * t
+  | Let of Trie.path * Trie.path binding list * t
   | Open of Trie.path
   | Scope of t
   | Put of Trie.path * t
   | Default of Trie.path * t
   | Get of Trie.path
 
+  | Fun of Trie.path binding list * t
+
   | Object of {self : Trie.path option; methods : (string * t) list}
   | Patch of {obj : t; self : Trie.path option; methods: (string * t) list}
   | Call of t * string
 
   | Import of visibility * string
-  | Def of Trie.path * Trie.path list * t
+  | Def of Trie.path * Trie.path binding list * t
   | Decl_xmlns of string * string
   | Alloc of Trie.path
 

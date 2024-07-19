@@ -52,6 +52,7 @@ rule token =
   | "\\def" { Grammar.DEF }
   | "\\alloc" { Grammar.ALLOC }
   | "\\let" { Grammar.LET }
+  | "\\fun" { Grammar.FUN }
   | "\\subtree" { Grammar.SUBTREE }
   | "\\object" { Grammar.OBJECT }
   | "\\patch" { Grammar.PATCH }

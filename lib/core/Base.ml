@@ -31,6 +31,18 @@ module String_map = Map.Make (String)
 type delim = Braces | Squares | Parens
 [@@deriving show]
 
+type binding_strategy = Lazy | Strict
+[@@deriving show]
+
+type 'a binding = binding_strategy * 'a
+[@@deriving show]
+
+let delim_to_strings =
+  function
+  | Braces -> "{", "}"
+  | Squares -> "[", "]"
+  | Parens -> "(", ")"
+
 type math_mode = Inline | Display
 [@@deriving show]
 

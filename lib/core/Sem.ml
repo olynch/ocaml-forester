@@ -18,7 +18,6 @@ type node =
   | Transclude of transclusion_opts * addr
   | Subtree of transclusion_opts * tree
   | Query_tree of transclusion_opts * addr Query.t
-  | Query of addr Query.t
   | Link of addr * t option * modifier
   | Xml_tag of xml_resolved_qname * (xml_resolved_qname * t) list * t
   | TeX_cs of TeX_cs.t
@@ -26,11 +25,7 @@ type node =
   | Embed_tex of embedded_tex
   | Img of string
   | Prim of Prim.t * t
-  | Object of Symbol.t
   | Ref of addr
-  | Sym of Symbol.t
-  | Query_polarity of Query.polarity
-  | Query_mode of Query.mode
 [@@deriving show]
 
 and embedded_tex = {preamble : t; source : t}
@@ -47,9 +42,6 @@ and transclusion_opts =
 [@@deriving show]
 
 and t = node Range.located list
-
-and env = t Env.t
-[@@deriving show]
 
 and tree =
   {fm : frontmatter;
@@ -75,11 +67,21 @@ and frontmatter =
 and backmatter_section =
   | Backmatter_section of {title: t; query : addr Query.t}
 
+type value =
+  | VContent of t
+  | VClo of value Env.t * Symbol.t binding list * Syn.t
+  | VQuery_polarity of Query.polarity
+  | VQuery_mode of Query.mode
+  | VQuery of addr Query.t
+  | VSym of Symbol.t
+  | VObject of Symbol.t
+[@@deriving show]
+
 type obj_method =
   {body : Syn.t;
    self : Symbol.t;
    super : Symbol.t;
-   env : env}
+   env : value Env.t}
 
 type obj =
   {prototype : Symbol.t option;
@@ -138,7 +140,7 @@ let string_of_nodes =
     | Xml_tag (_, _, bdy) | Math (_, bdy) -> Some (render bdy)
     | Embed_tex {source; _} -> Some (render source)
     | Prim (_, x) -> Some (render x)
-    | Transclude _ | Subtree _ | Query_tree _ | TeX_cs _ | Img _ | Object _ | Link _ | Ref _ | Query _ | Query_mode _ | Query_polarity _ | Sym _ -> None
+    | Transclude _ | Subtree _ | Query_tree _ | TeX_cs _ | Img _ | Link _ | Ref _ -> None
   in
   render
 
@@ -221,3 +223,40 @@ let default_transclusion_opts : transclusion_opts =
    toc = true;
    expanded = true;
    numbered = true}
+
+let extract_content (x : value Range.located) =
+  match x.value with
+  | VContent content -> content
+  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected content"
+
+let extract_string (x : value Range.located) =
+  x |> extract_content |> string_of_nodes
+
+let extract_obj_ptr (x : value Range.located) =
+  match x.value with
+  | VObject sym -> sym
+  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected object"
+
+let extract_sym (x : value Range.located) =
+  match x.value with
+  | VSym x -> x
+  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected symbol"
+
+let extract_query_node (x : value Range.located) =
+  match x.value with
+  | VQuery q -> q
+  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected query node"
+
+let extract_query_polarity (x : value Range.located) =
+  match x.value with
+  | VQuery_polarity pol -> pol
+  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected query polarity"
+
+let extract_query_mode (x : value Range.located) =
+  match x.value with
+  | VQuery_mode mode -> mode
+  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected query mode"
+
+let extract_user_addr (x : value Range.located) =
+  User_addr (extract_string x)
+

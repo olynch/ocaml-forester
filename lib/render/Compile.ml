@@ -232,22 +232,6 @@ struct
       Reporter.fatalf ?loc:located.loc Resolution_error
         "unresolved control sequence `\\%a`" TeX_cs.pp name
 
-    | Sem.Object _ ->
-      Reporter.fatal ?loc:located.loc Type_error
-        "tried to compile object closure to XML"
-
-    | Sem.Query _ ->
-      Reporter.fatal ?loc:located.loc Type_error
-        "tried to compile query constructor to XML"
-
-    | Sem.Query_polarity _ | Sem.Query_mode _ ->
-      Reporter.fatal ?loc:located.loc Type_error
-        "tried to constant to XML"
-
-    | Sem.Sym _ ->
-      Reporter.fatal ?loc:located.loc Type_error
-        "tried to symbol to XML"
-
   and compile_transclusion ~opts (tree : Sem.tree) =
     let current = Current_addr.read () in
     let update old_ancestors = current :: old_ancestors in

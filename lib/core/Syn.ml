@@ -8,7 +8,7 @@ type node =
   | Math of math_mode * t
   | Link of {dest : t; title : t option}
   | Subtree of string option * tree
-  | Lam of Symbol.t list * t
+  | Fun of Symbol.t binding list * t
   | Var of Symbol.t
   | Sym of Symbol.t
   | Put of t * t * t

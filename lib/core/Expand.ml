@@ -1,6 +1,7 @@
 open Forester_prelude
 open Resolver
 open Bwd
+open Base
 
 module UnitMap = Map.Make (String)
 
@@ -124,6 +125,9 @@ let rec expand : Code.t -> Syn.t =
     let k = expand_ident loc k in
     {value = Syn.Get k; loc} :: expand rest
 
+  | {value = Fun (xs, body); loc} :: rest ->
+    expand_lambda loc (xs, body) :: expand rest
+
   | {value = Object {self; methods}; loc} :: rest ->
     let self, methods =
       Scope.section [] @@ fun () ->
@@ -183,12 +187,12 @@ let rec expand : Code.t -> Syn.t =
   | {value = Let (a, bs, def); loc} :: rest ->
     let lam = expand_lambda loc (bs, def) in
     Resolver.Scope.section [] @@ fun _ ->
-    Resolver.Scope.import_singleton a @@ Term lam;
+    Resolver.Scope.import_singleton a @@ Term [lam];
     expand rest
 
   | {value = Def (path, xs, body); loc} :: rest ->
     let lam = expand_lambda loc (xs, body) in
-    Resolver.Scope.include_singleton path @@ Term lam;
+    Resolver.Scope.include_singleton path @@ Term [lam];
     expand rest
 
   | {value = Decl_xmlns (prefix, xmlns); loc} :: rest ->
@@ -204,17 +208,17 @@ let rec expand : Code.t -> Syn.t =
 and expand_method (key, body) =
   key, expand body
 
-and expand_lambda loc : Trie.path list * Code.t -> Syn.t =
+and expand_lambda loc : Trie.path binding list * Code.t -> Syn.node Range.located =
   fun (xs, body) ->
   Scope.section [] @@ fun () ->
   let syms =
-    xs |> List.map @@ fun x ->
+    xs |> List.map @@ fun (strategy, x) ->
     let sym = Symbol.fresh x in
     let var = Range.locate_opt None @@ Syn.Var sym in
     Scope.import_singleton x @@ Term [var];
-    sym
+    strategy, sym
   in
-  [Range.{value = Syn.Lam (syms, expand body); loc}]
+  Range.{value = Syn.Fun (syms, expand body); loc}
 
 and expand_ident loc path =
   match Scope.resolve path, path with
@@ -222,7 +226,9 @@ and expand_ident loc path =
     begin
       match TeX_cs.parse name with
       | None ->
-        Reporter.fatalf Expansion_error "Could not parse unresolved identifier `%s` as TeX control sequence" name
+        Reporter.fatalf ?loc Resolution_error
+          "path %a could not be resolved"
+          Trie.pp_path path
       | Some (cs, rest) ->
         let rest = match rest with "" ->  [] | _ -> [Range.{value = Syn.Text rest; loc}] in
         Range.{value = Syn.TeX_cs cs; loc} :: rest

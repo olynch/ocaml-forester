@@ -14,7 +14,7 @@
 %token <string> TEXT VERBATIM
 %token <string> WHITESPACE
 %token <string> IDENT
-%token IMPORT EXPORT DEF NAMESPACE LET OPEN
+%token IMPORT EXPORT DEF NAMESPACE LET FUN OPEN
 %token OBJECT PATCH CALL
 %token SUBTREE SCOPE PUT GET DEFAULT ALLOC
 %token LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE
@@ -34,7 +34,14 @@ let parens(p) == delimited(LPAREN, p, RPAREN)
 let bvar :=
 | x = TEXT; { [x] }
 
-let binder == list(squares(bvar))
+let bvar_with_strictness :=
+| x = TEXT; {
+  match String_util.explode x with
+  | '~' :: chars -> Lazy, [String_util.implode chars]
+  | _ -> Strict, [x]
+ }
+
+let binder == list(squares(bvar_with_strictness))
 
 let ws_or(p) :=
 | WHITESPACE; { [] }
@@ -57,6 +64,7 @@ let head_node :=
 | EXPORT; ~ = txt_arg; <Code.import_public>
 | NAMESPACE; ~ = ident; ~ = braces(code_expr); <Code.Namespace>
 | SUBTREE; addr = option(squares(wstext)); body = braces(ws_list(locate(head_node))); <Code.Subtree>
+| FUN; ~ = binder; ~ = arg; <Code.Fun>
 | LET; (~,~,~) = fun_spec; <Code.Let>
 | (~,~) = ident_with_method_calls; <Code.Ident>
 | SCOPE; ~ = arg; <Code.Scope>
@@ -111,7 +119,6 @@ let arg :=
 | braces(textual_expr)
 | located_str = locate(VERBATIM);
   { [{located_str with value = Code.Verbatim located_str.value}] }
-
 
 let txt_arg == braces(wstext)
 let fun_spec == ~ = ident; ~ = binder; ~ = arg; <>
