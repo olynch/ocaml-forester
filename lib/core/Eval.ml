@@ -221,7 +221,7 @@ struct
     let pop_args () =
       let rec loop acc =
         match pop_arg_opt () with
-        | Some arg -> loop (Bwd.Snoc (acc, arg))
+        | Some arg -> loop @@ Bwd.Snoc (acc, arg)
         | None -> Bwd.prepend acc []
       in
       loop Bwd.Emp
@@ -264,9 +264,8 @@ struct
       focus_clo env xs body
 
     | Ref ->
-      let dest = Tape.pop_arg ~loc:node.loc in
       let scope = Scope.get () in
-      let dest = dest |> Range.map eval_tape |> Sem.extract_user_addr in
+      let dest = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_user_addr in
       Graphs.add_edge Q.Rel.links ~source:scope ~target:dest;
       emit_content_node {node with value = Sem.Ref dest}
 
@@ -299,8 +298,6 @@ struct
       in
       let tag = Sem.Xml_tag (name, process attrs, Sem.extract_content {node with value = eval_tape body}) in
       emit_content_node {node with value = tag}
-
-
 
     | Query_polarity pol ->
       focus ?loc:node.loc @@ VQuery_polarity pol
@@ -384,8 +381,8 @@ struct
       emit_content_node {node with value = Sem.Subtree (opts, subtree)}
 
     | Query_tree ->
-      let opts = get_transclusion_opts () in
       let opts =
+        let opts = get_transclusion_opts () in
         match opts.title_override with
         | None -> {opts with show_heading = false; toc = false}
         | Some _ -> opts
@@ -451,7 +448,7 @@ struct
             | Some proto_val ->
               Env.add mthd.super proto_val env
           in
-          Lex_env.scope (fun _ -> env) @@ fun () ->
+          Lex_env.run ~env @@ fun () ->
           eval_tape mthd.body
         | None ->
           match obj.prototype with
@@ -559,7 +556,7 @@ struct
       process_tape ()
 
     | Sym sym ->
-      focus ?loc:node.loc (VSym sym)
+      focus ?loc:node.loc @@ VSym sym
 
   and focus ?loc v =
     match v with
@@ -606,7 +603,7 @@ struct
         end
 
   and emit_content_node content =
-    focus ?loc:content.loc (VContent [content])
+    focus ?loc:content.loc @@ VContent [content]
 
   and eval_tree_inner ~addr (tree : Syn.tree) : Sem.tree =
     Graphs.register_addr addr;
