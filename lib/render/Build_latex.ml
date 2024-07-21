@@ -32,14 +32,12 @@ let write_tex_file ~env ~name ~preamble ~source =
 let render_dvi_file ~env ~name ~source =
   let cwd = build_dir @@ Eio.Stdenv.cwd env in
   Eio_util.ensure_remove_file Eio.Path.(cwd / dvi_fname name);
-  Eio.traceln "Building dvi for source: %s" name;
   Eio_util.run_process ~env ~cwd
     ["latex"; "-halt-on-error"; "-interaction=nonstopmode"; tex_fname name]
 
 let render_svg_file ~env ~name ~source =
   let cwd = build_dir @@ Eio.Stdenv.cwd env in
   let fname = dvi_fname name in
-  Eio.traceln "Building svg for source: %s" name;
   Eio_util.run_process ~env ~cwd
     ["dvisvgm";
      "--exact";
