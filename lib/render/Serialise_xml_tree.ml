@@ -10,6 +10,11 @@ module type I = sig val root : string option end
 let addr_to_string addr =
   Format.asprintf "%a" pp_addr addr
 
+let addr_type addr =
+  match addr with
+  | User_addr _ -> "user"
+  | Machine_addr _ -> "machine"
+
 let route ~root addr =
   let is_root = Some addr = Option.map (fun x -> User_addr x) root in
   let ext = "xml" in
@@ -81,7 +86,7 @@ struct
         | None -> F.null []
         | Some addr ->
           F.null [
-            F.addr [] "%s" (addr_to_string addr);
+            F.addr [F.type_ "%s" (addr_type addr)] "%s" (addr_to_string addr);
             F.route [] "%s" (route addr)
           ]
       end;
