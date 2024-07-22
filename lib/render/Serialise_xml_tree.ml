@@ -85,7 +85,7 @@ struct
             F.route [] "%s" (route addr)
           ]
       end;
-      fm.title |> Option.map render_content |> F.optional @@ F.title [];
+      fm.title |> Option.map render_content |> F.optional @@ F.title [F.optional_ (F.text_ "%s") fm.title_text];
       fm.taxon |> F.optional @@ F.taxon [] "%s";
       fm.source_path |> F.optional @@ F.source_path [] "%s";
       fm.dates |> List.map render_date |> F.null;

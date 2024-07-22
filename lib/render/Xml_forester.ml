@@ -65,6 +65,7 @@ let title = f_std_tag "title"
 let link = f_std_tag "link"
 let type_ fmt = string_attr "type" fmt
 let addr_ fmt = string_attr "addr" fmt
+let text_ fmt = string_attr "text" fmt
 
 let number attrs = f_text_tag "number" attrs
 let parent attrs = f_text_tag "parent" attrs

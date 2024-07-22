@@ -104,9 +104,9 @@ type ('content, 'tree) content_node =
   | Info of string
 [@@deriving repr]
 
-
 type 'content frontmatter = {
   title : 'content option;
+  title_text : string option;
   anchor : string option;
   number : string option;
   taxon : string option;

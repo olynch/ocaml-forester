@@ -48,6 +48,7 @@ val link : std_tag
 val type_ : _ string_attr
 val addr_ : _ string_attr
 val title_ : _ string_attr
+val text_ : _ string_attr
 
 val number : _ text_tag
 val parent : _ text_tag

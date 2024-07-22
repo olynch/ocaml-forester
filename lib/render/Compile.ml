@@ -248,8 +248,16 @@ struct
         fm.title |> Option.map @@
         Render_util.expand_title_with_parents ~trees ~ancestors fm
     in
-    title |> Option.map @@ fun title ->
-    compile_nodes @@ Sem.sentence_case title
+    begin
+      title |> Option.map @@ fun title ->
+      compile_nodes @@ Sem.sentence_case title
+    end,
+    begin
+      title |> Option.map @@ fun title ->
+      String_util.sentence_case @@
+      Render_text.Printer.contents @@
+      Render_text.render ~trees title
+    end
 
   and compile_attributions ~contributors ~authors =
     match authors, contributors with
@@ -288,7 +296,7 @@ struct
 
   and compile_frontmatter ~opts (fm : Sem.frontmatter)  =
     let anchor = Option.some @@ string_of_int @@ Oo.id (object end) in
-    let title = compile_title ~opts fm in
+    let title, title_text = compile_title ~opts fm in
     let number = fm.number in
     let taxon =
       Option.map String_util.sentence_case @@
@@ -307,17 +315,7 @@ struct
     let attributions = compile_attributions ~contributors ~authors:fm.authors in
     let last_changed = I.last_changed fm.addr |> Option.map compile_date in
     let metas = fm.metas |> List.map compile_meta in
-    X.{title;
-       anchor;
-       number;
-       taxon;
-       designated_parent;
-       metas;
-       addr;
-       source_path;
-       dates;
-       last_changed;
-       attributions}
+    X.{title; title_text; anchor; number; taxon; designated_parent; metas; addr; source_path; dates; last_changed; attributions}
 
   and compile_tree_inner ?(include_backmatter = false) ~opts (tree : Sem.tree) =
     Current_addr.run ~env:tree.fm.addr @@ fun  () ->
@@ -361,10 +359,9 @@ struct
     in
     bm |> List.filter_map @@ function
     | Sem.Backmatter_section {title; query} ->
-      let title =
-        Option.some @@ compile_nodes @@
-        Sem.sentence_case title
-      in
+      let title = Sem.sentence_case title in
+      let title_content = Option.some @@ compile_nodes title in
+      let title_text = Option.some @@ Render_text.Printer.contents @@ Render_text.render ~trees:I.trees title in
       match compile_trees @@ get_trees_from_query query with
       | [] -> None
       | trees ->
@@ -372,7 +369,7 @@ struct
           X.{toc = false; expanded = true; numbered = false; show_heading = true; show_metadata = false; root = false}
         in
         let frontmatter =
-          X.{title; anchor = None; number = None; taxon = None; designated_parent = None; metas = []; addr = None; source_path = None; dates = []; last_changed = None; attributions = []}
+          X.{title = title_content; title_text; anchor = None; number = None; taxon = None; designated_parent = None; metas = []; addr = None; source_path = None; dates = []; last_changed = None; attributions = []}
         in
         let mainmatter =
           X.Content begin
