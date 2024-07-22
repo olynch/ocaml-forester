@@ -39,7 +39,7 @@ and patch = {obj : t; self : Trie.path option; methods: (string * t) list}
 and t = node Range.located list
 [@@deriving show]
 
-and tree =
+type tree =
   {source_path : string option;
    addr : string option;
    code : t}
