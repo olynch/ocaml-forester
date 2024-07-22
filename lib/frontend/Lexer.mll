@@ -16,6 +16,7 @@ let xml_qname = (xml_base_ident ':' xml_base_ident) | xml_base_ident
 let addr = (alpha) (alpha|digit|'_'|'-')*
 let wschar = [' ' '\t']
 let newline = '\r' | '\n' | "\r\n"
+let newline_followed_by_ws = (newline) (wschar)*
 let text = [^ ' ' '%' '#' '\\' '{' '}' '[' ']' '(' ')' '\r' '\n']+
 let verbatim_herald = [^ ' ' '\t' '\r' '\n' '|' ]+
 let verbatim_herald_sep = '|'
@@ -81,7 +82,7 @@ rule token =
 
 and comment =
   parse
-  | newline { Lexing.new_line lexbuf; token lexbuf }
+  | newline_followed_by_ws { Lexing.new_line lexbuf; token lexbuf }
   | eof { Grammar.EOF }
   | _ { comment lexbuf }
 
