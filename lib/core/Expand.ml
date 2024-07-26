@@ -314,6 +314,8 @@ let expand_tree (units : exports UnitMap.t) (tree : Code.tree) =
     ["query"; "isect"], Syn.Query_isect;
     ["query"; "isect-fam"], Syn.Query_isect_fam;
     ["query"; "union-fam"], Syn.Query_union_fam;
+    ["query"; "isect-fam-rel"], Syn.Query_isect_fam_rel;
+    ["query"; "union-fam-rel"], Syn.Query_union_fam_rel;
     ["query"; "compl"], Syn.Query_compl;
     ["query"; "tag"], Syn.Query_builtin `Tag;
     ["query"; "taxon"], Syn.Query_builtin `Taxon;
@@ -322,6 +324,12 @@ let expand_tree (units : exports UnitMap.t) (tree : Code.tree) =
     ["query"; "outgoing"], Syn.Query_polarity Outgoing;
     ["query"; "edges"], Syn.Query_mode Edges;
     ["query"; "paths"], Syn.Query_mode Paths;
+    ["rel"; "tags"], Syn.Text Query.Rel.tags;
+    ["rel"; "taxa"], Syn.Text Query.Rel.taxa;
+    ["rel"; "authors"], Syn.Text Query.Rel.authors;
+    ["rel"; "contributors"], Syn.Text Query.Rel.authors;
+    ["rel"; "transclusion"], Syn.Text Query.Rel.transclusion;
+    ["rel"; "links"], Syn.Text Query.Rel.links;
   ];
 
   Builtins.Transclude.alloc_title ();
@@ -331,15 +339,6 @@ let expand_tree (units : exports UnitMap.t) (tree : Code.tree) =
   Builtins.Transclude.alloc_toc ();
   Builtins.Transclude.alloc_numbered ();
   Builtins.Transclude.alloc_show_metadata ();
-
-  Builtins.register_symbols [
-    ["rel"; "tags"], Query.Rel.tags;
-    ["rel"; "taxa"], Query.Rel.taxa;
-    ["rel"; "authors"], Query.Rel.authors;
-    ["rel"; "contributors"], Query.Rel.authors;
-    ["rel"; "transclusion"], Query.Rel.transclusion;
-    ["rel"; "links"], Query.Rel.links;
-  ];
 
   let tree = expand_tree_inner tree in
   let units = U.get () in

@@ -31,6 +31,8 @@ type node =
   | Query_compl
   | Query_isect_fam
   | Query_union_fam
+  | Query_isect_fam_rel
+  | Query_union_fam_rel
   | Query_builtin of [`Taxon | `Author | `Tag]
 
   | Transclude

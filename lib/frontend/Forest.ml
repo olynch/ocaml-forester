@@ -19,7 +19,7 @@ type raw_forest = Code.tree list
 
 type forest =
   {trees : Sem.tree M.t;
-   run_query : addr Query.t -> Addr_set.t}
+   run_query : Sem.query -> Addr_set.t}
 
 module LaTeX_queue = LaTeX_queue.Make ()
 
@@ -227,8 +227,7 @@ let render_trees ~cfg ~(forest : forest) ~render_only : unit =
     Eio.Path.with_open_out ~create path @@ fun flow ->
     Eio.Buf_write.with_flow flow @@ fun writer ->
     let fmt = Eio_util.formatter_of_writer writer in
-    Sxml.pp ~stylesheet:cfg.stylesheet fmt @@
-    C.compile_tree tree
+    tree |> C.compile_tree |> Sxml.pp ~stylesheet:cfg.stylesheet fmt
   in
 
   let trees =

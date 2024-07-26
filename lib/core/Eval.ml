@@ -24,15 +24,6 @@ end
 
 module Make () =
 struct
-  let refresher_queue = Queue.create ()
-
-  let refresh trees =
-    refresher_queue |> Queue.iter @@ fun f ->
-    f trees
-
-  let observe f =
-    Queue.add f refresher_queue
-
   module Graphs =
   struct
     let all_addrs_ref : Addr_set.t ref =
@@ -55,6 +46,8 @@ struct
     let get_preorder rel =
       match Hashtbl.find_opt rel_to_preorder rel with
       | None ->
+        let message = Format.asprintf "Computing transitive closure of %s" rel in
+        Reporter.profile message @@ fun () ->
         let gph = G.transitive_closure ~reflexive:true @@ get_graph rel in
         Hashtbl.add rel_to_preorder rel gph;
         gph
@@ -75,82 +68,6 @@ struct
       Hashtbl.remove rel_to_preorder rel;
       let gph = get_graph rel in
       G.add_edge gph source target
-  end
-
-  module Query_engine =
-  struct
-    let query_rel mode pol rel addr =
-      let fn =
-        match pol with
-        | Q.Incoming -> G.safe_pred
-        | Q.Outgoing -> G.safe_succ
-      in
-      let gph = Graphs.get mode rel in
-      Addr_set.of_list @@ fn gph addr
-
-    let check_rel mode pol rel addr addr' =
-      let gph = Graphs.get mode rel in
-      match pol with
-      | Q.Incoming -> G.mem_edge gph addr' addr
-      | Q.Outgoing -> G.mem_edge gph addr addr'
-
-    let rec check_query q addr =
-      match Q.view q with
-      | Q.Rel ((mode, pol, rel), addr') ->
-        check_rel mode pol rel addr' addr
-      | Q.Isect qs -> check_isect qs addr
-      | Q.Union qs -> check_union qs addr
-      | Q.Complement q ->
-        not @@ check_query q addr
-      | Q.Isect_fam (q, (mode, pol, rel)) ->
-        let xs = Addr_set.to_list @@ run_query q in
-        xs |> List.for_all @@ fun x ->
-        check_rel mode pol rel x addr
-      | Q.Union_fam (q, (mode, pol, rel)) ->
-        let xs = Addr_set.to_list @@ run_query q in
-        xs |> List.exists @@ fun x ->
-        check_rel mode pol rel x addr
-
-    and check_isect qs addr =
-      qs |> List.for_all @@ fun q ->
-      check_query q addr
-
-    and check_union qs addr =
-      qs |> List.exists @@ fun q ->
-      check_query q addr
-
-
-    and run_query q =
-      match Q.view q with
-      | Q.Rel ((mode, pol, rel), addr) ->
-        query_rel mode pol rel addr
-      | Q.Isect qs -> run_isect qs
-      | Q.Union qs -> run_union qs
-      | Q.Complement q ->
-        Addr_set.diff !Graphs.all_addrs_ref @@ run_query q
-      | Q.Isect_fam (q, (mode, pol, rel)) ->
-        let xs = Addr_set.to_list @@ run_query q in
-        run_isect @@ List.map (Q.rel mode pol rel) xs
-      | Q.Union_fam (q, (mode, pol, rel)) ->
-        let xs = Addr_set.to_list @@ run_query q in
-        run_union @@ List.map (Q.rel mode pol rel) xs
-
-    and run_isect =
-      function
-      | [] -> !Graphs.all_addrs_ref
-      | q :: qs ->
-        run_query q |> Addr_set.filter @@ check_isect qs
-
-    and run_union qs =
-      let alg q = Addr_set.union (run_query q) in
-      List.fold_right alg qs Addr_set.empty
-
-    and fold_set_operation opr running =
-      function
-      | [] -> running
-      | q :: qs ->
-        let s = run_query q in
-        fold_set_operation opr (opr running s) qs
   end
 
   module Lex_env = Algaeff.Reader.Make (struct type t = Sem.value Env.t end)
@@ -265,13 +182,13 @@ struct
 
     | Ref ->
       let scope = Scope.get () in
-      let dest = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_user_addr in
+      let dest = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr in
       Graphs.add_edge Q.Rel.links ~source:scope ~target:dest;
       emit_content_node {node with value = Sem.Ref dest}
 
     | Link {title; dest} ->
       let scope = Scope.get () in
-      let dest = {node with value = dest} |> Range.map eval_tape |> Sem.extract_user_addr in
+      let dest = {node with value = dest} |> Range.map eval_tape |> Sem.extract_addr in
       Graphs.add_edge Q.Rel.links ~source:scope ~target:dest;
       let title =
         title |> Option.map @@ fun x ->
@@ -308,58 +225,68 @@ struct
     | Query_rel ->
       let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
-      let sym = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_sym in
-      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_user_addr in
-      focus ?loc:node.loc @@ VQuery (Q.rel mode pol sym addr)
+      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr in
+      focus ?loc:node.loc @@ VQuery (Sem.Query.rel mode pol rel addr)
 
     | Query_isect ->
-      let args = Tape.pop_args () in
-      let queries = args |> List.map @@ fun arg ->
+      let queries =
+        Tape.pop_args () |> List.map @@ fun arg ->
         arg |> Range.map eval_tape |> Sem.extract_query_node
       in
-      focus ?loc:node.loc @@ VQuery (Q.isect queries)
+      focus ?loc:node.loc @@ VQuery (Sem.Query.isect queries)
 
     | Query_union ->
       let queries =
         Tape.pop_args () |> List.map @@ fun arg ->
         arg |> Range.map eval_tape |> Sem.extract_query_node
       in
-      focus ?loc:node.loc @@ VQuery (Q.union queries)
+      focus ?loc:node.loc @@ VQuery (Sem.Query.union queries)
 
     | Query_compl ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
-      focus ?loc:node.loc @@ VQuery (Q.complement q)
+      focus ?loc:node.loc @@ VQuery (Complement q)
 
     | Query_isect_fam ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
-      let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
-      let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
-      let sym = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_sym in
-      focus ?loc:node.loc @@ VQuery (Q.isect_fam q mode pol sym)
+      let qfun = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_clo in
+      focus ?loc:node.loc @@ VQuery (Sem.Isect_fam (q, qfun))
 
     | Query_union_fam ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
+      let qfun = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_clo in
+      focus ?loc:node.loc @@ VQuery (Sem.Union_fam (q, qfun))
+
+    | Query_isect_fam_rel ->
+      let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
       let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
-      let sym = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_sym in
-      focus ?loc:node.loc @@ VQuery (Q.union_fam q mode pol sym)
+      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      focus ?loc:node.loc @@ VQuery (Sem.Query.isect_fam_rel q mode pol rel)
+
+    | Query_union_fam_rel ->
+      let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
+      let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
+      let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
+      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      focus ?loc:node.loc @@ VQuery (Sem.Query.union_fam_rel q mode pol rel)
 
     | Query_builtin builtin ->
-      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_user_addr  in
+      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr  in
       let r =
         match builtin with
         | `Taxon -> Q.Rel.taxa
         | `Author -> Q.Rel.authors
         | `Tag -> Q.Rel.tags
       in
-      let q = Q.rel Edges Incoming r addr in
+      let q = Sem.Query.rel Edges Incoming r addr in
       focus ?loc:node.loc @@ VQuery q
 
     | TeX_cs cs ->
       emit_content_node {node with value = Sem.TeX_cs cs}
 
     | Transclude ->
-      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_user_addr in
+      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr in
       let scope = Scope.get () in
       Graphs.add_edge Q.Rel.transclusion ~source:scope ~target:addr;
       let opts = get_transclusion_opts () in
@@ -461,7 +388,6 @@ struct
       let result = call_method @@ Env.find sym @@ Heap.get () in
       focus ?loc:node.loc result
 
-
     | Put (k, v, body) ->
       let k = {node with value = k} |> Range.map eval_tape |> Sem.extract_sym in
       let body =
@@ -501,7 +427,7 @@ struct
       process_tape ()
 
     | Parent ->
-      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_user_addr in
+      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr in
       Fm.modify (fun fm -> {fm with designated_parent = Some addr});
       process_tape ()
 
@@ -512,14 +438,14 @@ struct
       process_tape ()
 
     | Author ->
-      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_user_addr in
+      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr in
       let scope = Scope.get () in
       Graphs.add_edge Q.Rel.authors ~source:scope ~target:addr;
       Fm.modify (fun fm -> {fm with authors = fm.authors @ [addr]});
       process_tape ()
 
     | Contributor ->
-      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_user_addr in
+      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr in
       let scope = Scope.get () in
       Graphs.add_edge Q.Rel.contributors ~source:scope ~target:addr;
       Fm.modify (fun fm -> {fm with contributors = fm.contributors @ [addr]});
@@ -570,7 +496,7 @@ struct
         | value -> value
       end
 
-    | VQuery _ | VQuery_mode _ | VQuery_polarity _ | VSym _ | VObject _ ->
+    | VQuery _ | VQuery_mode _ | VQuery_polarity _ | VSym _ | VObject _ | VAddr _ ->
       begin
         match process_tape () with
         | VContent content when Sem.strip_whitespace content = [] -> v
@@ -638,6 +564,97 @@ struct
     let tree = eval_tree_inner ~addr tree in
     let emitted = Emitted_trees.get () in
     tree, emitted
+
+  module Query_engine =
+  struct
+    let query_rel mode pol rel addr =
+      let fn =
+        match pol with
+        | Q.Incoming -> G.safe_pred
+        | Q.Outgoing -> G.safe_succ
+      in
+      let gph = Graphs.get mode rel in
+      Addr_set.of_list @@ fn gph addr
+
+    let check_rel mode pol rel addr addr' =
+      let gph = Graphs.get mode rel in
+      match pol with
+      | Q.Incoming -> G.mem_edge gph addr' addr
+      | Q.Outgoing -> G.mem_edge gph addr addr'
+
+    let rec check_query (q : Sem.query) addr =
+      match q with
+      | Rel ((mode, pol, rel), addr') ->
+        check_rel mode pol rel addr' addr
+      | Isect qs -> check_isect qs addr
+      | Union qs -> check_union qs addr
+      | Complement q ->
+        not @@ check_query q addr
+      | Isect_fam (q, qclo) ->
+        let xs = Addr_set.to_list @@ run_query q in
+        xs |> List.for_all @@ fun x ->
+        check_query (inst_qclo qclo x) addr
+      | Union_fam (q, qclo) ->
+        let xs = Addr_set.to_list @@ run_query q in
+        xs |> List.exists @@ fun x ->
+        check_query (inst_qclo qclo x) addr
+
+    and check_isect qs addr =
+      qs |> List.for_all @@ fun q ->
+      check_query q addr
+
+    and check_union qs addr =
+      qs |> List.exists @@ fun q ->
+      check_query q addr
+
+
+    and run_query (q : Sem.query) : Addr_set.t =
+      match q with
+      | Rel ((mode, pol, rel), addr) ->
+        query_rel mode pol rel addr
+      | Isect qs -> run_isect qs
+      | Union qs -> run_union qs
+      | Complement q ->
+        Addr_set.diff !Graphs.all_addrs_ref @@ run_query q
+      | Isect_fam (q, qclo) ->
+        let xs = Addr_set.to_list @@ run_query q in
+        run_isect @@ List.map (inst_qclo qclo) xs
+      | Union_fam (q, qclo) ->
+        let xs = Addr_set.to_list @@ run_query q in
+        run_union @@ List.map (inst_qclo qclo) xs
+
+    and inst_qclo qclo addr =
+      match qclo with
+      | QClo_rel (mode, pol, rel) ->
+        Sem.Query.rel mode pol rel addr
+      | QClo (env, z, qz) ->
+        let vz = Sem.VAddr addr in
+        let value =
+          Heap.run ~init:Env.empty @@ fun () ->
+          Lex_env.run ~env:(Env.add z vz env) @@ fun () ->
+          Dyn_env.run ~env:Env.empty @@ fun () ->
+          eval_tape qz
+        in
+        Sem.extract_query_node {value; loc = None}
+
+    and run_isect =
+      function
+      | [] -> !Graphs.all_addrs_ref
+      | q :: qs ->
+        run_query q |> Addr_set.filter @@ check_isect qs
+
+    and run_union qs =
+      let alg q = Addr_set.union (run_query q) in
+      List.fold_right alg qs Addr_set.empty
+
+    and fold_set_operation opr running =
+      function
+      | [] -> running
+      | q :: qs ->
+        let s = run_query q in
+        fold_set_operation opr (opr running s) qs
+  end
+
 
   let run_query = Query_engine.run_query
 end

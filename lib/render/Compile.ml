@@ -5,7 +5,7 @@ module type I =
 sig
   val root : string option
   val trees : Sem.tree Addr_map.t
-  val run_query : addr Query.t -> Addr_set.t
+  val run_query : Sem.query -> Addr_set.t
   val last_changed : addr -> Date.t option
   val enqueue_latex : name:string -> preamble:string -> source:string -> unit
 end
@@ -105,8 +105,7 @@ struct
       Compare.option String.compare
     in
     List.sort by_title @@ S.elements @@ I.run_query @@
-    Query.hereditary_contributors scope
-
+    Sem.Query.hereditary_contributors scope
 
   let compile_date (date : Date.t) =
     let addr =
