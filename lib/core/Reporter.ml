@@ -41,3 +41,10 @@ struct
 end
 
 include Asai.Reporter.Make (Message)
+
+let profile msg body =
+  let before = Unix.gettimeofday () in
+  let result = body () in
+  let after = Unix.gettimeofday () in
+  emitf Profiling "[%fs] %s" (after -. before) msg;
+  result
