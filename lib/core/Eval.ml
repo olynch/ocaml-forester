@@ -5,7 +5,7 @@ module Q = Query
 
 module G =
 struct
-  module G = Graph.Imperative.Digraph.Concrete (Addr)
+  module G = Graph.Imperative.Digraph.ConcreteBidirectional (Addr)
   include G
   include Graph.Oper.I (G)
 
