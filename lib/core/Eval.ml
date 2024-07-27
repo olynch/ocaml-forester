@@ -46,7 +46,7 @@ struct
     let get_preorder rel =
       match Hashtbl.find_opt rel_to_preorder rel with
       | None ->
-        let message = Format.asprintf "Computing transitive closure of %s" rel in
+        let message = Format.asprintf "Computing reflexive-transitive closure of %s" rel in
         Reporter.profile message @@ fun () ->
         let gph = G.transitive_closure ~reflexive:true @@ get_graph rel in
         Hashtbl.add rel_to_preorder rel gph;

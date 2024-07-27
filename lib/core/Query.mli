@@ -22,7 +22,7 @@ type polarity =
   | Outgoing
 [@@deriving show]
 
-(** Determines whether we are querying a relation or its transitive closure. *)
+(** Determines whether we are querying a relation or its reflexive-transitive closure. *)
 type mode =
   | Edges
   | Paths
