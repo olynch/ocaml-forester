@@ -26,7 +26,7 @@
  (synopsis "A tool for tending mathematical forests")
  (depends
   (menhir
-   (>= 3.0))
+   (>= 20240715))
   (ocamlgraph
    (>= 2.1.0))
   (ocaml
