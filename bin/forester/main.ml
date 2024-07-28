@@ -213,7 +213,7 @@ theme = "theme"                      # The directory in which your theme is stor
   end;
 
   build ~env "forest.toml" true None false false false ;
-  Format.printf "%s" "Initialized forest, try editing `trees/index.tree` and running `forester build`. Afterwards, you can open `output/index.xml` in your browser to view your forest."
+  Format.printf "%s" "Initialized forest, try editing `trees/index.tree` and running `forester build`. Afterwards, you can open `output/index.xml` in your browser to view your forest.\n"
 
 let arg_config =
   let doc = "A TOML file like $(i,forest.toml)" in
