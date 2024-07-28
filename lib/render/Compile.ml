@@ -282,7 +282,6 @@ struct
           | Some title -> compile_nodes title
         in
         let title = biotree.fm.title |> Option.map Sem.string_of_nodes in
-        let addr = Option.some @@ Format.asprintf "%a" pp_addr author in
         X.Content [X.Local_link {title; addr = author; content}]
     with Untitled ->
       let name = Format.asprintf "%a" pp_addr author in
