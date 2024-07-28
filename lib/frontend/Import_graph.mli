@@ -1,7 +1,7 @@
 open Forester_core
 
 module Gph : sig
-  type t
+  include module type of Graph.Imperative.Digraph.Concrete (Addr)
   val safe_succ : t -> addr -> addr list
   val safe_pred : t -> addr -> addr list
 end
