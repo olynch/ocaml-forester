@@ -20,7 +20,7 @@
 %token LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE
 %token EOF
 
-%start <Code.t> main
+%start <Forester_core.Code.t> main
 
 %%
 
