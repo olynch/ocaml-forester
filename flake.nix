@@ -5,9 +5,6 @@
     opam-repository.url = "github:ocaml/opam-repository";
     opam-repository.flake = false;
     opam-nix.url = "github:tweag/opam-nix";
-    opam-nix.inputs.nixpkgs.follows = "nixpkgs";
-    opam-nix.inputs.flake-utils.follows = "flake-utils";
-    opam-nix.inputs.opam-repository.follows = "opam-repository";
   };
   outputs = { self, flake-utils, opam-nix, nixpkgs, opam-repository }@inputs:
     let package = "forester";
@@ -26,7 +23,7 @@
           ${package} =
             prev.${package}.overrideAttrs (_: { doNixSupport = false; });
         };
-        scope' = scope.overrideScope overlay;
+        scope' = scope.overrideScope' overlay;
         main = scope'.${package};
         devPackages = builtins.attrValues
           (pkgs.lib.getAttrs (builtins.attrNames devPackagesQuery) scope');
