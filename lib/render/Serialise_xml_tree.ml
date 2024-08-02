@@ -96,7 +96,6 @@ struct
       fm.dates |> List.map render_date |> F.null;
       F.authors [] @@ List.map render_attribution_elt fm.attributions;
       fm.number |> F.optional @@ F.number [] "%s";
-      fm.designated_parent |> F.optional @@ F.parent [] "%s";
       fm.metas |> List.map render_meta |> F.null
     ]
 

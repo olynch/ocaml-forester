@@ -68,7 +68,6 @@ let addr_ fmt = string_attr "addr" fmt
 let text_ fmt = string_attr "text" fmt
 
 let number attrs = f_text_tag "number" attrs
-let parent attrs = f_text_tag "parent" attrs
 
 let meta = f_std_tag "meta"
 let name fmt = string_attr "name" fmt

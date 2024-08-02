@@ -51,7 +51,6 @@ val title_ : _ string_attr
 val text_ : _ string_attr
 
 val number : _ text_tag
-val parent : _ text_tag
 
 val meta : std_tag
 val name : _ string_attr
