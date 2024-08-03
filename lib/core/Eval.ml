@@ -606,15 +606,13 @@ struct
       | Complement q ->
         not @@ check_query ~env q addr
       | Union_fam (q, scope) ->
-        let q' = Query.body_of_binder scope in
         let xs = Addr_set.to_list @@ run_query ~env q in
         xs |> List.exists @@ fun x ->
-        check_query ~env:(x :: env) q' addr
+        check_query ~env:(x :: env) scope.body addr
       | Isect_fam (q, scope) ->
-        let q' = Query.body_of_binder scope in
         let xs = Addr_set.to_list @@ run_query ~env q in
         xs |> List.exists @@ fun x ->
-        check_query ~env:(x :: env) q' addr
+        check_query ~env:(x :: env) scope.body addr
 
     and eval_addr ~env : Q.dbix Q.addr_expr -> _ =
       function
@@ -638,7 +636,6 @@ struct
       qs |> List.exists @@ fun q ->
       check_query ~env q addr
 
-
     and run_query ~env (q : Query.dbix Query.expr) : Addr_set.t =
       match q with
       | Rel (mode, pol, rel, addr_val) ->
@@ -649,19 +646,17 @@ struct
       | Complement q ->
         Addr_set.diff !Graphs.all_addrs_ref @@ run_query ~env q
       | Union_fam (q, scope) ->
-        let q' = Query.body_of_binder scope in
         let xs = Addr_set.to_list @@ run_query ~env q in
         let qs =
           xs |> List.map @@ fun x ->
-          x :: env, q'
+          x :: env, scope.body
         in
         run_union' qs
       | Isect_fam (q, scope) ->
-        let q' = Query.body_of_binder scope in
         let xs = Addr_set.to_list @@ run_query ~env q in
         let qs =
           xs |> List.map @@ fun x ->
-          x :: env, q'
+          x :: env, scope.body
         in
         run_isect' qs
 

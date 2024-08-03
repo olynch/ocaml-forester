@@ -44,7 +44,7 @@ type 'var addr_expr =
   | Var of 'var
 [@@deriving show]
 
-type 'a binder = {name : Symbol.t; body : 'a}
+type 'a binder = {body : 'a}
 [@@deriving show]
 
 type 'var expr =
@@ -68,7 +68,7 @@ let rec open_expr k a =
     Union_fam (open_expr k a q, open_scope k a scope)
 
 and open_scope k a scope =
-  {scope with body = open_expr (k + 1) a scope.body}
+  {body = open_expr (k + 1) a scope.body}
 
 and open_addr_expr k a =
   function
@@ -92,7 +92,7 @@ let rec close_expr k x =
   | Isect_fam (q, scope) -> Isect_fam (close_expr k x q, close_scope k x scope)
 
 and close_scope k x scope =
-  {scope with body = close_expr (k + 1) x scope.body}
+  {body = close_expr (k + 1) x scope.body}
 
 and close_addr_expr k x =
   function
@@ -107,10 +107,10 @@ and close_addr_var k x =
   | B i -> B (i + 1)
 
 let bind x qx : lnvar expr binder =
-  {name = x; body = close_expr 0 x qx}
+  {body = close_expr 0 x qx}
 
 let unbind scope =
-  let name = Symbol.clone scope.name in
+  let name = Symbol.fresh [] in
   let var = Var (F name) in
   name, open_expr 0 var scope.body
 
@@ -132,10 +132,6 @@ let union_fam_rel q mode pol r : lnvar expr =
   let name = Symbol.fresh [] in
   union_fam q name @@ rel mode pol r (Var (F name))
 
-
-let body_of_binder (scope : dbix expr binder) = scope.body
-let make_binder body = {name = Symbol.fresh []; body}
-
 exception Distill of name
 
 let rec distill_expr : lnvar expr -> dbix expr =
@@ -148,7 +144,7 @@ let rec distill_expr : lnvar expr -> dbix expr =
   | Isect_fam (q, scope)-> Isect_fam (distill_expr q, distill_scope scope)
 
 and distill_scope scope =
-  {scope with body = distill_expr scope.body}
+  {body = distill_expr scope.body}
 
 and distill_addr_expr =
   function

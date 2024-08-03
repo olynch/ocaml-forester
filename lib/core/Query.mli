@@ -52,9 +52,8 @@ type 'var addr_expr =
   | Var of 'var
 [@@deriving show]
 
-(** We leave the type of binders abstract; but see {!body_of_binder} and {!make_binder}. *)
-type 'a binder
-[@@deriving show]
+(** Don't use the constructor/destructor unless you know what you are doing! *)
+type 'a binder = {body : 'a}
 
 type 'var expr =
   | Rel of mode * polarity * Rel.t * 'var addr_expr
@@ -64,9 +63,6 @@ type 'var expr =
   | Union_fam of 'var expr * 'var expr binder
   | Isect_fam of 'var expr * 'var expr binder
 [@@deriving show]
-
-val body_of_binder : dbix expr binder -> dbix expr
-val make_binder : dbix expr -> dbix expr binder
 
 val distill_expr : lnvar expr -> dbix expr
 exception Distill of name
