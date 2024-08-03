@@ -265,3 +265,9 @@ let extract_addr (x : value Range.located) =
   | VContent content -> User_addr (string_of_nodes content)
   | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected tree address"
 
+
+let extract_query_addr_expr (x : value Range.located) =
+  match x.value with
+  | VSym sym -> Query.Var (Query.F sym)
+  | VContent content -> Query.Addr (User_addr (string_of_nodes content))
+  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected addr expression in query"

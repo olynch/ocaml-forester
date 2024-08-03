@@ -46,8 +46,6 @@ struct
     val pop_arg_opt : unit -> Syn.t Range.located option
     val pop_arg : loc:Range.t option -> Syn.t Range.located
     val pop_args : unit -> Syn.t Range.located list
-
-    val push_node : Syn.node Range.located -> unit
   end =
   struct
     module Tape = Algaeff.State.Make (struct type t = Syn.t end)
@@ -168,8 +166,8 @@ struct
       let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
       let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
-      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr in
-      focus ?loc:node.loc @@ VQuery (Query.rel mode pol rel (Addr addr))
+      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_addr_expr in
+      focus ?loc:node.loc @@ VQuery (Query.rel mode pol rel addr)
 
     | Query_isect ->
       let queries =
@@ -193,18 +191,20 @@ struct
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
       let qfun = Tape.pop_arg ~loc:node.loc in
       let x = Symbol.fresh [] in
-      Tape.push_node {node with value = Syn.Var x};
-      let env = Lex_env.read () in
-      let qx = Sem.extract_query_node {qfun with value = focus_clo env [Strict, x] qfun.value} in
+      let qx =
+        let tape = qfun.value @ [{node with value = Syn.Sym x}] in
+        Sem.extract_query_node {node with value = eval_tape tape}
+      in
       focus ?loc:node.loc @@ VQuery (Query.isect_fam q x qx)
 
     | Query_union_fam ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
       let qfun = Tape.pop_arg ~loc:node.loc in
       let x = Symbol.fresh [] in
-      Tape.push_node {node with value = Syn.Var x};
-      let env = Lex_env.read () in
-      let qx = Sem.extract_query_node {qfun with value = focus_clo env [Strict, x] qfun.value} in
+      let qx =
+        let tape = qfun.value @ [{node with value = Syn.Sym x}] in
+        Sem.extract_query_node {node with value = eval_tape tape}
+      in
       focus ?loc:node.loc @@ VQuery (Query.union_fam q x qx)
 
 
