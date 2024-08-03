@@ -232,21 +232,21 @@ struct
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
       let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
       let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr in
-      focus ?loc:node.loc @@ VQuery (Sem.Query.rel mode pol rel addr)
+      focus ?loc:node.loc @@ VQuery (Query.rel mode pol rel (Addr addr))
 
     | Query_isect ->
       let queries =
         Tape.pop_args () |> List.map @@ fun arg ->
         arg |> Range.map eval_tape |> Sem.extract_query_node
       in
-      focus ?loc:node.loc @@ VQuery (Sem.Query.isect queries)
+      focus ?loc:node.loc @@ VQuery (Query.isect queries)
 
     | Query_union ->
       let queries =
         Tape.pop_args () |> List.map @@ fun arg ->
         arg |> Range.map eval_tape |> Sem.extract_query_node
       in
-      focus ?loc:node.loc @@ VQuery (Sem.Query.union queries)
+      focus ?loc:node.loc @@ VQuery (Query.union queries)
 
     | Query_compl ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
@@ -259,7 +259,7 @@ struct
       Tape.push_node {node with value = Syn.Var x};
       let env = Lex_env.read () in
       let qx = Sem.extract_query_node {qfun with value = focus_clo env [Strict, x] qfun.value} in
-      focus ?loc:node.loc @@ VQuery (Sem.Isect_fam (q, x, qx))
+      focus ?loc:node.loc @@ VQuery (Query.isect_fam q x qx)
 
     | Query_union_fam ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
@@ -268,21 +268,22 @@ struct
       Tape.push_node {node with value = Syn.Var x};
       let env = Lex_env.read () in
       let qx = Sem.extract_query_node {qfun with value = focus_clo env [Strict, x] qfun.value} in
-      focus ?loc:node.loc @@ VQuery (Sem.Union_fam (q, x, qx))
+      focus ?loc:node.loc @@ VQuery (Query.union_fam q x qx)
+
 
     | Query_isect_fam_rel ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
       let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
       let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
-      focus ?loc:node.loc @@ VQuery (Sem.Query.isect_fam_rel q mode pol rel)
+      focus ?loc:node.loc @@ VQuery (Query.isect_fam_rel q mode pol rel)
 
     | Query_union_fam_rel ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
       let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
       let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
-      focus ?loc:node.loc @@ VQuery (Sem.Query.union_fam_rel q mode pol rel)
+      focus ?loc:node.loc @@ VQuery (Query.union_fam_rel q mode pol rel)
 
     | Query_builtin builtin ->
       let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr  in
@@ -292,7 +293,7 @@ struct
         | `Author -> Q.Rel.authors
         | `Tag -> Q.Rel.tags
       in
-      let q = Sem.Query.rel Edges Incoming r addr in
+      let q = Query.rel Edges Incoming r (Addr addr) in
       focus ?loc:node.loc @@ VQuery q
 
     | TeX_cs cs ->
@@ -327,7 +328,7 @@ struct
         | None -> {opts with show_heading = false; toc = false}
         | Some _ -> opts
       in
-      let query = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
+      let query = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node |> Query.distill_expr in
       emit_content_node {node with value = Sem.Query_tree (opts, query)}
 
     | Embed_tex ->
@@ -595,31 +596,35 @@ struct
       | Q.Incoming -> G.mem_edge gph addr' addr
       | Q.Outgoing -> G.mem_edge gph addr addr'
 
-    let rec check_query ~env (q : Sem.query) addr =
+    let rec check_query ~env (q : Query.dbix Query.expr) addr =
       match q with
-      | Rel ((mode, pol, rel), addr_val') ->
-        let addr' = read_addr ~env addr_val' in
+      | Rel (mode, pol, rel, addr_val') ->
+        let addr' = eval_addr ~env addr_val' in
         check_rel mode pol rel addr' addr
       | Isect qs -> check_isect ~env qs addr
       | Union qs -> check_union ~env qs addr
       | Complement q ->
         not @@ check_query ~env q addr
-      | Union_fam (q, u, q'u) ->
+      | Union_fam (q, scope) ->
+        let q' = Query.body_of_binder scope in
         let xs = Addr_set.to_list @@ run_query ~env q in
         xs |> List.exists @@ fun x ->
-        let envu = Env.add u x env in
-        check_query ~env:envu q'u addr
-      | Isect_fam (q, u, q'u) ->
+        check_query ~env:(x :: env) q' addr
+      | Isect_fam (q, scope) ->
+        let q' = Query.body_of_binder scope in
         let xs = Addr_set.to_list @@ run_query ~env q in
-        xs |> List.for_all @@ fun x ->
-        let envu = Env.add u x env in
-        check_query ~env:envu q'u addr
+        xs |> List.exists @@ fun x ->
+        check_query ~env:(x :: env) q' addr
 
-    and read_addr ~env value =
-      match value with
-      | Sem.Addr addr -> addr
-      | Sem.Var x ->
-        Env.find x env
+    and eval_addr ~env : Q.dbix Q.addr_expr -> _ =
+      function
+      | Query.Addr addr -> addr
+      | Query.Var ix ->
+        begin
+          match List.nth_opt env ix with
+          | Some addr -> addr
+          | None -> Reporter.fatalf Type_error "Bound variable not found in environment when evaluating query"
+        end
 
     and check_isect ~env qs addr =
       qs |> List.for_all @@ fun q ->
@@ -634,28 +639,29 @@ struct
       check_query ~env q addr
 
 
-    and run_query ~env (q : Sem.query) : Addr_set.t =
-      (* Eio.traceln "run_query: %a" Sem.pp_query q; *)
+    and run_query ~env (q : Query.dbix Query.expr) : Addr_set.t =
       match q with
-      | Rel ((mode, pol, rel), addr_val) ->
-        let addr = read_addr ~env addr_val in
+      | Rel (mode, pol, rel, addr_val) ->
+        let addr = eval_addr ~env addr_val in
         query_rel mode pol rel addr
       | Isect qs -> run_isect ~env qs
       | Union qs -> run_union ~env qs
       | Complement q ->
         Addr_set.diff !Graphs.all_addrs_ref @@ run_query ~env q
-      | Union_fam (q, u, q'u) ->
+      | Union_fam (q, scope) ->
+        let q' = Query.body_of_binder scope in
         let xs = Addr_set.to_list @@ run_query ~env q in
         let qs =
           xs |> List.map @@ fun x ->
-          Env.add u x env, q'u
+          x :: env, q'
         in
         run_union' qs
-      | Isect_fam (q, u, q'u) ->
+      | Isect_fam (q, scope) ->
+        let q' = Query.body_of_binder scope in
         let xs = Addr_set.to_list @@ run_query ~env q in
         let qs =
           xs |> List.map @@ fun x ->
-          Env.add u x env, q'u
+          x :: env, q'
         in
         run_isect' qs
 
@@ -682,5 +688,5 @@ struct
   end
 
 
-  let run_query = Query_engine.run_query
+  let run_query = Query_engine.run_query ~env:[]
 end

@@ -19,7 +19,7 @@ type raw_forest = Code.tree list
 
 type forest =
   {trees : Sem.tree M.t;
-   run_query : env:addr Env.t -> Sem.query -> Addr_set.t}
+   run_query : Query.dbix Query.expr -> Addr_set.t}
 
 module LaTeX_queue = LaTeX_queue.Make ()
 

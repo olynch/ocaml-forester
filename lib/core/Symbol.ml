@@ -6,6 +6,8 @@ let fresh path =
   counter := !counter + 1;
   path, !counter
 
+let clone (path, _) = fresh path
+
 let pp fmt (sym, ix) =
   Format.fprintf fmt "%a%i" Trie.pp_path sym ix
 

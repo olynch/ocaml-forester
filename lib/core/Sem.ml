@@ -17,7 +17,7 @@ type node =
   | Verbatim of string
   | Transclude of transclusion_opts * addr
   | Subtree of transclusion_opts * tree
-  | Query_tree of transclusion_opts * query
+  | Query_tree of transclusion_opts * Query.dbix Query.expr
   | Link of addr * t option * modifier
   | Xml_tag of xml_resolved_qname * (xml_resolved_qname * t) list * t
   | TeX_cs of TeX_cs.t
@@ -65,30 +65,18 @@ and frontmatter =
 [@@deriving show]
 
 and backmatter_section =
-  | Backmatter_section of {title: t; query : query}
+  | Backmatter_section of {title: t; query : Query.dbix Query.expr}
 
 and value =
   | VContent of t
   | VClo of value Env.t * Symbol.t binding list * Syn.t
   | VQuery_polarity of Query.polarity
   | VQuery_mode of Query.mode
-  | VQuery of query
+  | VQuery of Query.lnvar Query.expr
   | VSym of Symbol.t
   | VObject of Symbol.t
 [@@deriving show]
 
-and query =
-  | Rel of Query.rel_query * query_addr_value
-  | Isect of query list
-  | Union of query list
-  | Complement of query
-  | Union_fam of query * Symbol.t * query
-  | Isect_fam of query * Symbol.t * query
-[@@deriving show]
-
-and query_addr_value =
-  | Addr of addr
-  | Var of Symbol.t
 
 type obj_method =
   {body : Syn.t;
@@ -198,107 +186,6 @@ struct
 
 end
 
-module Query =
-struct
-
-  (** A heuristic for computing an intersection of queries. *)
-  let rec query_cost q =
-    match q with
-    | Rel _ -> 1
-    | Isect qs ->
-      List.fold_left (fun i q -> min (query_cost q) i) 1000 qs
-    | Union qs ->
-      List.fold_left (fun i q -> max (query_cost q) i) 0 qs
-    | Union_fam (q, _, q') -> query_cost q * query_cost q'
-    | Isect_fam (q, _, q') -> query_cost q * query_cost q'
-    | Complement _ -> 900
-
-  let sort_by_ascending_cost qs =
-    qs |> List.sort @@ fun q0 q1 ->
-    compare (query_cost q0) (query_cost q1)
-
-  let sort_by_descending_cost qs =
-    qs |> List.sort @@ fun q0 q1 ->
-    compare (query_cost q1) (query_cost q0)
-
-
-  let rec isect qs =
-    match sort_by_ascending_cost qs with
-    | Isect qs :: qs' -> isect @@ qs @ qs'
-    | qs -> Isect qs
-
-  let rec union qs =
-    match sort_by_descending_cost qs with
-    | Union qs :: qs' -> union @@ qs @ qs'
-    | qs -> Union qs
-
-  let rec complement =
-    function
-    | Union qs -> isect @@ List.map complement qs
-    | Complement q -> q
-    | q -> Complement q
-
-  let rel mode pol rel addr =
-    Rel ((mode, pol, rel), Addr addr)
-
-  let tree_under x =
-    rel Paths Outgoing Query.Rel.transclusion x
-
-  let isect_fam_rel q mode pol rel =
-    let x = Symbol.fresh [] in
-    Isect_fam (q, x, Rel ((mode, pol, rel), Var x))
-
-  let union_fam_rel q mode pol rel : query =
-    let x = Symbol.fresh [] in
-    Union_fam (q, x, Rel ((mode, pol, rel), Var x))
-
-  let has_taxon taxon =
-    rel Edges Incoming Query.Rel.taxa (User_addr taxon)
-
-  let hereditary_contributors addr =
-    let q_non_ref_under =
-      isect [
-        tree_under addr;
-        complement @@ has_taxon "reference"
-      ]
-    in
-    let q_all_contributors =
-      union_fam_rel
-        q_non_ref_under
-        Query.Edges
-        Query.Outgoing
-        Query.Rel.contributors
-    in
-    let q_authors = rel Edges Outgoing Query.Rel.authors addr in
-    isect [q_all_contributors; complement q_authors]
-
-
-  let references addr =
-    isect [
-      union_fam_rel (tree_under addr) Query.Edges Query.Outgoing Query.Rel.links;
-      has_taxon "reference"
-    ]
-
-  let context addr =
-    rel Edges Incoming Query.Rel.transclusion addr
-
-  let backlinks addr =
-    rel Edges Incoming Query.Rel.links addr
-
-  let related addr =
-    isect [
-      rel Edges Outgoing Query.Rel.links addr;
-      complement @@ has_taxon "reference"
-    ]
-
-  let contributions addr =
-    union [
-      rel Edges Incoming Query.Rel.authors addr;
-      rel Edges Incoming Query.Rel.contributors addr
-    ]
-
-end
-
 let empty_frontmatter ~addr =
   {addr;
    title = None;
@@ -314,15 +201,17 @@ let empty_frontmatter ~addr =
    number = None}
 
 let default_backmatter ~addr =
+  let a = Query.Addr addr in
   let make_section title query =
     let title = [Range.locate_opt None @@ Text title] in
+    let query = Query.distill_expr query in
     Backmatter_section {title; query}
   in
-  [make_section "references" @@ Query.references addr;
-   make_section "context" @@ Query.context addr;
-   make_section "backlinks" @@ Query.backlinks addr;
-   make_section "related" @@ Query.related addr;
-   make_section "contributions" @@ Query.contributions addr]
+  [make_section "references" @@ Query.references a;
+   make_section "context" @@ Query.context a;
+   make_section "backlinks" @@ Query.backlinks a;
+   make_section "related" @@ Query.related a;
+   make_section "contributions" @@ Query.contributions a]
 
 let empty_tree ~addr =
   {fm = empty_frontmatter ~addr;
