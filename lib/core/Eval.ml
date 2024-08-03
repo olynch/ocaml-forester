@@ -509,14 +509,12 @@ struct
         | value -> value
       end
 
-    | VQuery _ | VQuery_mode _ | VQuery_polarity _ | VSym _ | VObject _ | VAddr _ ->
+    | VQuery _ | VQuery_mode _ | VQuery_polarity _ | VSym _ | VObject _ ->
       begin
         match process_tape () with
         | VContent content when Sem.strip_whitespace content = [] -> v
         | _ -> Reporter.fatalf ?loc Type_error "Expected solitary node"
       end
-
-    | VAddr_var _ -> Reporter.fatalf ?loc Type_error "Unexpected query-phase address variable"
 
   and focus_clo ?loc rho xs body =
     match xs with
@@ -617,13 +615,11 @@ struct
         let envu = Env.add u x env in
         check_query ~env:envu q'u addr
 
-
     and read_addr ~env value =
       match value with
-      | Sem.VAddr addr -> addr
-      | Sem.VAddr_var x ->
+      | Sem.Addr addr -> addr
+      | Sem.Var x ->
         Env.find x env
-      | _ -> Reporter.fatalf Type_error "Expected either address or address variable in query"
 
     and check_isect ~env qs addr =
       qs |> List.for_all @@ fun q ->

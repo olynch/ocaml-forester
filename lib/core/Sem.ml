@@ -75,18 +75,20 @@ and value =
   | VQuery of query
   | VSym of Symbol.t
   | VObject of Symbol.t
-  | VAddr of addr
-  | VAddr_var of Symbol.t
 [@@deriving show]
 
 and query =
-  | Rel of Query.rel_query * value
+  | Rel of Query.rel_query * query_addr_value
   | Isect of query list
   | Union of query list
   | Complement of query
   | Union_fam of query * Symbol.t * query
   | Isect_fam of query * Symbol.t * query
 [@@deriving show]
+
+and query_addr_value =
+  | Addr of addr
+  | Var of Symbol.t
 
 type obj_method =
   {body : Syn.t;
@@ -237,18 +239,18 @@ struct
     | q -> Complement q
 
   let rel mode pol rel addr =
-    Rel ((mode, pol, rel), VAddr addr)
+    Rel ((mode, pol, rel), Addr addr)
 
   let tree_under x =
     rel Paths Outgoing Query.Rel.transclusion x
 
   let isect_fam_rel q mode pol rel =
     let x = Symbol.fresh [] in
-    Isect_fam (q, x, Rel ((mode, pol, rel), VAddr_var x))
+    Isect_fam (q, x, Rel ((mode, pol, rel), Var x))
 
   let union_fam_rel q mode pol rel : query =
     let x = Symbol.fresh [] in
-    Union_fam (q, x, Rel ((mode, pol, rel), VAddr_var x))
+    Union_fam (q, x, Rel ((mode, pol, rel), Var x))
 
   let has_taxon taxon =
     rel Edges Incoming Query.Rel.taxa (User_addr taxon)
@@ -372,6 +374,5 @@ let extract_query_mode (x : value Range.located) =
 let extract_addr (x : value Range.located) =
   match x.value with
   | VContent content -> User_addr (string_of_nodes content)
-  | VAddr addr -> addr
   | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected tree address"
 
