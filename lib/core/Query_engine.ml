@@ -101,12 +101,5 @@ struct
     | (env, q) :: qs ->
       run_query ~env q |> Addr_set.filter @@ check_isect' qs
 
-  and fold_set_operation opr running =
-    function
-    | [] -> running
-    | q :: qs ->
-      let s = run_query q in
-      fold_set_operation opr (opr running s) qs
-
   let run_query = run_query ~env:[]
 end
