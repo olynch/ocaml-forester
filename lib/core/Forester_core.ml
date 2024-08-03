@@ -2,6 +2,8 @@ module Base = Base
 
 include Base
 
+module Env = Env
+
 module Syn = Syn
 module Sem = Sem
 module Code = Code

@@ -76,20 +76,17 @@ and value =
   | VSym of Symbol.t
   | VObject of Symbol.t
   | VAddr of addr
+  | VAddr_var of Symbol.t
 [@@deriving show]
 
 and query =
-  | Rel of Query.rel_query * addr
+  | Rel of Query.rel_query * value
   | Isect of query list
   | Union of query list
   | Complement of query
-  | Isect_fam of query * query_clo
-  | Union_fam of query * query_clo
+  | Union_fam of query * Symbol.t * query
+  | Isect_fam of query * Symbol.t * query
 [@@deriving show]
-
-and query_clo =
-  | QClo of value Env.t * Symbol.t * Syn.t
-  | QClo_rel of Query.rel_query
 
 type obj_method =
   {body : Syn.t;
@@ -205,13 +202,13 @@ struct
   (** A heuristic for computing an intersection of queries. *)
   let rec query_cost q =
     match q with
-    | Rel _ -> 200
+    | Rel _ -> 1
     | Isect qs ->
       List.fold_left (fun i q -> min (query_cost q) i) 1000 qs
     | Union qs ->
       List.fold_left (fun i q -> max (query_cost q) i) 0 qs
-    | Isect_fam (q, _) -> query_cost q
-    | Union_fam (q, _) -> query_cost q
+    | Union_fam (q, _, q') -> query_cost q * query_cost q'
+    | Isect_fam (q, _, q') -> query_cost q * query_cost q'
     | Complement _ -> 900
 
   let sort_by_ascending_cost qs =
@@ -240,19 +237,21 @@ struct
     | q -> Complement q
 
   let rel mode pol rel addr =
-    Rel ((mode, pol, rel), addr)
+    Rel ((mode, pol, rel), VAddr addr)
 
   let tree_under x =
     rel Paths Outgoing Query.Rel.transclusion x
 
   let isect_fam_rel q mode pol rel =
-    Isect_fam (q, QClo_rel (mode, pol, rel))
+    let x = Symbol.fresh [] in
+    Isect_fam (q, x, Rel ((mode, pol, rel), VAddr_var x))
 
   let union_fam_rel q mode pol rel : query =
-    Union_fam (q, QClo_rel (mode, pol, rel))
+    let x = Symbol.fresh [] in
+    Union_fam (q, x, Rel ((mode, pol, rel), VAddr_var x))
 
   let has_taxon taxon =
-    rel Edges Incoming Query.Rel.taxa @@ User_addr taxon
+    rel Edges Incoming Query.Rel.taxa (User_addr taxon)
 
   let hereditary_contributors addr =
     let q_non_ref_under =
@@ -341,11 +340,6 @@ let extract_content (x : value Range.located) =
   match x.value with
   | VContent content -> content
   | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected content"
-
-let extract_query_clo (x : value Range.located) =
-  match x.value with
-  | VClo (env, [Strict, x], body) -> QClo (env, x, body)
-  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected query closure"
 
 let extract_string (x : value Range.located) =
   x |> extract_content |> string_of_nodes

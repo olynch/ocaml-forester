@@ -109,6 +109,8 @@ struct
     val pop_arg_opt : unit -> Syn.t Range.located option
     val pop_arg : loc:Range.t option -> Syn.t Range.located
     val pop_args : unit -> Syn.t Range.located list
+
+    val push_node : Syn.node Range.located -> unit
   end =
   struct
     module Tape = Algaeff.State.Make (struct type t = Syn.t end)
@@ -119,6 +121,9 @@ struct
         Tape.set nodes;
         Some node
       | [] -> None
+
+    let push_node node =
+      Tape.modify @@ fun nodes -> node :: nodes
 
     let pop_arg_opt () =
       match Tape.get () with
@@ -249,13 +254,21 @@ struct
 
     | Query_isect_fam ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
-      let qfun = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_clo in
-      focus ?loc:node.loc @@ VQuery (Sem.Isect_fam (q, qfun))
+      let qfun = Tape.pop_arg ~loc:node.loc in
+      let x = Symbol.fresh [] in
+      Tape.push_node {node with value = Syn.Var x};
+      let env = Lex_env.read () in
+      let qx = Sem.extract_query_node {qfun with value = focus_clo env [Strict, x] qfun.value} in
+      focus ?loc:node.loc @@ VQuery (Sem.Isect_fam (q, x, qx))
 
     | Query_union_fam ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
-      let qfun = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_clo in
-      focus ?loc:node.loc @@ VQuery (Sem.Union_fam (q, qfun))
+      let qfun = Tape.pop_arg ~loc:node.loc in
+      let x = Symbol.fresh [] in
+      Tape.push_node {node with value = Syn.Var x};
+      let env = Lex_env.read () in
+      let qx = Sem.extract_query_node {qfun with value = focus_clo env [Strict, x] qfun.value} in
+      focus ?loc:node.loc @@ VQuery (Sem.Union_fam (q, x, qx))
 
     | Query_isect_fam_rel ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
@@ -503,6 +516,8 @@ struct
         | _ -> Reporter.fatalf ?loc Type_error "Expected solitary node"
       end
 
+    | VAddr_var _ -> Reporter.fatalf ?loc Type_error "Unexpected query-phase address variable"
+
   and focus_clo ?loc rho xs body =
     match xs with
     | [] ->
@@ -582,70 +597,85 @@ struct
       | Q.Incoming -> G.mem_edge gph addr' addr
       | Q.Outgoing -> G.mem_edge gph addr addr'
 
-    let rec check_query (q : Sem.query) addr =
+    let rec check_query ~env (q : Sem.query) addr =
       match q with
-      | Rel ((mode, pol, rel), addr') ->
+      | Rel ((mode, pol, rel), addr_val') ->
+        let addr' = read_addr ~env addr_val' in
         check_rel mode pol rel addr' addr
-      | Isect qs -> check_isect qs addr
-      | Union qs -> check_union qs addr
+      | Isect qs -> check_isect ~env qs addr
+      | Union qs -> check_union ~env qs addr
       | Complement q ->
-        not @@ check_query q addr
-      | Isect_fam (q, qclo) ->
-        let xs = Addr_set.to_list @@ run_query q in
-        xs |> List.for_all @@ fun x ->
-        check_query (inst_qclo qclo x) addr
-      | Union_fam (q, qclo) ->
-        let xs = Addr_set.to_list @@ run_query q in
+        not @@ check_query ~env q addr
+      | Union_fam (q, u, q'u) ->
+        let xs = Addr_set.to_list @@ run_query ~env q in
         xs |> List.exists @@ fun x ->
-        check_query (inst_qclo qclo x) addr
+        let envu = Env.add u x env in
+        check_query ~env:envu q'u addr
+      | Isect_fam (q, u, q'u) ->
+        let xs = Addr_set.to_list @@ run_query ~env q in
+        xs |> List.for_all @@ fun x ->
+        let envu = Env.add u x env in
+        check_query ~env:envu q'u addr
 
-    and check_isect qs addr =
+
+    and read_addr ~env value =
+      match value with
+      | Sem.VAddr addr -> addr
+      | Sem.VAddr_var x ->
+        Env.find x env
+      | _ -> Reporter.fatalf Type_error "Expected either address or address variable in query"
+
+    and check_isect ~env qs addr =
       qs |> List.for_all @@ fun q ->
-      check_query q addr
+      check_query ~env q addr
 
-    and check_union qs addr =
+    and check_isect' qs addr =
+      qs |> List.for_all @@ fun (env, q) ->
+      check_query ~env q addr
+
+    and check_union ~env qs addr =
       qs |> List.exists @@ fun q ->
-      check_query q addr
+      check_query ~env q addr
 
 
-    and run_query (q : Sem.query) : Addr_set.t =
+    and run_query ~env (q : Sem.query) : Addr_set.t =
+      (* Eio.traceln "run_query: %a" Sem.pp_query q; *)
       match q with
-      | Rel ((mode, pol, rel), addr) ->
+      | Rel ((mode, pol, rel), addr_val) ->
+        let addr = read_addr ~env addr_val in
         query_rel mode pol rel addr
-      | Isect qs -> run_isect qs
-      | Union qs -> run_union qs
+      | Isect qs -> run_isect ~env qs
+      | Union qs -> run_union ~env qs
       | Complement q ->
-        Addr_set.diff !Graphs.all_addrs_ref @@ run_query q
-      | Isect_fam (q, qclo) ->
-        let xs = Addr_set.to_list @@ run_query q in
-        run_isect @@ List.map (inst_qclo qclo) xs
-      | Union_fam (q, qclo) ->
-        let xs = Addr_set.to_list @@ run_query q in
-        run_union @@ List.map (inst_qclo qclo) xs
-
-    and inst_qclo qclo addr =
-      match qclo with
-      | QClo_rel (mode, pol, rel) ->
-        Sem.Query.rel mode pol rel addr
-      | QClo (env, z, qz) ->
-        let vz = Sem.VAddr addr in
-        let value =
-          Heap.run ~init:Env.empty @@ fun () ->
-          Lex_env.run ~env:(Env.add z vz env) @@ fun () ->
-          Dyn_env.run ~env:Env.empty @@ fun () ->
-          eval_tape qz
+        Addr_set.diff !Graphs.all_addrs_ref @@ run_query ~env q
+      | Union_fam (q, u, q'u) ->
+        let xs = Addr_set.to_list @@ run_query ~env q in
+        let qs =
+          xs |> List.map @@ fun x ->
+          Env.add u x env, q'u
         in
-        Sem.extract_query_node {value; loc = None}
+        run_union' qs
+      | Isect_fam (q, u, q'u) ->
+        let xs = Addr_set.to_list @@ run_query ~env q in
+        let qs =
+          xs |> List.map @@ fun x ->
+          Env.add u x env, q'u
+        in
+        run_isect' qs
 
-    and run_isect =
+    and run_isect ~env qs = run_isect' @@ List.map (fun q -> env, q) qs
+
+    and run_union ~env qs = run_union' @@ List.map (fun q -> env, q) qs
+
+    and run_union' qs =
+      let alg (env, q) = Addr_set.union (run_query ~env q) in
+      List.fold_right alg qs Addr_set.empty
+
+    and run_isect' =
       function
       | [] -> !Graphs.all_addrs_ref
-      | q :: qs ->
-        run_query q |> Addr_set.filter @@ check_isect qs
-
-    and run_union qs =
-      let alg q = Addr_set.union (run_query q) in
-      List.fold_right alg qs Addr_set.empty
+      | (env, q) :: qs ->
+        run_query ~env q |> Addr_set.filter @@ check_isect' qs
 
     and fold_set_operation opr running =
       function

@@ -14,7 +14,7 @@ type raw_forest = Code.tree list
 
 type forest =
   {trees : Sem.tree Addr_map.t;
-   run_query : Sem.query -> Addr_set.t}
+   run_query : env:addr Env.t -> Sem.query -> Addr_set.t}
 
 val plant_forest : raw_forest -> forest
 val render_trees : cfg:config -> forest:forest -> render_only:addr list option -> unit

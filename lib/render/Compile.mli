@@ -5,7 +5,7 @@ module type I =
 sig
   val root : string option
   val trees : Sem.tree Addr_map.t
-  val run_query : Sem.query -> Addr_set.t
+  val run_query : env:addr Env.t -> Sem.query -> Addr_set.t
   val last_changed : addr -> Date.t option
   val enqueue_latex : name:string -> preamble:string -> source:string -> unit
 end
