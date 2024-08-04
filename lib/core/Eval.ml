@@ -176,14 +176,14 @@ struct
       focus ?loc:node.loc @@ VQuery (Query.union_fam_rel q mode pol rel)
 
     | Query_builtin builtin ->
-      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_addr  in
+      let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_addr_expr in
       let r =
         match builtin with
         | `Taxon -> Q.Rel.taxa
         | `Author -> Q.Rel.authors
         | `Tag -> Q.Rel.tags
       in
-      let q = Query.rel Edges Incoming r (Addr addr) in
+      let q = Query.rel Edges Incoming r addr in
       focus ?loc:node.loc @@ VQuery q
 
     | TeX_cs cs ->
