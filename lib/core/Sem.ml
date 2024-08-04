@@ -67,7 +67,7 @@ and frontmatter =
 and backmatter_section =
   | Backmatter_section of {title: t; query : Query.dbix Query.expr}
 
-and value =
+type value =
   | VContent of t
   | VClo of value Env.t * Symbol.t binding list * Syn.t
   | VQuery_polarity of Query.polarity

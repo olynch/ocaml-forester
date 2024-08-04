@@ -39,54 +39,7 @@ struct
     let show_metadata = get_bool Expand.Builtins.Transclude.show_metadata_sym false in
     Sem.{title_override; taxon_override; toc; show_heading; expanded; numbered; show_metadata}
 
-  module Tape : sig
-    val run : tape:Syn.t -> (unit -> 'a) -> 'a
-    val pop_node_opt : unit -> Syn.node Range.located option
-
-    val pop_arg_opt : unit -> Syn.t Range.located option
-    val pop_arg : loc:Range.t option -> Syn.t Range.located
-    val pop_args : unit -> Syn.t Range.located list
-  end =
-  struct
-    module Tape = Algaeff.State.Make (struct type t = Syn.t end)
-
-    let pop_node_opt () =
-      match Tape.get () with
-      | node :: nodes ->
-        Tape.set nodes;
-        Some node
-      | [] -> None
-
-    let push_node node =
-      Tape.modify @@ fun nodes -> node :: nodes
-
-    let pop_arg_opt () =
-      match Tape.get () with
-      | Range.{value = Syn.Group (Braces, arg); _} as node :: nodes ->
-        Tape.set nodes;
-        Some ({node with value = arg})
-      | Range.{value = (Syn.Sym _ | Syn.Verbatim _ | Syn.Var _); _} as node :: nodes ->
-        Tape.set nodes;
-        Some ({node with value = [node]})
-      | _ -> None
-
-    let pop_arg ~loc =
-      match pop_arg_opt () with
-      | Some arg -> arg
-      | None -> Reporter.fatalf ?loc Type_error "Expected argument"
-
-    let pop_args () =
-      let rec loop acc =
-        match pop_arg_opt () with
-        | Some arg -> loop @@ Bwd.Snoc (acc, arg)
-        | None -> Bwd.prepend acc []
-      in
-      loop Bwd.Emp
-
-    let run ~tape =
-      Tape.run ~init:tape
-  end
-
+  module Tape = Tape_effect.Make ()
 
   let rec process_tape () =
     match Tape.pop_node_opt () with
@@ -97,7 +50,7 @@ struct
   and eval_tape nodes =
     Tape.run ~tape:nodes process_tape
 
-  and eval_node node : Sem.value  =
+  and eval_node node : Sem.value =
     match node.value with
     | Syn.Var x ->
       begin
