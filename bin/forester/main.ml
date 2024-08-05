@@ -354,12 +354,8 @@ let cmd ~env =
 
 
 let () =
-  let fatal diagnostics =
-    Tty.display diagnostics;
-    exit 1
-  in
   Random.self_init ();
   Printexc.record_backtrace true;
   Eio_main.run @@ fun env ->
-  Forester_core.Reporter.run ~emit:Tty.display ~fatal @@ fun () ->
+  Forester_core.Reporter.easy_run @@ fun () ->
   exit @@ Cmd.eval ~catch:false @@ cmd ~env

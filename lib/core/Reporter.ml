@@ -16,6 +16,8 @@ struct
     | Initialization_warning
     | Routing_error
     | Profiling
+    | External_error
+    | Log
   [@@deriving show]
 
   let default_severity : t -> Asai.Diagnostic.severity =
@@ -35,6 +37,8 @@ struct
     | Initialization_warning -> Warning
     | Routing_error -> Error
     | Profiling -> Info
+    | External_error -> Error
+    | Log -> Info
 
   let short_code : t -> string =
     show
@@ -48,3 +52,13 @@ let profile msg body =
   let after = Unix.gettimeofday () in
   emitf Profiling "[%fs] %s" (after -. before) msg;
   result
+
+
+module Tty = Asai.Tty.Make (Message)
+
+let easy_run k =
+  let fatal diagnostics =
+    Tty.display diagnostics;
+    exit 1
+  in
+  run ~emit:Tty.display ~fatal k
