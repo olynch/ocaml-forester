@@ -131,7 +131,7 @@ struct
       let body =
         let module TP = Render_TeX_like.Printer in
         Str.global_replace (Str.regexp "\n") " " @@
-        TP.contents @@ Render_TeX_like.render ~cfg:{tex = false} xs
+        TP.contents @@ Render_TeX_like.render xs
       in
       let display =
         match mode with
@@ -196,7 +196,7 @@ struct
     | Sem.Embed_tex {preamble; source} ->
       let as_tex x =
         Render_TeX_like.Printer.contents @@
-        Render_TeX_like.render ~cfg:{tex = true} x
+        Render_TeX_like.render x
       in
       let preamble = as_tex preamble in
       let source = as_tex source in

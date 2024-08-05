@@ -8,6 +8,4 @@ sig
   val contents : t -> string
 end
 
-type cfg = {tex : bool}
-
-val render : cfg:cfg -> Sem.t -> Printer.t
+val render : Sem.t -> Printer.t
