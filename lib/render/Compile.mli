@@ -7,7 +7,7 @@ sig
   val trees : Sem.tree Addr_map.t
   val run_query : Query.dbix Query.expr -> Addr_set.t
   val last_changed : addr -> Date.t option
-  val enqueue_latex : name:string -> preamble:string -> source:string -> unit
+  val get_resource : name:string -> string
 end
 
 (** Each instance of this generative functor manages its own memo cache. *)

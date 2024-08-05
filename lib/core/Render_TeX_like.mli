@@ -1,5 +1,4 @@
 open Forester_prelude
-open Forester_core
 
 module Printer :
 sig

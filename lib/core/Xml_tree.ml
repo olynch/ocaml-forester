@@ -77,9 +77,15 @@ type tex = {
 }
 [@@deriving repr]
 
-type img = {
-  src : string;
+type inline_img = {
+  format : string;
+  base64 : string
 }
+[@@deriving repr]
+
+type img =
+  | Inline of inline_img
+  | Remote of string
 [@@deriving repr]
 
 type embedded_tex = {
@@ -100,7 +106,6 @@ type ('content, 'tree) content_node =
   | External_link of 'content external_link
   | TeX of tex
   | Img of img
-  | Embedded_tex of embedded_tex
   | Info of string
 [@@deriving repr]
 

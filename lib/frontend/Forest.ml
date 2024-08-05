@@ -24,7 +24,9 @@ type forest =
 module LaTeX_queue = LaTeX_queue.Make ()
 
 let plant_forest (trees : raw_forest) : forest =
-  let module Ev = Eval.Make () in
+  let module I = struct let enqueue_latex = LaTeX_queue.enqueue end in
+  let module Ev = Eval.Make (I) in
+
   let add_tree addr tree trees =
     if M.mem addr trees then
       begin
@@ -190,12 +192,18 @@ let render_trees ~cfg ~(forest : forest) ~render_only : unit =
   let env = cfg.env in
   let cwd = Eio.Stdenv.cwd env in
 
-  Eio_util.ensure_dir_path cwd ["output"; "resources"];
+  Eio_util.ensure_dir_path cwd ["output"];
+  Eio_util.ensure_dir_path cwd ["build"; "resources"];
+
+  LaTeX_queue.process ~env ~ignore_tex_cache:cfg.ignore_tex_cache;
 
   let module I =
   struct
     let root, trees, run_query, last_changed, enqueue_latex =
       cfg.root, forest.trees, forest.run_query, last_changed env forest, LaTeX_queue.enqueue
+
+    let get_resource ~name =
+      Eio.Path.load Eio.Path.(cwd / "build" / "resources" / name)
   end
 
   in
@@ -203,14 +211,14 @@ let render_trees ~cfg ~(forest : forest) ~render_only : unit =
   let module C = Compile.Make (I) () in
   let module Sxml = Serialise_xml_tree.Make (I) () in
 
-  let render_tree (tree : Sem.tree) =
-    let addr = tree.fm.addr in
+  let render_tree (Xml_tree.Tree tree) =
+    let addr = Option.get @@ tree.frontmatter.addr in
     let create = `Or_truncate 0o644 in
     let path = Eio.Path.(cwd / "output" / Serialise_xml_tree.route ~root:cfg.root addr) in
     Eio.Path.with_open_out ~create path @@ fun flow ->
     Eio.Buf_write.with_flow flow @@ fun writer ->
     let fmt = Eio_util.formatter_of_writer writer in
-    tree |> C.compile_tree |> Sxml.pp ~stylesheet:cfg.stylesheet fmt
+    Xml_tree.Tree tree |> Sxml.pp ~stylesheet:cfg.stylesheet fmt
   in
 
   let trees =
@@ -224,14 +232,9 @@ let render_trees ~cfg ~(forest : forest) ~render_only : unit =
         Reporter.fatalf Tree_not_found "Could not find tree with address `%a` when rendering forest" pp_addr addr
   in
 
-  trees
-  |> Sem.Util.sort
-  |> List.iter render_tree;
+  trees |> Sem.Util.sort |> List.map C.compile_tree |> List.iter render_tree;
   render_json ~cfg ~cwd forest.trees;
   if not cfg.no_assets then
     copy_assets ~env ~assets_dirs:cfg.assets_dirs;
   if not cfg.no_theme then
-    copy_theme ~env ~theme_dir:cfg.theme_dir;
-  let _ = LaTeX_queue.process ~env ~ignore_tex_cache:cfg.ignore_tex_cache
-  in
-  ()
+    copy_theme ~env ~theme_dir:cfg.theme_dir

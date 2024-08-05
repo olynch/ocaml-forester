@@ -3,7 +3,13 @@ open Base
 open Bwd
 module Q = Query
 
-module Make () =
+module type I =
+sig
+  val enqueue_latex : preamble:string -> source:string -> string
+end
+
+
+module Make (I : I) =
 struct
   module Graphs = Forester_graphs.Make ()
 
@@ -222,9 +228,14 @@ struct
       emit_content_node {node with value = Sem.Query_tree (opts, query)}
 
     | Embed_tex ->
-      let preamble = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content in
-      let source = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content in
-      let embed = Sem.Embed_tex {preamble; source} in
+      let as_tex x =
+        Render_TeX_like.Printer.contents @@
+        Render_TeX_like.render x
+      in
+      let preamble = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content |> as_tex in
+      let source = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content |> as_tex in
+      let name = I.enqueue_latex ~preamble ~source in
+      let embed = Sem.Resource {format = "svg+xml"; name} in
       emit_content_node {node with value = embed}
 
     | Object {self; methods} ->

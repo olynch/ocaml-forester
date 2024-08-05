@@ -2,7 +2,7 @@
  (name Forester_core)
  (preprocess
   (pps ppx_deriving.show ppx_repr))
- (libraries forester.prelude yuujinchou asai repr ocamlgraph)
+ (libraries forester.prelude yuujinchou asai repr ocamlgraph base64)
  (public_name forester.core))
 
 (env

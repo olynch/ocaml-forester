@@ -10,11 +10,11 @@ type 'a env = 'a constraint 'a = <
   > as 'a
 
 let resources_dir cwd =
-  Eio.Path.(cwd/"output"/"resources")
+  Eio.Path.(cwd/"build"/"resources")
 
 let build_latex ~env ~ignore_tex_cache ~name ~preamble ~source : unit =
   let cwd = Eio.Stdenv.cwd env in
-  let svg_path = Eio.Path.(resources_dir cwd / (name ^ ".svg")) in
+  let svg_path = Eio.Path.(resources_dir cwd / name) in
 
   if ignore_tex_cache || not @@ Eio_util.file_exists svg_path then
     begin

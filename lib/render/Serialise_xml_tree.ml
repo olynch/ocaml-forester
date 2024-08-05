@@ -5,7 +5,9 @@ module X = Xml_tree
 module F = Xml_forester
 module P = Pure_html
 
-module type I = sig val root : string option end
+module type I = sig
+  val root : string option
+end
 
 let addr_to_string addr =
   Format.asprintf "%a" pp_addr addr
@@ -164,12 +166,14 @@ struct
       in
       F.tex [F.display "%s" display] "<![CDATA[%s]]>" tex.body
     | X.Img img ->
-      F.img [F.src "%s" img.src]
-    | X.Embedded_tex emb ->
-      F.embedded_tex [F.hash "%s" emb.hash] [
-        F.embedded_tex_preamble [] "<![CDATA[%s]]>" emb.preamble;
-        F.embedded_tex_body [] "<![CDATA[%s]]>" emb.source
-      ]
+      let src_attr =
+        match img with
+        | Inline {format; base64} ->
+          F.src "data:image/%s;base64,%s" format base64
+        | Remote src ->
+          F.src "%s" src
+      in
+      F.img [src_attr]
     | X.Info x ->
       F.info [] [P.txt "%s" x]
 

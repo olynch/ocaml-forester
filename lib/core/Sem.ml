@@ -22,7 +22,7 @@ type node =
   | Xml_tag of xml_resolved_qname * (xml_resolved_qname * t) list * t
   | TeX_cs of TeX_cs.t
   | Math of math_mode * t
-  | Embed_tex of embedded_tex
+  | Resource of {format : string; name : string}
   | Img of string
   | Prim of Prim.t * t
   | Ref of addr
@@ -139,9 +139,8 @@ let string_of_nodes =
     | Verbatim s -> Some s
     | Link (_, Some title, _) -> Some (render title)
     | Xml_tag (_, _, bdy) | Math (_, bdy) -> Some (render bdy)
-    | Embed_tex {source; _} -> Some (render source)
     | Prim (_, x) -> Some (render x)
-    | Transclude _ | Subtree _ | Query_tree _ | TeX_cs _ | Img _ | Link _ | Ref _ -> None
+    | Transclude _ | Subtree _ | Query_tree _ | TeX_cs _ | Img _ | Link _ | Ref _ | Resource _ -> None
   in
   render
 

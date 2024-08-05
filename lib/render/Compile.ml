@@ -7,7 +7,7 @@ sig
   val trees : Sem.tree Addr_map.t
   val run_query : Query.dbix Query.expr -> Addr_set.t
   val last_changed : addr -> Date.t option
-  val enqueue_latex : name:string -> preamble:string -> source:string -> unit
+  val get_resource : name:string -> string
 end
 
 module S = Addr_set
@@ -162,7 +162,7 @@ struct
       end
 
     | Sem.Img path ->
-      [X.Img {src = path}]
+      [X.Img (Remote path)]
 
     | Sem.Xml_tag (name, attrs, xs) ->
       let rec fold_attrs tag_prefix updates acc attrs  =
@@ -193,16 +193,10 @@ struct
       [normalise_prefix ~prefix:name.prefix ~xmlns:name.xmlns @@ fun (updates, tag_prefix) ->
        fold_attrs tag_prefix updates [] attrs]
 
-    | Sem.Embed_tex {preamble; source} ->
-      let as_tex x =
-        Render_TeX_like.Printer.contents @@
-        Render_TeX_like.render x
-      in
-      let preamble = as_tex preamble in
-      let source = as_tex source in
-      let hash = Digest.to_hex @@ Digest.string @@ preamble ^ source in
-      I.enqueue_latex ~name:hash ~preamble ~source;
-      [X.Embedded_tex {hash; preamble; source}]
+    | Sem.Resource {format; name} ->
+      let resource = I.get_resource ~name in
+      let base64 = Base64.encode_string resource in
+      [X.Img (X.Inline {format; base64})]
 
     | Sem.Transclude (opts, addr) ->
       begin

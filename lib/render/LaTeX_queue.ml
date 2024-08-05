@@ -2,7 +2,7 @@ open Forester_core
 
 module type S =
 sig
-  val enqueue : name:string -> preamble:string -> source:string -> unit
+  val enqueue : preamble:string -> source:string -> string
   val process : env:_ Build_latex.env -> ignore_tex_cache : bool -> unit
 end
 
@@ -10,9 +10,12 @@ module Make () : S =
 struct
   let svg_queue : (string, string * string) Hashtbl.t = Hashtbl.create 100
 
-  let enqueue ~name ~preamble ~source =
+  let enqueue ~preamble ~source =
+    let hash = Digest.to_hex @@ Digest.string @@ preamble ^ source in
+    let name = hash ^ ".svg" in
     if not @@ Hashtbl.mem svg_queue name then
-      Hashtbl.add svg_queue name (preamble, source)
+      Hashtbl.add svg_queue name (preamble, source);
+    name
 
   let process ~env ~ignore_tex_cache : unit  =
     let task (name, (preamble, source)) =
