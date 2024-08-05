@@ -173,23 +173,7 @@ let copy_assets ~env ~assets_dirs =
   if not @@ is_hidden_file fname then
     let path = Eio.Path.(assets_dir / fname) in
     let source = Eio.Path.native_exn path in
-    Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir:"build";
     Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir:"output"
-
-let copy_resources ~env =
-  let cwd = Eio.Stdenv.cwd env in
-  Eio.Path.read_dir Eio.Path.(cwd / "build") |> List.iter @@ fun fname ->
-  if not @@ is_hidden_file fname then
-    let ext = Filename.extension fname in
-    let fp = Format.sprintf "build/%s" fname in
-    let dest_opt =
-      match ext with
-      | ".svg" -> Some "output/resources"
-      | _ -> None
-    in
-    dest_opt |> Option.iter @@ fun dest_dir ->
-    if not @@ Eio_util.file_exists Eio.Path.(cwd / dest_dir / fname) then
-      Eio_util.copy_to_dir ~cwd ~env ~source:fp ~dest_dir
 
 let last_changed env forest scope =
   let (let*) = Option.bind in
@@ -206,7 +190,6 @@ let render_trees ~cfg ~(forest : forest) ~render_only : unit =
   let env = cfg.env in
   let cwd = Eio.Stdenv.cwd env in
 
-  Eio_util.ensure_dir @@ Eio.Path.(cwd / "build");
   Eio_util.ensure_dir_path cwd ["output"; "resources"];
 
   let module I =
@@ -249,5 +232,6 @@ let render_trees ~cfg ~(forest : forest) ~render_only : unit =
     copy_assets ~env ~assets_dirs:cfg.assets_dirs;
   if not cfg.no_theme then
     copy_theme ~env ~theme_dir:cfg.theme_dir;
-  let _ = LaTeX_queue.process ~env ~ignore_tex_cache:cfg.ignore_tex_cache in
-  copy_resources ~env
+  let _ = LaTeX_queue.process ~env ~ignore_tex_cache:cfg.ignore_tex_cache
+  in
+  ()

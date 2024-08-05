@@ -9,12 +9,12 @@ type 'a env = 'a constraint 'a = <
     ..
   > as 'a
 
-let build_dir cwd =
-  Eio.Path.(cwd/"build")
+let resources_dir cwd =
+  Eio.Path.(cwd/"output"/"resources")
 
-let build_latex ~env ~ignore_tex_cache ~name ~preamble ~source : Eio.Fs.dir_ty Eio.Path.t list =
+let build_latex ~env ~ignore_tex_cache ~name ~preamble ~source : unit =
   let cwd = Eio.Stdenv.cwd env in
-  let svg_path = Eio.Path.(build_dir cwd / (name ^ ".svg")) in
+  let svg_path = Eio.Path.(resources_dir cwd / (name ^ ".svg")) in
 
   if ignore_tex_cache || not @@ Eio_util.file_exists svg_path then
     begin
@@ -24,8 +24,5 @@ let build_latex ~env ~ignore_tex_cache ~name ~preamble ~source : Eio.Fs.dir_ty E
         LaTeX_template.write fmt ~source ~preamble
       in
       let svg_code = LaTeX_pipeline.latex_to_svg ~env tex_code in
-      Eio.Path.save ~create:(`Or_truncate 0o644) svg_path svg_code;
-      [svg_path]
+      Eio.Path.save ~create:(`Or_truncate 0o644) svg_path svg_code
     end
-  else
-    []

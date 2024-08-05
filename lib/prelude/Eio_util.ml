@@ -53,8 +53,9 @@ let rec rm_rec path =
 let with_open_tmp_dir ~env kont =
   let dir_name = string_of_int @@ Oo.id (object end) in
   let cwd = Eio.Stdenv.cwd env in
-  let () = ensure_dir_path cwd ["tmp"; dir_name] in
-  let tmp_path = Eio.Path.(cwd / "tmp" / dir_name) in
+  let tmp = "_tmp" in
+  let () = ensure_dir_path cwd [tmp; dir_name] in
+  let tmp_path = Eio.Path.(cwd / tmp / dir_name) in
   Eio.Path.with_open_dir tmp_path @@ fun p ->
   let result = kont p in
   rm_rec tmp_path;
