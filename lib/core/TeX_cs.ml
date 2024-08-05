@@ -3,7 +3,13 @@ open Forester_prelude
 type t =
   | Word of string
   | Symbol of char
-[@@deriving show]
+
+let pp fmt =
+  function
+  | Word x -> Format.fprintf fmt "%s" x
+  | Symbol x -> Format.fprintf fmt "%c" x
+
+let show = Format.asprintf "%a" pp
 
 let cs_symbol_rx = Str.regexp {|^[^A-Za-z]$|}
 let cs_word_rx = Str.regexp {|^[A-Za-z]+$|}
