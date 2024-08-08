@@ -30,7 +30,7 @@ let latex_to_dvi ~(env : _ env) code  =
   let stdout = Eio.Flow.buffer_sink out_buf in
   let stderr = Eio_util.null_sink () in
 
-  let cmd = ["latex"; "-halt-on-error"; "-interaction=nonstopmode"; tex_fn] in
+  let cmd = ["dvilualatex"; "-halt-on-error"; "-interaction=nonstopmode"; tex_fn] in
 
   begin
     try
