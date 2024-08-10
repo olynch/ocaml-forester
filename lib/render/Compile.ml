@@ -24,60 +24,7 @@ struct
   let mainmatter_cache : (addr, X.content) Hashtbl.t =
     Hashtbl.create 1000
 
-  module Xmlns_map =
-  struct
-    type t =
-      {prefix_to_xmlns : string String_map.t;
-       xmlns_to_prefixes : string list String_map.t}
-
-    let empty =
-      {prefix_to_xmlns = String_map.empty;
-       xmlns_to_prefixes = String_map.empty}
-
-    let assoc ~prefix ~xmlns env =
-      {prefix_to_xmlns = String_map.add prefix xmlns env.prefix_to_xmlns;
-       xmlns_to_prefixes = String_map.add_to_list xmlns prefix env.xmlns_to_prefixes}
-  end
-
-  module Xmlns_prefixes = Algaeff.Reader.Make (Xmlns_map)
-
-  let get_xmlns_for_prefix prefix =
-    let env = Xmlns_prefixes.read ()  in
-    String_map.find_opt prefix env.prefix_to_xmlns
-
-  let rec normalise_prefix ?loc ~prefix ~xmlns kont =
-    match xmlns with
-    | Some xmlns ->
-      begin
-        let open Xmlns_map in
-        let env = Xmlns_prefixes.read () in
-        let exception Shadowing in
-        try
-          begin
-            match
-              String_map.find_opt prefix env.prefix_to_xmlns,
-              String_map.find_opt xmlns env.xmlns_to_prefixes
-            with
-            | None, (None | Some []) ->
-              let env = assoc ~prefix ~xmlns env in
-              Xmlns_prefixes.run ~env @@ fun () ->
-              kont @@ ([(prefix, xmlns)], prefix)
-            | Some xmlns', Some prefixes ->
-              if xmlns' = xmlns && List.mem prefix prefixes then
-                kont ([], prefix)
-              else
-                raise Shadowing
-            | _, Some (prefix' :: _) ->
-              kont ([], prefix')
-            | Some xmlns', None ->
-              raise Shadowing
-          end
-        with Shadowing ->
-          normalise_prefix ?loc ~prefix:(prefix ^ "_") ~xmlns:(Some xmlns) kont
-      end
-    | _ ->
-      kont ([], prefix)
-
+  module Xmlns_effect = Xmlns_effect.Make ()
   let is_root addr =
     Some addr = Option.map (fun x -> User_addr x) I.root
 
@@ -169,29 +116,34 @@ struct
         match attrs with
         | [] ->
           let xmlns_attrs =
-            updates |> List.map @@ fun (prefix, xmlns) ->
+            updates |> List.map @@ fun Xmlns_effect.{prefix; xmlns} ->
             X.{key =
                  X.{prefix = "xmlns";
                     uname = prefix;
                     xmlns = None};
                value = xmlns}
           in
-          let name = X.{prefix = tag_prefix; uname = name.uname; xmlns = get_xmlns_for_prefix tag_prefix} in
+          let name = X.{prefix = tag_prefix; uname = name.uname; xmlns = Xmlns_effect.find_xmlns_for_prefix tag_prefix} in
           let attrs = xmlns_attrs @ List.rev acc in
           let content = compile_nodes xs in
           X.Xml_tag {name; attrs; content}
 
         | (k, v) :: attrs ->
-          normalise_prefix ?loc:located.loc ~prefix:k.prefix ~xmlns:k.xmlns @@ fun (updates', prefix) ->
+          Xmlns_effect.with_normalised_prefix ~prefix:k.prefix ~xmlns:k.xmlns @@ fun ~added ~prefix ->
           let xml_attr =
             X.{key = X.{prefix; uname = k.uname; xmlns = None};
                value = Render_text.Printer.contents @@ Render_text.render ~trees:I.trees v}
           in
-          fold_attrs tag_prefix (updates @ updates') (xml_attr :: acc) attrs
+          let updates =
+            match added with
+            | None -> updates
+            | Some x -> updates @ [x]
+          in
+          fold_attrs tag_prefix updates (xml_attr :: acc) attrs
       in
 
-      [normalise_prefix ~prefix:name.prefix ~xmlns:name.xmlns @@ fun (updates, tag_prefix) ->
-       fold_attrs tag_prefix updates [] attrs]
+      [Xmlns_effect.with_normalised_prefix ~prefix:name.prefix ~xmlns:name.xmlns @@ fun ~added ~prefix ->
+       fold_attrs prefix (match added with None -> [] | Some x -> [x]) [] attrs]
 
     | Sem.Resource {format; name} ->
       let resource = I.get_resource ~name in
@@ -418,7 +370,6 @@ struct
 
   let compile_tree tree =
     Ancestors.run ~env:[] @@ fun () ->
-    let env = Xmlns_map.assoc ~prefix:F.reserved_prefix ~xmlns:F.forester_xmlns Xmlns_map.empty in
-    Xmlns_prefixes.run ~env @@ fun () ->
+    Xmlns_effect.run ~reserved:[{prefix = F.reserved_prefix; xmlns = F.forester_xmlns}] @@ fun () ->
     compile_tree_inner ~include_backmatter:true ~opts:Sem.default_transclusion_opts tree
 end
