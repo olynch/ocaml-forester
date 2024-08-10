@@ -37,43 +37,49 @@ struct
     | Effect.Unhandled (Yield elt) -> f (`Yield elt)
     | _ -> None
 
-  let () = register_printer @@ fun _ -> Some "Unhandled algaeff effect; use Algaeff.Sequencer.run"
+  let () = register_printer @@ fun _ -> Some "Unhandled effect; use Make_writer.run"
 end
 
 module Make () =
 struct
-  type xmlns_prefix = {prefix: string; xmlns: string}
+  type xmlns_attr = {prefix: string; xmlns: string}
 
   module E = Algaeff.State.Make (Xmlns_map)
-  module Decls = Make_writer (struct type t = xmlns_prefix end)
+  module Decls = Make_writer (struct type t = xmlns_attr end)
 
   let find_xmlns_for_prefix prefix =
     let env = E.get ()  in
     String_map.find_opt prefix env.prefix_to_xmlns
 
-  let rec normalise_prefix ~prefix ~xmlns =
-    match xmlns with
-    | None -> prefix
+  let rec normalise_qname (qname : xml_qname) =
+    let scope = E.get () in
+    match qname.xmlns with
+    | None ->
+      begin
+        match String_map.find_opt qname.prefix scope.prefix_to_xmlns with
+        | None -> qname
+        | Some xmlns -> {qname with xmlns = Some xmlns}
+      end
+
     | Some xmlns ->
-      let scope = E.get () in
       begin
         match
-          String_map.find_opt prefix scope.prefix_to_xmlns,
+          String_map.find_opt qname.prefix scope.prefix_to_xmlns,
           String_map.find_opt xmlns scope.xmlns_to_prefixes
         with
         | None, (None | Some []) ->
-          E.modify (Xmlns_map.assoc ~prefix ~xmlns);
-          Decls.yield {prefix; xmlns};
-          prefix
+          E.modify (Xmlns_map.assoc ~prefix:qname.prefix ~xmlns);
+          Decls.yield {prefix = qname.prefix; xmlns};
+          qname
         | Some xmlns', Some prefixes ->
-          if xmlns' = xmlns && List.mem prefix prefixes then
-            prefix
+          if xmlns' = xmlns && List.mem qname.prefix prefixes then
+            qname
           else
-            normalise_prefix ~prefix:(prefix ^ "_") ~xmlns:(Some xmlns)
+            normalise_qname {qname with prefix = qname.prefix ^ "_"}
         | _, Some (prefix' :: _) ->
-          prefix'
+          {qname with prefix = prefix'}
         | Some xmlns', None ->
-          normalise_prefix ~prefix:(prefix ^ "_") ~xmlns:(Some xmlns)
+          normalise_qname {qname with prefix = qname.prefix ^ "_"}
       end
 
   let within_scope kont =

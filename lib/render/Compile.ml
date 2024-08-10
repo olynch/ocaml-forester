@@ -111,17 +111,14 @@ struct
       [X.Img (Remote path)]
 
     | Sem.Xml_tag (name, attrs, xs) ->
-      let compile_qname (name : xml_qname) =
-        {name with prefix = Xmlns_effect.normalise_prefix ~prefix:name.prefix ~xmlns:name.xmlns}
-      in
       let compile_attr (k, v) =
-        let key = compile_qname k in
+        let key = Xmlns_effect.normalise_qname k in
         let value = Render_text.Printer.contents @@ Render_text.render ~trees:I.trees v in
         X.{key; value}
       in
       let prefixes_to_add, (name, attrs, content) =
         Xmlns_effect.within_scope @@ fun () ->
-        let name = compile_qname name in
+        let name = Xmlns_effect.normalise_qname name in
         let attrs = List.map compile_attr attrs in
         let content = compile_nodes xs in
         name, attrs, content
