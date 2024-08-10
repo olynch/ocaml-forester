@@ -107,7 +107,7 @@ struct
           let processed = process attrs in
           if List.mem_assoc k processed then begin
             Reporter.emitf ?loc:node.loc Duplicate_attribute
-              "skipping duplicate XML attribute `%a`" pp_xml_resolved_qname k;
+              "skipping duplicate XML attribute `%a`" pp_xml_qname k;
             processed
           end else
             (k, Sem.extract_content {node with value = eval_tape v}) :: processed

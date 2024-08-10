@@ -1,18 +1,6 @@
 open Forester_prelude
 open Base
 
-type xml_qname = {
-  prefix : string;
-  (** The prefix to a qualified XML name; this prefix is expected to be rendered in the scope of a corresponding [xmlns] binding. *)
-
-  uname : string;
-  (** The unqualified part of the XML name. *)
-
-  xmlns : string option
-  (** The XML namespace bound by the current scope to [prefix]. This is not used when serialising to XML, but can be helpful for other analyses. *)
-}
-[@@deriving repr]
-
 type xml_attr = {key : xml_qname; value : string}
 [@@deriving repr]
 

@@ -19,7 +19,7 @@ type node =
   | Subtree of transclusion_opts * tree
   | Query_tree of transclusion_opts * Query.dbix Query.expr
   | Link of addr * t option * modifier
-  | Xml_tag of xml_resolved_qname * (xml_resolved_qname * t) list * t
+  | Xml_tag of xml_qname * (xml_qname * t) list * t
   | TeX_cs of TeX_cs.t
   | Math of math_mode * t
   | Resource of {format : string; name : string}

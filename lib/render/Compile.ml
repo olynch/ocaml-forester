@@ -31,7 +31,6 @@ struct
   let addr_peek_title scope =
     Option.bind (Addr_map.find_opt scope I.trees) Sem.Util.peek_title
 
-
   let get_tree addr =
     Addr_map.find_opt addr I.trees
 
@@ -112,38 +111,31 @@ struct
       [X.Img (Remote path)]
 
     | Sem.Xml_tag (name, attrs, xs) ->
-      let rec fold_attrs tag_prefix updates acc attrs  =
-        match attrs with
-        | [] ->
-          let xmlns_attrs =
-            updates |> List.map @@ fun Xmlns_effect.{prefix; xmlns} ->
-            X.{key =
-                 X.{prefix = "xmlns";
-                    uname = prefix;
-                    xmlns = None};
-               value = xmlns}
-          in
-          let name = X.{prefix = tag_prefix; uname = name.uname; xmlns = Xmlns_effect.find_xmlns_for_prefix tag_prefix} in
-          let attrs = xmlns_attrs @ List.rev acc in
-          let content = compile_nodes xs in
-          X.Xml_tag {name; attrs; content}
-
-        | (k, v) :: attrs ->
-          Xmlns_effect.with_normalised_prefix ~prefix:k.prefix ~xmlns:k.xmlns @@ fun ~added ~prefix ->
-          let xml_attr =
-            X.{key = X.{prefix; uname = k.uname; xmlns = None};
-               value = Render_text.Printer.contents @@ Render_text.render ~trees:I.trees v}
-          in
-          let updates =
-            match added with
-            | None -> updates
-            | Some x -> updates @ [x]
-          in
-          fold_attrs tag_prefix updates (xml_attr :: acc) attrs
+      let compile_qname (name : xml_qname) =
+        {name with prefix = Xmlns_effect.normalise_prefix ~prefix:name.prefix ~xmlns:name.xmlns}
       in
-
-      [Xmlns_effect.with_normalised_prefix ~prefix:name.prefix ~xmlns:name.xmlns @@ fun ~added ~prefix ->
-       fold_attrs prefix (match added with None -> [] | Some x -> [x]) [] attrs]
+      let compile_attr (k, v) =
+        let key = compile_qname k in
+        let value = Render_text.Printer.contents @@ Render_text.render ~trees:I.trees v in
+        X.{key; value}
+      in
+      let prefixes_to_add, (name, attrs, content) =
+        Xmlns_effect.within_scope @@ fun () ->
+        let name = compile_qname name in
+        let attrs = List.map compile_attr attrs in
+        let content = compile_nodes xs in
+        name, attrs, content
+      in
+      let attrs =
+        let xmlns_attrs =
+          prefixes_to_add |> List.map @@ fun Xmlns_effect.{xmlns; prefix} ->
+          let key = X.{prefix = "xmlns"; uname = prefix; xmlns = None} in
+          let value = xmlns in
+          X.{key; value}
+        in
+        xmlns_attrs @ attrs
+      in
+      [Xml_tag {name; attrs; content}]
 
     | Sem.Resource {format; name} ->
       let resource = I.get_resource ~name in
