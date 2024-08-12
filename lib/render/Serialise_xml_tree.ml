@@ -174,8 +174,22 @@ struct
           F.src "%s" src
       in
       F.img [src_attr]
+    | X.Resource resource ->
+      render_resource resource
     | X.Info x ->
       F.info [] [P.txt "%s" x]
+
+  and render_resource resource =
+    F.resource [] [
+      F.resource_content [] @@ render_content resource.content;
+      render_resource_sources resource.sources
+    ]
+
+  and render_resource_sources sources =
+    F.null @@ List.map render_resource_source sources
+
+  and render_resource_source source =
+    F.resource_source [F.type_ "%s" source.type_] "<![CDATA[%s]]>" source.source
 
   let pp ?stylesheet fmt tree =
     Format.fprintf fmt {|<?xml version="1.0" encoding="UTF-8"?>|};

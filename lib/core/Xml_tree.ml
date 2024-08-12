@@ -76,12 +76,18 @@ type img =
   | Remote of string
 [@@deriving repr]
 
-type embedded_tex = {
-  hash : string;
-  preamble : string;
+type resource_source = {
+  type_ : string;
   source : string
 }
 [@@deriving repr]
+
+type 'content resource = {
+  content : 'content;
+  sources : resource_source list
+}
+[@@deriving repr]
+
 
 type ('content, 'tree) content_node =
   | Text of string
@@ -94,6 +100,7 @@ type ('content, 'tree) content_node =
   | External_link of 'content external_link
   | TeX of tex
   | Img of img
+  | Resource of 'content resource
   | Info of string
 [@@deriving repr]
 

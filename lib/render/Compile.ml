@@ -107,8 +107,8 @@ struct
           [X.Ref {addr; taxon; number}]
       end
 
-    | Sem.Img path ->
-      [X.Img (Remote path)]
+    | Sem.Img {src} ->
+      [X.Img (Remote src)]
 
     | Sem.Xml_tag (name, attrs, xs) ->
       let compile_attr (k, v) =
@@ -134,10 +134,13 @@ struct
       in
       [Xml_tag {name; attrs; content}]
 
-    | Sem.Resource {format; name} ->
+    | Sem.Resource {format; name; sources} ->
       let resource = I.get_resource ~name in
       let base64 = Base64.encode_string resource in
-      [X.Img (X.Inline {format; base64})]
+      let content = X.Content [X.Img (X.Inline {format; base64})] in
+      let sources = List.map compile_resource_source sources in
+      let resource = X.{content; sources} in
+      [X.Resource resource]
 
     | Sem.Transclude (opts, addr) ->
       begin
@@ -171,6 +174,9 @@ struct
     let update old_ancestors = current :: old_ancestors in
     Ancestors.scope update @@ fun () ->
     [X.Subtree (compile_tree_inner ~opts tree)]
+
+  and compile_resource_source Sem.{type_; source} =
+    X.{type_; source}
 
   and compile_title ~(opts : Sem.transclusion_opts) (fm : Sem.frontmatter) =
     let trees = I.trees in

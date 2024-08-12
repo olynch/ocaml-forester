@@ -22,8 +22,8 @@ type node =
   | Xml_tag of xml_qname * (xml_qname * t) list * t
   | TeX_cs of TeX_cs.t
   | Math of math_mode * t
-  | Resource of {format : string; name : string}
-  | Img of string
+  | Resource of {format : string; name : string; sources : resource_source list}
+  | Img of {src : string}
   | Prim of Prim.t * t
   | Ref of addr
 [@@deriving show]
@@ -40,6 +40,13 @@ and transclusion_opts =
    expanded : bool;
    numbered : bool}
 [@@deriving show]
+
+and resource_source = {
+  type_ : string;
+  source : string
+}
+[@@deriving show]
+
 
 and t = node Range.located list
 

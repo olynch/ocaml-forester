@@ -102,7 +102,8 @@ let number_ fmt = string_attr "number" fmt
 let img = f_void_tag "img"
 let src fmt = uri_attr "src" fmt
 
-let embedded_tex = f_std_tag "embedded-tex"
-let embedded_tex_preamble attrs = f_text_tag ~raw:true "embedded-tex-preamble" attrs
-let embedded_tex_body attrs = f_text_tag ~raw:true "embedded-tex-body" attrs
+let resource = f_std_tag "resource"
+let resource_content = f_std_tag "resource-content"
+let resource_source attrs = f_text_tag ~raw:true "resource-source" attrs
+
 let hash fmt = string_attr "hash" fmt

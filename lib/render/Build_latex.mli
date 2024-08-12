@@ -11,6 +11,5 @@ val build_latex
   : env:_ env
   -> ignore_tex_cache:bool
   -> name:string
-  -> preamble:string
   -> source:string
   -> unit

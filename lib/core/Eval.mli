@@ -3,7 +3,7 @@ open Base
 
 module type I =
 sig
-  val enqueue_latex : preamble:string -> source:string -> string
+  val enqueue_latex : string -> string
 end
 
 module Make (_ : I) :
