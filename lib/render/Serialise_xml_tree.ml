@@ -180,7 +180,7 @@ struct
       F.info [] [P.txt "%s" x]
 
   and render_resource resource =
-    F.resource [] [
+    F.resource [F.hash "%s" resource.hash] [
       F.resource_content [] @@ render_content resource.content;
       render_resource_sources resource.sources
     ]
@@ -189,7 +189,7 @@ struct
     F.null @@ List.map render_resource_source sources
 
   and render_resource_source source =
-    F.resource_source [F.type_ "%s" source.type_] "<![CDATA[%s]]>" source.source
+    F.resource_source [F.type_ "%s" source.type_; F.resource_part "%s" source.part] "<![CDATA[%s]]>" source.source
 
   let pp ?stylesheet fmt tree =
     Format.fprintf fmt {|<?xml version="1.0" encoding="UTF-8"?>|};

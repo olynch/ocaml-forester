@@ -78,11 +78,13 @@ type img =
 
 type resource_source = {
   type_ : string;
+  part : string;
   source : string
 }
 [@@deriving repr]
 
 type 'content resource = {
+  hash : string;
   content : 'content;
   sources : resource_source list
 }

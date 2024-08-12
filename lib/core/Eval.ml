@@ -235,9 +235,12 @@ struct
       let preamble = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content |> as_tex in
       let body = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content |> as_tex in
       let source = LaTeX_template.to_string ~preamble ~body in
-      let name = I.enqueue_latex source in
-      let sources = [Sem.{type_ = "latex"; source}] in
-      let embed = Sem.Resource {format = "svg+xml"; name; sources} in
+      let hash = I.enqueue_latex source in
+      let sources = [
+        Sem.{type_ = "latex"; part = "preamble"; source = preamble};
+        Sem.{type_ = "latex"; part = "body"; source = body}
+      ] in
+      let embed = Sem.Resource {format = "svg+xml"; hash; sources} in
       emit_content_node {node with value = embed}
 
     | Object {self; methods} ->

@@ -12,10 +12,9 @@ struct
 
   let enqueue source =
     let hash = Digest.to_hex @@ Digest.string source in
-    let name = hash ^ ".svg" in
-    if not @@ Hashtbl.mem svg_queue name then
-      Hashtbl.add svg_queue name source;
-    name
+    if not @@ Hashtbl.mem svg_queue hash then
+      Hashtbl.add svg_queue hash source;
+    hash
 
   let process ~env ~ignore_tex_cache : unit  =
     let task (name, source) =

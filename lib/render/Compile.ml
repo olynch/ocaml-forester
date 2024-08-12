@@ -7,7 +7,7 @@ sig
   val trees : Sem.tree Addr_map.t
   val run_query : Query.dbix Query.expr -> Addr_set.t
   val last_changed : addr -> Date.t option
-  val get_resource : name:string -> string
+  val get_resource : hash:string -> string
 end
 
 module S = Addr_set
@@ -134,12 +134,12 @@ struct
       in
       [Xml_tag {name; attrs; content}]
 
-    | Sem.Resource {format; name; sources} ->
-      let resource = I.get_resource ~name in
+    | Sem.Resource {format; hash; sources} ->
+      let resource = I.get_resource ~hash in
       let base64 = Base64.encode_string resource in
       let content = X.Content [X.Img (X.Inline {format; base64})] in
       let sources = List.map compile_resource_source sources in
-      let resource = X.{content; sources} in
+      let resource = X.{hash; content; sources} in
       [X.Resource resource]
 
     | Sem.Transclude (opts, addr) ->
@@ -175,8 +175,8 @@ struct
     Ancestors.scope update @@ fun () ->
     [X.Subtree (compile_tree_inner ~opts tree)]
 
-  and compile_resource_source Sem.{type_; source} =
-    X.{type_; source}
+  and compile_resource_source Sem.{type_; part; source} =
+    X.{type_; part; source}
 
   and compile_title ~(opts : Sem.transclusion_opts) (fm : Sem.frontmatter) =
     let trees = I.trees in

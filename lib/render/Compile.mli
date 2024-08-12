@@ -7,7 +7,7 @@ sig
   val trees : Sem.tree Addr_map.t
   val run_query : Query.dbix Query.expr -> Addr_set.t
   val last_changed : addr -> Date.t option
-  val get_resource : name:string -> string
+  val get_resource : hash:string -> string
 end
 
 (** Each instance of this generative functor manages its own memo cache. *)

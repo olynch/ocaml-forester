@@ -202,8 +202,8 @@ let render_trees ~cfg ~(forest : forest) ~render_only : unit =
     let root, trees, run_query, last_changed, enqueue_latex =
       cfg.root, forest.trees, forest.run_query, last_changed env forest, LaTeX_queue.enqueue
 
-    let get_resource ~name =
-      Eio.Path.load Eio.Path.(cwd / "build" / "resources" / name)
+    let get_resource ~hash =
+      Eio.Path.load Eio.Path.(cwd / "build" / "resources" / hash)
   end
 
   in

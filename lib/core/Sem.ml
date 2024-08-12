@@ -22,7 +22,7 @@ type node =
   | Xml_tag of xml_qname * (xml_qname * t) list * t
   | TeX_cs of TeX_cs.t
   | Math of math_mode * t
-  | Resource of {format : string; name : string; sources : resource_source list}
+  | Resource of {format : string; hash : string; sources : resource_source list}
   | Img of {src : string}
   | Prim of Prim.t * t
   | Ref of addr
@@ -43,6 +43,7 @@ and transclusion_opts =
 
 and resource_source = {
   type_ : string;
+  part : string;
   source : string
 }
 [@@deriving show]

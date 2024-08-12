@@ -70,5 +70,6 @@ val prim : Prim.t -> std_tag
 val resource : std_tag
 val resource_content : std_tag
 val resource_source : _ text_tag
+val resource_part : _ string_attr
 
 val hash : _ string_attr
