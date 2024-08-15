@@ -30,7 +30,7 @@
   (ocamlgraph
    (>= 2.1.0))
   (ocaml
-   (>= 5.1.1))
+   (>= 5.2.0))
   dune
   ppx_deriving
   (cmdliner

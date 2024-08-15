@@ -13,7 +13,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         on = opam-nix.lib.${system};
         devPackagesQuery = {
-          ocaml-base-compiler = "5.1.1";
+          ocaml-base-compiler = "5.2.0";
           ocaml-lsp-server = "*";
         };
         query = devPackagesQuery // { };
