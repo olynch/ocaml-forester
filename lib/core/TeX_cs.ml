@@ -11,9 +11,6 @@ let pp fmt =
 
 let show = Format.asprintf "%a" pp
 
-let cs_symbol_rx = Str.regexp {|^[^A-Za-z]$|}
-let cs_word_rx = Str.regexp {|^[A-Za-z]+$|}
-
 let is_alpha c =
   let i = Char.code c in
   i >= 65 && i <= 90 || i >= 97 && i <= 122

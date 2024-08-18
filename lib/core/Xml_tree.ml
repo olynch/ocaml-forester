@@ -164,7 +164,7 @@ let trim_whitespace xs =
 
 
 let empty_frontmatter = {
-  addr = Anon;
+  addr = Addr.anon;
   source_path = None;
   designated_parent = None;
   dates = [];
@@ -175,28 +175,6 @@ let empty_frontmatter = {
   tags = [];
   title = []
 }
-
-let default_backmatter ~addr : content =
-  let a = Query.Addr addr in
-  let make_section title query =
-    let query = Query.distill_expr query in
-    let section =
-      let frontmatter =
-        {empty_frontmatter with
-         title = [Text title]}
-      in
-      let mainmatter = [Results_of_query query] in
-      let flags = {default_section_flags with hidden_when_empty = Some true} in
-      {frontmatter; mainmatter; flags}
-    in
-    Section section
-  in
-  [make_section "references" @@ Query.references a;
-   make_section "context" @@ Query.context a;
-   make_section "backlinks" @@ Query.backlinks a;
-   make_section "related" @@ Query.related a;
-   make_section "contributions" @@ Query.contributions a]
-
 
 let apply_overrides (overrides : _ frontmatter_overrides) frontmatter =
   {frontmatter with

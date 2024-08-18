@@ -1,5 +1,5 @@
 open Forester_core
-open Forester_frontend.Parse
+open Forester_compiler
 
 let emit _ = () (* ignore *)
 
@@ -7,7 +7,7 @@ let fatal _ = exit 1
 
 let _ =
   Reporter.run ~emit ~fatal @@ fun () ->
-  let good = Result.get_ok @@ parse_string {|
+  let good = Result.get_ok @@ Parse.parse_string {|
     \title{Good}
     \taxon{Test}
     \author{Testy}
@@ -22,7 +22,7 @@ let _ =
 let _ =
   Reporter.run ~emit ~fatal @@ fun () ->
   (* Incomplete XML literal should error *)
-  let bad, errors = Result.get_error @@ parse_string {|
+  let bad, errors = Result.get_error @@ Parse.parse_string {|
     \p{Keep me}
     \<foo>[bar]{
       Incomplete fragment, needs another {} at the end.

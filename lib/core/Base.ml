@@ -1,40 +1,5 @@
-type addr =
-  | User_addr of string
-  (** The address of a tree that can be referenced from user text. *)
-
-  | Machine_addr of int
-  (** The address of an tree with unstable address.*)
-
-  | Hash_addr of string
-  (** The address of a content-addressed tree. *)
-
-  | Anon
-[@@deriving repr]
-
-let pp_addr fmt =
-  function
-  | User_addr str -> Format.pp_print_string fmt str
-  | Machine_addr ix -> Format.fprintf fmt "#%i" ix
-  | Anon -> Format.fprintf fmt "<anon>"
-  | Hash_addr hash -> Format.fprintf fmt "<hash:%s>" hash
-
-let is_user_addr =
-  function
-  | User_addr _ -> true
-  | _ -> false
-
-module Addr =
-struct
-  type t = addr
-  let compare = compare
-  let hash = Hashtbl.hash
-  let equal = (=)
-
-  let to_user_addr =
-    function
-    | User_addr addr -> Some addr
-    | _ -> None
-end
+type addr = Addr.t
+let pp_addr = Addr.pp
 
 module Addr_map = Map.Make (Addr)
 module Addr_set = Set.Make (Addr)

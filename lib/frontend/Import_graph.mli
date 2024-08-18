@@ -1,13 +1,7 @@
 open Forester_core
+open Forester_compiler
 
-module Gph : sig
-  include module type of Graph.Imperative.Digraph.Concrete (Addr)
-  val safe_succ : t -> addr -> addr list
-  val safe_pred : t -> addr -> addr list
-end
+type t
 
-module Topo : sig
-  val fold : (addr -> 'a -> 'a) -> Gph.t -> 'a -> 'a
-end
-
-val build_import_graph : Code.tree list -> Gph.t
+val build_import_graph : Code.tree list -> t
+val topo_fold : (addr -> 'a -> 'a) -> t -> 'a -> 'a

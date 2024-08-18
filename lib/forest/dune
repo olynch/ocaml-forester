@@ -1,18 +1,16 @@
 (library
- (name Forester_frontend)
- (public_name forester.frontend)
+ (name Forester_forest)
+ (public_name forester.forest)
  (preprocess
   (pps ppx_deriving.show))
  (libraries
   bwd
   forester.prelude
   forester.core
-  forester.compiler
-  forester.forest
   ocamlgraph
-  eio_main
   str
   toml
+  yojson
   pure-html
   yuujinchou))
 

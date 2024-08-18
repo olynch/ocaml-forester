@@ -1,0 +1,18 @@
+(ocamllex Lexer)
+
+(menhir
+ (modules Grammar)
+ (explain true)
+ (flags --inspection --table --dump))
+
+(library
+ (name Forester_compiler)
+ (preprocess
+  (pps ppx_deriving.show ppx_repr))
+ (libraries forester.prelude forester.core yuujinchou asai menhirLib repr)
+ (public_name forester.compiler))
+
+(env
+ (dev
+  (flags
+   (:standard -w -66-32-33-27-26-69))))

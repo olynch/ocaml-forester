@@ -1,19 +1,12 @@
 open Forester_core
+open Forester_compiler
 
-module Gph =
-struct
-  module G = Graph.Imperative.Digraph.Concrete (Addr)
-  include G
-  include Graph.Oper.I (G)
+module Gph = Graph.Imperative.Digraph.Concrete (Addr)
 
-  let safe_succ g x =
-    if mem_vertex g x then succ g x else []
-
-  let safe_pred g x =
-    if mem_vertex g x then pred g x else []
-end
+type t = Gph.t
 
 module Topo = Graph.Topological.Make (Gph)
+let topo_fold = Topo.fold
 
 let build_import_graph (trees : Code.tree list) =
   let import_graph = Gph.create () in
@@ -22,12 +15,12 @@ let build_import_graph (trees : Code.tree list) =
     let roots = Option.fold ~none:roots ~some:(fun x -> x :: roots) tree.addr in
     begin
       tree.addr |> Option.iter @@ fun addr ->
-      Gph.add_vertex import_graph @@ User_addr addr
+      Gph.add_vertex import_graph @@ Addr.user_addr addr
     end;
     tree.code |> List.iter @@ fun node ->
     match Asai.Range.(node.value) with
     | Code.Import (_, dep) ->
-      roots |> List.iter @@ fun addr -> Gph.add_edge import_graph (User_addr dep) (User_addr addr)
+      roots |> List.iter @@ fun addr -> Gph.add_edge import_graph (Addr.user_addr dep) (Addr.user_addr addr)
     | Code.Subtree (addr, code) ->
       analyse_tree roots @@ Code.{tree with addr; code}
     | _ -> ()

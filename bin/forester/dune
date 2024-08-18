@@ -5,15 +5,4 @@
  (link_flags (-g))
  (preprocess
   (pps ppx_deriving.show))
- (libraries
-  forester.frontend
-  cmdliner
-  dune-build-info
-  eio_main
-  asai
-  yojson))
-
-(env
- (dev
-  (flags
-   (:standard -w -66-32-33-27-26))))
+ (libraries forester.frontend cmdliner dune-build-info asai yojson))

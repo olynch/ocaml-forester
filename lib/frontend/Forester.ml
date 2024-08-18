@@ -1,7 +1,6 @@
-open Eio.Std
 open Forester_prelude
 open Forester_core
-open Forester_render
+open Forester_forest
 
 module M = Addr_map
 
@@ -15,7 +14,7 @@ type config =
    no_theme: bool}
 
 module T = Xml_tree
-module F = Forest.Make (Forester_graphs.Make ())
+module F = Forest.Make (Forest_graphs.Make ())
 module PT = Plain_text_client.Make (F)
 module C = T.Comparators (PT)
 
@@ -27,7 +26,7 @@ let get_sorted_articles addrs =
   |> List.sort C.compare_article
 
 let get_all_articles () =
-  get_sorted_articles @@ F.run_query @@ Query.distill_expr @@ Query.isect []
+  get_sorted_articles @@ F.run_query @@ Query.isect []
 
 let rec random_not_in keys =
   let attempt = Random.int (36*36*36*36 - 1) in
@@ -81,14 +80,14 @@ let create_tree ~cfg ~addrs ~dest ~prefix ~template ~mode =
   Eio.Path.save ~create path @@ body ^ template_content;
   next
 
-let complete ~forest prefix =
+let complete prefix =
   get_all_articles () |> List.to_seq |> Seq.filter_map @@ fun (article : _ T.article) ->
   let addr = article.frontmatter.addr in
   let title =
     Format.asprintf "%a"
       PT.pp_content article.frontmatter.title
   in
-  if is_user_addr addr && String.starts_with ~prefix title then
+  if Addr.is_user_addr addr && String.starts_with ~prefix title then
     Some (addr, title)
   else
     None
@@ -129,8 +128,8 @@ let read_and_render_forest ~cfg tree_dirs : unit =
   Eio_util.ensure_dir_path cwd ["output"];
 
   let module Params = struct let root = cfg.root end in
-  let module Util = Forester_render.Forest_util.Make (F) in
-  let module Client = Forester_render.Legacy_xml_client.Make (Params) (F) () in
+  let module Util = Forest_util.Make (F) in
+  let module Client = Legacy_xml_client.Make (Params) (F) () in
   let module R = Render_json.Make (Client) (F) in
 
   let all_articles = Util.get_all_articles () in

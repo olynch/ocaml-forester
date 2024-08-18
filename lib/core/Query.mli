@@ -36,16 +36,6 @@ type mode =
 type dbix = int
 [@@deriving show]
 
-(** Globally unique symbols for free variables. *)
-type name = Symbol.t
-[@@deriving show]
-
-(** A variable in 'locally nameless' representation is either free or bound. *)
-type lnvar =
-  | F of name
-  | B of dbix
-[@@deriving show]
-
 (** An address expression can be concrete, or it can be a variable. *)
 type 'var addr_expr =
   | Addr of addr
@@ -64,25 +54,46 @@ type 'var expr =
   | Isect_fam of 'var expr * 'var expr binder
 [@@deriving show]
 
-val distill_expr : lnvar expr -> dbix expr
-exception Distill of name
-
-(** {2 Locally nameless operations and smart constructors} *)
-
-val bind : Symbol.t -> lnvar expr -> lnvar expr binder
-val unbind : lnvar expr binder -> Symbol.t * lnvar expr
 
 val rel : mode -> polarity -> rel -> 'var addr_expr -> 'var expr
 val isect : 'var expr list -> 'var expr
 val union : 'var expr list -> 'var expr
-val union_fam : lnvar expr -> Symbol.t -> lnvar expr -> lnvar expr
-val isect_fam : lnvar expr -> Symbol.t -> lnvar expr -> lnvar expr
-val isect_fam_rel : lnvar expr -> mode -> polarity -> rel -> lnvar expr
-val union_fam_rel : lnvar expr -> mode -> polarity -> rel -> lnvar expr
+val complement : 'var expr -> 'var expr
 
-val references : lnvar addr_expr -> lnvar expr
-val context : lnvar addr_expr -> lnvar expr
-val backlinks : lnvar addr_expr -> lnvar expr
-val related : lnvar addr_expr -> lnvar expr
-val contributions : lnvar addr_expr -> lnvar expr
-val hereditary_contributors : lnvar addr_expr -> lnvar expr
+(** A variable in 'locally nameless' representation is either free or bound. *)
+type 'name lnvar =
+  | F of 'name
+  | B of dbix
+[@@deriving show]
+
+
+
+module type Name = sig
+  type t
+  val fresh : unit -> t
+end
+
+module Global_name : Name
+
+module Locally_nameless (N : Name) : sig
+  type lnexpr = N.t lnvar expr
+
+  val distill : lnexpr -> dbix expr
+  exception Distill of N.t
+
+  val bind : N.t -> lnexpr -> lnexpr binder
+  val union_fam : lnexpr -> N.t -> lnexpr -> lnexpr
+  val isect_fam : lnexpr -> N.t -> lnexpr -> lnexpr
+
+  val has_taxon : string -> 'a expr
+  val context : N.t lnvar addr_expr -> lnexpr
+  val backlinks : N.t lnvar addr_expr -> lnexpr
+  val related : N.t lnvar addr_expr -> lnexpr
+  val contributions : N.t lnvar addr_expr -> lnexpr
+
+  val isect_fam_rel : lnexpr -> mode -> polarity -> rel -> lnexpr
+  val union_fam_rel : lnexpr -> mode -> polarity -> rel -> lnexpr
+
+  val references : N.t lnvar addr_expr -> lnexpr
+  val hereditary_contributors : N.t lnvar addr_expr -> lnexpr
+end
