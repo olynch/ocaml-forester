@@ -1,7 +1,7 @@
 open Forester_core
 
 type t
-[@@deriving show]
+[@@deriving show, repr]
 
 val named : Trie.path -> t
 val fresh : unit -> t

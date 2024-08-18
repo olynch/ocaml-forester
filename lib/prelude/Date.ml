@@ -1,4 +1,5 @@
 type t = {yyyy : int; mm : int option; dd : int option}
+[@@deriving repr]
 
 let year d = d.yyyy
 let month d = d.mm

@@ -3,7 +3,7 @@ open Forester_compiler
 
 module Gph = Graph.Imperative.Digraph.Concrete (Addr)
 
-type t = Gph.t
+include Gph
 
 module Topo = Graph.Topological.Make (Gph)
 let topo_fold = Topo.fold

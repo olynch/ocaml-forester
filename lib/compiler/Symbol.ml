@@ -1,6 +1,6 @@
 open Forester_core
-
-type t = Trie.path * int
+type t = (Trie.path [@repr Repr.(list string)]) * int
+[@@deriving repr]
 
 let named path =
   path, Oo.id object end

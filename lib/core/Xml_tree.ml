@@ -9,7 +9,7 @@ type section_flags = {
   numbered : bool option;
   expanded : bool option
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 let default_section_flags = {
   hidden_when_empty = None;
@@ -24,7 +24,7 @@ type 'content frontmatter_overrides = {
   title : 'content option;
   taxon : string option option
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 let empty_frontmatter_overrides = {
   title = None;
@@ -32,47 +32,47 @@ let empty_frontmatter_overrides = {
 }
 
 type xml_attr = {key : xml_qname; value : string}
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'content xml_elt = {
   name : xml_qname;
   attrs : xml_attr list;
   content : 'content
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type attribution =
   | Author of string
   | Contributor of string
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'content frontmatter = {
-  addr : addr;
+  addr : Addr.t;
   title : 'content;
   dates : Date.t list;
   attributions : attribution list;
   taxon : string option;
   number : string option;
-  designated_parent : addr option;
+  designated_parent : Addr.t option;
   source_path : string option;
   tags : string list;
   metas : (string * 'content) list
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'content section = {
   frontmatter : 'content frontmatter;
   mainmatter : 'content;
   flags : section_flags
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'content article = {
   frontmatter: 'content frontmatter;
   mainmatter: 'content;
   backmatter: 'content;
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'content content_target =
   | Full of section_flags * 'content frontmatter_overrides
@@ -81,41 +81,41 @@ type 'content content_target =
   | Taxon
   | Number
   (** TODO: when we support automatic subtree numbering *)
-[@@deriving show]
+[@@deriving show, repr]
 
 type modifier = Sentence_case | Identity
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'content transclusion = {
-  addr : addr;
+  addr : Addr.t;
   target : 'content content_target;
   modifier : modifier
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'content link = {
   href : string;
   content : 'content
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type inline_img = {
   format : string;
   base64 : string
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type img =
   | Inline of inline_img
   | Remote of string
-[@@deriving show]
+[@@deriving show, repr]
 
 type resource_source = {
   type_ : string;
   part : string;
   source : string
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type content_node =
   | Text of string

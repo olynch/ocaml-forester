@@ -1,6 +1,8 @@
 module Rel =
 struct
   type t = string
+  [@@deriving repr]
+
   let pp = Format.pp_print_string
 
   let make_builtin name = "org.forester.rel." ^ name
@@ -28,15 +30,15 @@ type polarity =
 open Base
 
 type dbix = int
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'var addr_expr =
-  | Addr of addr
+  | Addr of Addr.t
   | Var of 'var
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'a binder = {body : 'a}
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'var expr =
   | Rel of mode * polarity * Rel.t * 'var addr_expr
@@ -46,7 +48,6 @@ type 'var expr =
   | Union_fam of 'var expr * 'var expr binder
   | Isect_fam of 'var expr * 'var expr binder
 [@@deriving show]
-
 
 (** A heuristic for computing an intersection of queries. *)
 let rec query_cost q =

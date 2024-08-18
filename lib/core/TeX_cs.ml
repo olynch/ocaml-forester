@@ -3,6 +3,7 @@ open Forester_prelude
 type t =
   | Word of string
   | Symbol of char
+[@@deriving repr]
 
 let pp fmt =
   function

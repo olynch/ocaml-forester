@@ -6,10 +6,10 @@ module Addr_set = Set.Make (Addr)
 module String_map = Map.Make (String)
 
 type delim = Braces | Squares | Parens
-[@@deriving show]
+[@@deriving show, repr]
 
 type binding_strategy = Lazy | Strict
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'a binding = binding_strategy * 'a
 [@@deriving show]
@@ -21,10 +21,10 @@ let delim_to_strings =
   | Parens -> "(", ")"
 
 type math_mode = Inline | Display
-[@@deriving show]
+[@@deriving show, repr]
 
 type visibility = Private | Public
-[@@deriving show]
+[@@deriving show, repr]
 
 type xml_qname = {prefix : string; uname : string; xmlns : string option}
 [@@deriving show, repr]
