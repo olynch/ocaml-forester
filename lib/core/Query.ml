@@ -211,12 +211,18 @@ let hereditary_contributors addr =
       complement @@ has_taxon "reference"
     ]
   in
+  let q_immediate_contributors =
+    rel Edges Outgoing Rel.contributors addr
+  in
   let q_all_contributors =
-    union_fam_rel
-      q_non_ref_under
-      Edges
-      Outgoing
-      Rel.contributors
+    union [
+      q_immediate_contributors;
+      union_fam_rel
+        q_non_ref_under
+        Edges
+        Outgoing
+        Rel.contributors
+    ]
   in
   let q_authors = rel Edges Outgoing Rel.authors addr in
   isect [q_all_contributors; complement q_authors]
