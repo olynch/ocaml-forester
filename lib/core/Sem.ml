@@ -234,6 +234,13 @@ let default_transclusion_opts : transclusion_opts =
    expanded = true;
    numbered = true}
 
+let extract_content (x : value Range.located) =
+  match x.value with
+  | VContent content -> content
+  | _ -> Reporter.fatalf ?loc:x.loc Type_error "Expected content"
+
+let extract_string (x : value Range.located) =
+  x |> extract_content |> string_of_nodes
 
 let extract_obj_ptr (x : value Range.located) =
   match x.value with
