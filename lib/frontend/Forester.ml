@@ -15,6 +15,8 @@ type config =
 
 module T = Xml_tree
 module F = Forest.Make (Forest_graphs.Make ())
+module FU = Forest_util.Make (F)
+
 module PT = Plain_text_client.Make (F)
 module C = T.Comparators (PT)
 
@@ -118,23 +120,22 @@ let read_and_render_forest ~cfg tree_dirs : unit =
     Process.read_trees_in_dirs ~dev:true tree_dirs
   in
 
-  let articles =
+  begin
     Reporter.profile "expand, evaluate, and analyse forest" @@ fun () ->
-    Forest_reader.read_trees ~env:cfg.env parsed_trees |> Addr_map.map @@ fun article ->
-    F.plant_article article;
-    article
-  in
+    Forest_reader.read_trees ~env:cfg.env parsed_trees
+    |> Addr_map.iter (fun _ -> F.plant_article)
+  end;
 
   begin
     Reporter.profile "render forest" @@ fun () ->
     let cwd = Eio.Stdenv.cwd cfg.env in
     Eio_util.ensure_dir_path cwd ["output"];
 
-    let module Util = Forest_util.Make (F) in
-    let module Client = Legacy_xml_client.Make (struct let root = cfg.root end) (F) () in
+    let module P = struct let root = cfg.root end in
+    let module Client = Legacy_xml_client.Make (P) (F) () in
     let module R = Render_json.Make (Client) (F) in
 
-    let all_articles = Util.get_all_articles () in
+    let all_articles = FU.get_all_articles () in
 
     begin
       all_articles |> List.iter @@ fun article ->
