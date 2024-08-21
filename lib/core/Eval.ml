@@ -72,7 +72,7 @@ struct
       emit_content_node {node with value = Sem.Text str}
 
     | Prim p ->
-      let content = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content |> Sem.trim_whitespace in
+      let content = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_content |> Sem.trim_whitespace in
       emit_content_node {node with value = Sem.Prim (p, content)}
 
     | Fun (xs, body) ->
@@ -91,12 +91,12 @@ struct
       Graphs.add_edge Q.Rel.links ~source:scope ~target:dest;
       let title =
         title |> Option.map @@ fun x ->
-        Sem.extract_content {node with value = eval_tape x}
+        extract_content {node with value = eval_tape x}
       in
       emit_content_node {node with value = Sem.Link (dest, title, Identity)}
 
     | Math (mmode, body) ->
-      let body = Sem.extract_content {node with value = eval_tape body} in
+      let body = extract_content {node with value = eval_tape body} in
       emit_content_node {node with value = Sem.Math (mmode, body)}
 
     | Xml_tag (name, attrs, body) ->
@@ -110,9 +110,9 @@ struct
               "skipping duplicate XML attribute `%a`" pp_xml_qname k;
             processed
           end else
-            (k, Sem.extract_content {node with value = eval_tape v}) :: processed
+            (k, extract_content {node with value = eval_tape v}) :: processed
       in
-      let tag = Sem.Xml_tag (name, process attrs, Sem.extract_content {node with value = eval_tape body}) in
+      let tag = Sem.Xml_tag (name, process attrs, extract_content {node with value = eval_tape body}) in
       emit_content_node {node with value = tag}
 
     | Query_polarity pol ->
@@ -124,7 +124,7 @@ struct
     | Query_rel ->
       let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
-      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_string in
       let addr = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_addr_expr in
       focus ?loc:node.loc @@ VQuery (Query.rel mode pol rel addr)
 
@@ -171,14 +171,14 @@ struct
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
       let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
-      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_string in
       focus ?loc:node.loc @@ VQuery (Query.isect_fam_rel q mode pol rel)
 
     | Query_union_fam_rel ->
       let q = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_node in
       let mode = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_mode in
       let pol = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_query_polarity in
-      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      let rel = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_string in
       focus ?loc:node.loc @@ VQuery (Query.union_fam_rel q mode pol rel)
 
     | Query_builtin builtin ->
@@ -232,8 +232,8 @@ struct
         Render_TeX_like.Printer.contents @@
         Render_TeX_like.render x
       in
-      let preamble = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content |> as_tex in
-      let body = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content |> as_tex in
+      let preamble = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_content |> as_tex in
+      let body = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_content |> as_tex in
       let source = LaTeX_template.to_string ~preamble ~body in
       let hash = I.enqueue_latex source in
       let sources = [
@@ -274,39 +274,14 @@ struct
       let l, r = Base.delim_to_strings d in
       let content =
         Range.locate_opt None (Sem.Text l)
-        :: Sem.extract_content {node with value = eval_tape body}
+        :: extract_content {node with value = eval_tape body}
         @ [Range.locate_opt None (Sem.Text r)]
       in
       focus ?loc:node.loc @@ VContent content
 
     | Call (obj, method_name) ->
-      let sym = {node with value = obj} |> Range.map eval_tape |> Sem.extract_obj_ptr in
-      let rec call_method (obj : Sem.obj) =
-        let proto_val =
-          obj.prototype |> Option.map @@ fun ptr ->
-          Sem.VObject ptr
-        in
-        match Sem.MethodTable.find_opt method_name obj.methods with
-        | Some mthd ->
-          let env =
-            let env = Env.add mthd.self (Sem.VObject sym) mthd.env in
-            match proto_val with
-            | None -> env
-            | Some proto_val ->
-              Env.add mthd.super proto_val env
-          in
-          Lex_env.run ~env @@ fun () ->
-          eval_tape mthd.body
-        | None ->
-          match obj.prototype with
-          | Some proto ->
-            call_method @@ Env.find proto @@ Heap.get ()
-          | None ->
-            Reporter.fatalf ?loc:node.loc Type_error
-              "tried to call unbound method `%s`" method_name
-      in
-      let result = call_method @@ Env.find sym @@ Heap.get () in
-      focus ?loc:node.loc result
+      let self = {node with value = obj} |> Range.map eval_tape |> Sem.extract_obj_ptr in
+      focus ?loc:node.loc @@ call_method ~loc:node.loc method_name self
 
     | Put (k, v, body) ->
       let k = {node with value = k} |> Range.map eval_tape |> Sem.extract_sym in
@@ -342,7 +317,7 @@ struct
       emit_content_node {node with value = Sem.Verbatim str}
 
     | Title ->
-      let title = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content in
+      let title = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_content in
       Fm.modify (fun fm -> {fm with title = Some title});
       process_tape ()
 
@@ -352,8 +327,8 @@ struct
       process_tape ()
 
     | Meta ->
-      let k = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string  in
-      let v = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_content in
+      let k = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_string  in
+      let v = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_content in
       Fm.modify (fun fm -> {fm with metas = fm.metas @ [k,v]});
       process_tape ()
 
@@ -372,14 +347,14 @@ struct
       process_tape ()
 
     | Tag ->
-      let tag = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      let tag = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_string in
       let scope = Scope.get () in
       Graphs.add_edge Q.Rel.tags ~source:scope ~target:(User_addr tag);
       Fm.modify (fun fm -> {fm with tags = fm.tags @ [tag]});
       process_tape ()
 
     | Date ->
-      let date_str = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      let date_str = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_string in
       begin
         match Date.parse date_str with
         | None ->
@@ -390,12 +365,12 @@ struct
       end
 
     | Number ->
-      let num = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      let num = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_string in
       Fm.modify (fun fm -> {fm with number = Some num});
       process_tape ()
 
     | Taxon ->
-      let taxon = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> Sem.extract_string in
+      let taxon = Tape.pop_arg ~loc:node.loc |> Range.map eval_tape |> extract_string in
       let scope = Scope.get () in
       Graphs.add_edge Q.Rel.taxa ~source:scope ~target:(User_addr taxon);
       Fm.modify (fun fm -> {fm with taxon = Some taxon});
@@ -403,6 +378,29 @@ struct
 
     | Sym sym ->
       focus ?loc:node.loc @@ VSym sym
+
+  and call_method ~loc method_name self =
+    let rec go target =
+      let obj = Env.find target @@ Heap.get () in
+      match Sem.MethodTable.find_opt method_name obj.methods with
+      | Some mthd ->
+        let env =
+          Env.add mthd.self (Sem.VObject self) @@
+          Option.fold
+            ~none:Fun.id
+            ~some:(fun ptr -> Env.add mthd.super (Sem.VObject ptr))
+            obj.prototype mthd.env
+        in
+        Lex_env.run ~env @@ fun () ->
+        eval_tape mthd.body
+      | None ->
+        match obj.prototype with
+        | Some proto -> go proto
+        | None ->
+          Reporter.fatalf ?loc Type_error
+            "tried to call unbound method `%s`" method_name
+    in
+    go self
 
   and focus ?loc v =
     match v with
@@ -419,9 +417,13 @@ struct
     | VQuery _ | VQuery_mode _ | VQuery_polarity _ | VSym _ | VObject _ ->
       begin
         match process_tape () with
-        | VContent content when Sem.strip_whitespace content = [] -> v
-        | _ -> Reporter.fatalf ?loc Type_error "Expected solitary node"
+        | Sem.VContent content when Sem.strip_whitespace content = [] -> v
+        | Sem.VContent content ->
+          let content' = {value = v; loc} |> extract_content in
+          Sem.VContent (content' @ content)
+        | value -> Reporter.fatalf ?loc Type_error "Expected solitary node but got: %a" Sem.pp_value value
       end
+
 
   and focus_clo ?loc rho xs body =
     match xs with
@@ -468,10 +470,21 @@ struct
     in
     Fm.run ~init:fm @@ fun () ->
     let bm = Sem.default_backmatter ~addr in (*TODO*)
-    let body = Sem.extract_content {value = eval_tape tree; loc = None} in
+    let body = extract_content {value = eval_tape tree; loc = None} in
     let fm = Fm.get () in
     let open Sem in
     {fm; body; bm}
+
+  and extract_content (node : _ Range.located) =
+    match node.value with
+    | Sem.VContent content -> content
+    | Sem.VObject ptr ->
+      extract_content {node with value = call_method ~loc:node.loc "content" ptr}
+    | _ -> Reporter.fatal ?loc:node.loc Type_error "Expected content"
+
+  and extract_string (x : _ Range.located) =
+    x |> extract_content |> Sem.string_of_nodes
+
 
   let eval_tree ~addr ~source_path (tree : Syn.tree) : Sem.tree * Sem.tree list =
     let fm = {(Sem.empty_frontmatter ~addr) with source_path} in
