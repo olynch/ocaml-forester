@@ -36,8 +36,12 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     | Anon -> "anon"
     | Hash_addr _ -> "content"
 
+
+  let addr_is_root addr =
+    Some addr = Option.map Addr.user_addr Params.root
+
   let route addr =
-    if Some addr = (Option.map Addr.user_addr Params.root) then
+    if addr_is_root addr then
       Some "index.xml"
     else
       match addr with
@@ -269,7 +273,10 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     let xmlns_prefix = Xmlns.{prefix = X.reserved_prefix; xmlns = X.forester_xmlns} in
     Scope.run ~env:article.frontmatter.addr @@ fun () ->
     Xmlns.run ~reserved:[xmlns_prefix] @@ fun () ->
-    X.tree [render_xmlns_prefix xmlns_prefix] [
+    X.tree [
+      render_xmlns_prefix xmlns_prefix;
+      X.root @@ addr_is_root article.frontmatter.addr
+    ] [
       render_frontmatter article.frontmatter;
       X.mainmatter [] @@ render_content article.mainmatter;
       X.backmatter [] @@ render_content article.backmatter
