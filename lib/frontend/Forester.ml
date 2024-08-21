@@ -117,40 +117,50 @@ let read_and_render_forest ~cfg tree_dirs : unit =
     Reporter.profile "parse trees" @@ fun () ->
     Process.read_trees_in_dirs ~dev:true tree_dirs
   in
+
   let articles =
     Reporter.profile "expand, evaluate, and analyse forest" @@ fun () ->
-    Forest_reader.read_trees ~env:cfg.env parsed_trees
+    Forest_reader.read_trees ~env:cfg.env parsed_trees |> Addr_map.map @@ fun article ->
+    F.plant_article article;
+    article
   in
-  Reporter.profile "render forest" @@ fun () ->
-  articles |> Addr_map.iter (fun _ -> F.plant_article);
-
-  let cwd = Eio.Stdenv.cwd cfg.env in
-  Eio_util.ensure_dir_path cwd ["output"];
-
-  let module Params = struct let root = cfg.root end in
-  let module Util = Forest_util.Make (F) in
-  let module Client = Legacy_xml_client.Make (Params) (F) () in
-  let module R = Render_json.Make (Client) (F) in
-
-  let all_articles = Util.get_all_articles () in
 
   begin
-    all_articles |> List.iter @@ fun article ->
-    let xml =
-      Format.asprintf "%a"
-        (Client.pp_xml ~stylesheet:cfg.stylesheet)
-        article
-    in
-    Client.route article.frontmatter.addr |> Option.iter @@ fun route ->
-    Eio.Path.save
-      ~create:(`Or_truncate 0o644)
-      Eio.Path.(cwd / "output" / route) xml
+    Reporter.profile "render forest" @@ fun () ->
+    let cwd = Eio.Stdenv.cwd cfg.env in
+    Eio_util.ensure_dir_path cwd ["output"];
+
+    let module Util = Forest_util.Make (F) in
+    let module Client = Legacy_xml_client.Make (struct let root = cfg.root end) (F) () in
+    let module R = Render_json.Make (Client) (F) in
+
+    let all_articles = Util.get_all_articles () in
+
+    begin
+      all_articles |> List.iter @@ fun article ->
+      let xml =
+        Format.asprintf "%a"
+          (Client.pp_xml ~stylesheet:cfg.stylesheet)
+          article
+      in
+      Client.route article.frontmatter.addr |> Option.iter @@ fun route ->
+      Eio.Path.save
+        ~create:(`Or_truncate 0o644)
+        Eio.Path.(cwd / "output" / route) xml
+    end;
+
+    Yojson.Basic.to_file "./output/forest.json" @@
+    R.render_trees ~dev:false all_articles;
   end;
 
-  Yojson.Basic.to_file "./output/forest.json" @@
-  R.render_trees ~dev:false all_articles;
 
   if not cfg.no_assets then
-    copy_assets ~env:cfg.env ~assets_dirs:cfg.assets_dirs;
+    begin
+      Reporter.profile "copying assets" @@ fun () ->
+      copy_assets ~env:cfg.env ~assets_dirs:cfg.assets_dirs;
+    end;
   if not cfg.no_theme then
-    copy_theme ~env:cfg.env ~theme_dir:cfg.theme_dir
+    begin
+      Reporter.profile "copying theme" @@ fun () ->
+      copy_theme ~env:cfg.env ~theme_dir:cfg.theme_dir
+    end
