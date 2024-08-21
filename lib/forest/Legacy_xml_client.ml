@@ -45,6 +45,11 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       | Machine_addr i -> Some (Format.sprintf "unstable-%i.xml" i)
       | _ -> None
 
+  let get_expanded_title frontmatter =
+    let scope = Scope.read () in
+    let title = F.get_expanded_title ~scope:(Some scope) frontmatter in
+    T.apply_modifier_to_content Sentence_case title
+
   let render_xml_qname qname =
     let qname = Xmlns.normalise_qname qname in
     match qname.prefix with
@@ -92,11 +97,10 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       X.anchor [] "%i" @@ Oo.id (object end);
       X.addr [X.type_ "%s" @@ addr_type frontmatter.addr] "%s" @@ addr_to_string frontmatter.addr;
       X.optional (X.route [] "%s") @@ route frontmatter.addr;
-      X.title [] begin
-        let scope = Scope.read () in
-        let title = F.get_expanded_title ~scope:(Some scope) frontmatter in
-        let cased = T.apply_modifier_to_content Sentence_case title in
-        render_content cased
+      begin
+        let title = get_expanded_title frontmatter in
+        X.title [X.text_ "%s" @@ PT.string_of_content title] @@
+        render_content title
       end;
       X.optional (fun s -> X.taxon [] "%s" @@ String_util.sentence_case s) frontmatter.taxon;
       X.null (List.map render_meta frontmatter.metas)
@@ -201,7 +205,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
          X.type_ "external"]
       | Some article ->
         [X.optional_ (X.href "%s") @@ route article.frontmatter.addr;
-         X.title_ "%s" @@ PT.string_of_content article.frontmatter.title;
+         X.title_ "%s" @@ PT.string_of_content @@ get_expanded_title article.frontmatter;
          X.addr_ "%s" @@ addr_to_string article.frontmatter.addr;
          X.type_ "local"]
     in
