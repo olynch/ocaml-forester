@@ -12,7 +12,7 @@ type binding_strategy = Lazy | Strict
 [@@deriving show, repr]
 
 type 'a binding = binding_strategy * 'a
-[@@deriving show]
+[@@deriving show, repr]
 
 let delim_to_strings =
   function

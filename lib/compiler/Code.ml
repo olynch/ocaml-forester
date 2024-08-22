@@ -4,14 +4,14 @@ type 'a _object = {
   self : Trie.path option;
   methods : (string * 'a) list
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type 'a patch = {
   obj : 'a;
   self : Trie.path option;
   methods: (string * 'a) list
 }
-[@@deriving show]
+[@@deriving show, repr]
 
 type node =
   | Text of string
@@ -40,10 +40,10 @@ type node =
   | Alloc of Trie.path
 
   | Namespace of Trie.path * t
-[@@deriving show]
+[@@deriving show, repr]
 
 and t = node Range.located list
-[@@deriving show]
+[@@deriving show, repr]
 
 type tree =
   {source_path : string option;
