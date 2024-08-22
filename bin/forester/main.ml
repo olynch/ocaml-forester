@@ -6,18 +6,18 @@ open Cmdliner
 
 module Tty = Asai.Tty.Make (Forester_core.Reporter.Message)
 
-let make_dir ~env dir =
+let path_of_dir ~env dir =
   Eio.Path.(Eio.Stdenv.fs env / dir)
 
-let make_dirs ~env =
-  List.map (make_dir ~env)
+let paths_of_dirs ~env =
+  List.map (path_of_dir ~env)
 
 let internal_config_from_config ~env ?(dev = false) (config : Forester_frontend.Config.Forest_config.t) =
   Forester.
     {env;
      root = config.root;
-     assets_dirs = make_dirs ~env config.assets;
-     theme_dir = make_dir ~env config.theme;
+     assets_dirs = paths_of_dirs ~env config.assets;
+     theme_dir = path_of_dir ~env config.theme;
      stylesheet = config.stylesheet;
      no_assets = false;
      no_theme = false;
@@ -36,7 +36,7 @@ let build ~env config_filename dev render_only no_assets no_theme  =
     config.trees, internal_config_from_config ~dev ~env config
   in
 
-  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ make_dirs ~env tree_dirs;
+  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ paths_of_dirs ~env tree_dirs;
   Forester.render_forest ~cfg:internal_cfg
 
 let new_tree ~env config_filename dest_dir prefix template random =
@@ -47,9 +47,9 @@ let new_tree ~env config_filename dest_dir prefix template random =
     config.trees, internal_config_from_config ~dev:true ~env config
   in
 
-  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ make_dirs ~env tree_dirs;
+  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ paths_of_dirs ~env tree_dirs;
   let mode = if random then `Random else `Sequential in
-  let dest = make_dir ~env dest_dir in
+  let dest = path_of_dir ~env dest_dir in
   let addr = Forester.create_tree ~cfg:internal_cfg ~dest ~prefix ~template ~mode in
   Format.printf "%s/%s.tree\n" dest_dir addr
 
@@ -60,7 +60,7 @@ let complete ~env config_filename title =
     let config = Forester_frontend.Config.parse_forest_config_file config_filename in
     config.trees, internal_config_from_config ~dev:true ~env config
   in
-  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ make_dirs ~env tree_dirs;
+  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ paths_of_dirs ~env tree_dirs;
   Forester.complete title |> Seq.iter @@ fun (addr, title) ->
   Format.printf "%a, %s\n" pp_addr addr title
 
@@ -72,7 +72,7 @@ let query_all ~env config_filename =
     let config = Forester_frontend.Config.parse_forest_config_file config_filename in
     config.trees, internal_config_from_config ~dev:true ~env config
   in
-  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ make_dirs ~env tree_dirs;
+  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ paths_of_dirs ~env tree_dirs;
   Forester.generate_json ~cfg:internal_cfg |> Format.printf "%s"
 
 let init ~env () =
