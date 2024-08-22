@@ -1,4 +1,3 @@
-open Forester_prelude
 open Forester_core
 
 module Xmlns_map =
@@ -59,13 +58,10 @@ struct
       begin
         match String_map.find_opt qname.prefix scope.prefix_to_xmlns with
         | None -> qname
-        | Some xmlns ->
-          Decls.yield {prefix = qname.prefix; xmlns};
-          {qname with xmlns = Some xmlns}
+        | Some xmlns -> {qname with xmlns = Some xmlns}
       end
 
     | Some xmlns ->
-      Decls.yield {prefix = qname.prefix; xmlns};
       begin
         match
           String_map.find_opt qname.prefix scope.prefix_to_xmlns,
@@ -73,6 +69,7 @@ struct
         with
         | None, (None | Some []) ->
           E.modify (Xmlns_map.assoc ~prefix:qname.prefix ~xmlns);
+          Decls.yield {prefix = qname.prefix; xmlns};
           qname
         | Some xmlns', Some prefixes ->
           if xmlns' = xmlns && List.mem qname.prefix prefixes then
@@ -92,7 +89,7 @@ struct
       kont ()
     in
     E.set old_scope;
-    List_util.nub added, r
+    added, r
 
   let run ~reserved kont =
     let init =
