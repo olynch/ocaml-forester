@@ -12,7 +12,7 @@ let make_dir ~env dir =
 let make_dirs ~env =
   List.map (make_dir ~env)
 
-let internal_config_from_config ~env (config : Forester_frontend.Config.Forest_config.t) =
+let internal_config_from_config ~env ?(dev = false) (config : Forester_frontend.Config.Forest_config.t) =
   Forester.
     {env;
      root = config.root;
@@ -20,7 +20,8 @@ let internal_config_from_config ~env (config : Forester_frontend.Config.Forest_c
      theme_dir = make_dir ~env config.theme;
      stylesheet = config.stylesheet;
      no_assets = false;
-     no_theme = false}
+     no_theme = false;
+     dev = dev}
 
 let version =
   Format.asprintf "%s" @@
@@ -29,50 +30,50 @@ let version =
   | Some v -> Build_info.V1.Version.to_string v
 
 let build ~env config_filename dev render_only no_assets no_theme  =
-  let config, internal_cfg =
+  let tree_dirs, internal_cfg =
     Reporter.profile "read configuration" @@ fun () ->
     let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-    config, internal_config_from_config ~env config
+    config.trees, internal_config_from_config ~dev ~env config
   in
 
-  Forester.read_and_render_forest ~cfg:internal_cfg @@
-  make_dirs ~env config.trees
+  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ make_dirs ~env tree_dirs;
+  Forester.render_forest ~cfg:internal_cfg
 
 let new_tree ~env config_filename dest_dir prefix template random =
-  failwith "Todo"
-(* let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-   let internal_config =
-   {(internal_config_from_config ~env config) with
-   no_assets = true;
-   no_theme = true}
-   in
-   let input_dirs = make_dirs ~env config.trees in
-   let forest =
-   Forester.plant_forest @@
-   Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true input_dirs
-   in
-   let addrs =
-   Addr_map.bindings forest.trees
-   |> List.to_seq
-   |> Seq.map fst
-   |> Seq.filter_map Addr.to_user_addr
-   in
-   let mode = if random then `Random else `Sequential in
-   let addr = Forester.create_tree ~cfg:internal_config ~dest:(make_dir ~env dest_dir) ~prefix ~template ~addrs ~mode in
-   Format.printf "%s/%s.tree\n" dest_dir addr *)
+  Reporter.silence @@ fun _ ->
+  let tree_dirs, internal_cfg =
+    Reporter.profile "read configuration" @@ fun () ->
+    let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+    config.trees, internal_config_from_config ~dev:true ~env config
+  in
+
+  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ make_dirs ~env tree_dirs;
+  let mode = if random then `Random else `Sequential in
+  let dest = make_dir ~env dest_dir in
+  let addr = Forester.create_tree ~cfg:internal_cfg ~dest ~prefix ~template ~mode in
+  Format.printf "%s/%s.tree\n" dest_dir addr
 
 let complete ~env config_filename title =
-  failwith "Todo"
-(* let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-   let forest =
-   Forester.plant_forest @@
-   Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true @@
-   make_dirs ~env config.trees
-   in
-   let completions = Forester.complete ~forest title in
-   completions |> Seq.iter @@ fun (addr, title) ->
-   Format.printf "%s, %s\n" addr title *)
+  Reporter.silence @@ fun _ ->
+  let tree_dirs, internal_cfg =
+    Reporter.profile "read configuration" @@ fun () ->
+    let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+    config.trees, internal_config_from_config ~dev:true ~env config
+  in
+  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ make_dirs ~env tree_dirs;
+  Forester.complete title |> Seq.iter @@ fun (addr, title) ->
+  Format.printf "%a, %s\n" pp_addr addr title
 
+
+let query_all ~env config_filename =
+  Reporter.silence @@ fun _ ->
+  let tree_dirs, internal_cfg =
+    Reporter.profile "read configuration" @@ fun () ->
+    let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+    config.trees, internal_config_from_config ~dev:true ~env config
+  in
+  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ make_dirs ~env tree_dirs;
+  Forester.generate_json ~cfg:internal_cfg |> Format.printf "%s"
 
 let init ~env () =
   let default_theme_url =
@@ -238,6 +239,16 @@ let complete_cmd ~env =
   let info = Cmd.info "complete" ~version ~doc in
   Cmd.v info Term.(const (complete ~env) $ arg_config $ arg_title)
 
+let query_all_cmd ~env =
+  let doc = "List all trees in JSON format" in
+  let info = Cmd.info "all" ~version ~doc in
+  Cmd.v info Term.(const (query_all ~env) $ arg_config)
+
+let query_cmd ~env =
+  let doc = "Query your forest" in
+  let info = Cmd.info "query" ~version ~doc in
+  Cmd.group info [query_all_cmd ~env]
+
 let init_cmd ~env =
   let doc = "Initialize a new forest" in
   let man = [
@@ -259,7 +270,7 @@ let cmd ~env =
   in
 
   let info = Cmd.info "forester" ~version ~doc ~man in
-  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; init_cmd ~env;]
+  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; init_cmd ~env; query_cmd ~env]
 
 
 let () =

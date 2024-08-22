@@ -7,9 +7,12 @@ type config =
    root : string option;
    stylesheet : string;
    no_assets: bool;
-   no_theme: bool}
+   no_theme: bool;
+   dev : bool}
 
-val read_and_render_forest : cfg:config -> Eio.Fs.dir_ty Eio.Path.t list -> unit
-val create_tree : cfg:config -> addrs:string Seq.t -> dest:Eio.Fs.dir_ty Eio.Path.t -> prefix:string -> template:string option -> mode:[`Sequential | `Random] -> string
+val plant_forest_from_dirs : cfg:config -> Eio.Fs.dir_ty Eio.Path.t list -> unit
+val render_forest : cfg:config -> unit
+val create_tree : cfg:config -> dest:Eio.Fs.dir_ty Eio.Path.t -> prefix:string -> template:string option -> mode:[`Sequential | `Random] -> string
 
+val generate_json : cfg:config -> string
 val complete : string -> (addr * string) Seq.t

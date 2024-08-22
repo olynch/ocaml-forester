@@ -1,6 +1,7 @@
 open Forester_prelude
 open Forester_core
 open Forester_forest
+open Forester_compiler
 
 module M = Addr_map
 
@@ -11,7 +12,8 @@ type config =
    root : string option;
    stylesheet : string;
    no_assets: bool;
-   no_theme: bool}
+   no_theme: bool;
+   dev : bool}
 
 module T = Xml_tree
 module F = Forest.Make (Forest_graphs.Make ())
@@ -32,7 +34,7 @@ let get_all_articles () =
 
 let rec random_not_in keys =
   let attempt = Random.int (36*36*36*36 - 1) in
-  if Seq.fold_left (fun x y -> x || y) false (Seq.map (fun k -> k = attempt) keys) then
+  if List.fold_left (fun x y -> x || y) false (List.map (fun k -> k = attempt) keys) then
     random_not_in keys
   else
     attempt
@@ -54,20 +56,26 @@ let split_addr addr =
       end
     | _ -> addr, None
 
-let next_addr ~prefix ~mode (forest : string Seq.t) =
+let next_addr ~prefix ~mode (addrs : string list) =
   let keys =
-    forest |> Seq.filter_map @@ fun addr ->
+    addrs |> List.filter_map @@ fun addr ->
     let prefix', key = split_addr addr in
     if prefix = prefix' then key else None
   in
   let next =
     match mode with
-    | `Sequential -> 1 + Seq.fold_left max 0 keys
+    | `Sequential -> 1 + List.fold_left max 0 keys
     | `Random -> random_not_in keys
   in
   prefix ^ "-" ^ BaseN.Base36.string_of_int next
 
-let create_tree ~cfg ~addrs ~dest ~prefix ~template ~mode =
+let create_tree ~cfg ~dest ~prefix ~template ~mode =
+  let addrs =
+    get_all_articles () |> List.filter_map @@ fun (article : _ T.article) ->
+    match article.frontmatter.addr with
+    | Addr.User_addr x -> Some x
+    | _ -> None
+  in
   let next = next_addr addrs ~prefix ~mode in
   let fname = next ^ ".tree" in
   let now = Date.now () in
@@ -113,19 +121,36 @@ let copy_assets ~env ~assets_dirs =
     let source = Eio.Path.native_exn path in
     Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir:"output"
 
+let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
+  Forest_scanner.scan_directories dirs |> List.of_seq |> List.filter_map @@ fun fp ->
+  Option.bind (Eio.Path.split fp) @@ fun (_, basename) ->
+  let addr = Filename.chop_extension basename in
+  let native = Eio.Path.native_exn fp in
+  let source_path = if dev then Some (Unix.realpath native) else None in
+  match Parse.parse_file native with
+  | Result.Ok code -> Some Code.{source_path; addr = Some addr; code}
+  | Result.Error _ -> None
+  | exception exn ->
+    if ignore_malformed then None else raise exn
 
-let read_and_render_forest ~cfg tree_dirs : unit =
+let plant_forest_from_dirs ~cfg tree_dirs : unit =
   let parsed_trees =
     Reporter.profile "parse trees" @@ fun () ->
-    Process.read_trees_in_dirs ~dev:true tree_dirs
+    parse_trees_in_dirs ~dev:cfg.dev tree_dirs
   in
+  Reporter.profile "expand, evaluate, and analyse forest" @@ fun () ->
+  Forest_reader.read_trees ~env:cfg.env parsed_trees
+  |> Addr_map.iter (fun _ -> F.plant_article)
 
-  begin
-    Reporter.profile "expand, evaluate, and analyse forest" @@ fun () ->
-    Forest_reader.read_trees ~env:cfg.env parsed_trees
-    |> Addr_map.iter (fun _ -> F.plant_article)
-  end;
 
+let generate_json ~cfg : string =
+  let all_articles = FU.get_all_articles () in
+  let module P = struct let root = cfg.root end in
+  let module Client = Legacy_xml_client.Make (P) (F) () in
+  let module R = Render_json.Make (Client) (F) in
+  Yojson.Basic.to_string @@ R.render_trees ~dev:cfg.dev all_articles
+
+let render_forest ~cfg : unit =
   begin
     Reporter.profile "render forest" @@ fun () ->
     let cwd = Eio.Stdenv.cwd cfg.env in
@@ -151,7 +176,7 @@ let read_and_render_forest ~cfg tree_dirs : unit =
     end;
 
     Yojson.Basic.to_file "./output/forest.json" @@
-    R.render_trees ~dev:false all_articles;
+    R.render_trees ~dev:cfg.dev all_articles;
   end;
 
 

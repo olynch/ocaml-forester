@@ -64,3 +64,11 @@ let easy_run k =
     exit 1
   in
   run ~emit:Tty.display ~fatal k
+
+let silence k =
+  let fatal diagnostics =
+    Tty.display diagnostics;
+    exit 1
+  in
+  let emit diagnostics = () in
+  run ~emit ~fatal k
