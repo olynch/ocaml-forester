@@ -117,6 +117,14 @@ type resource_source = {
 }
 [@@deriving show, repr]
 
+
+type 'content resource = {
+  hash : string;
+  content : 'content;
+  sources : resource_source list
+}
+[@@deriving show, repr]
+
 type content_node =
   | Text of string
   | CDATA of string
@@ -129,18 +137,12 @@ type content_node =
   | TeX_cs of TeX_cs.t
   | Link of content link
   | Img of img
-  | Resource of resource
-[@@deriving show]
+  | Resource of content resource
+[@@deriving show, repr]
 
 and content = content_node list
-[@@deriving show]
+[@@deriving show, repr]
 
-and resource = {
-  hash : string;
-  content : content;
-  sources : resource_source list
-}
-[@@deriving show]
 
 let is_whitespace node =
   match node with

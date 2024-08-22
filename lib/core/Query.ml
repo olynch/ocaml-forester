@@ -49,6 +49,32 @@ type 'var expr =
   | Isect_fam of 'var expr * 'var expr binder
 [@@deriving show]
 
+let expr_t var_t =
+  let open Repr in
+  mu @@ fun expr_t ->
+  variant "expr" (fun rel isect union complement union_fam isect_fam ->
+      function
+      | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
+      | Isect x -> isect x
+      | Union x -> union x
+      | Complement x -> complement x
+      | Union_fam (x, y) -> union_fam (x, y)
+      | Isect_fam (x, y) -> isect_fam (x, y))
+  |~ case1 "Rel"
+    (quad mode_t polarity_t Rel.t (addr_expr_t var_t))
+    (fun (x1, x2, x3, x4) -> Rel (x1, x2, x3, x4))
+  |~ case1 "Isect" (list expr_t) (fun x -> Isect x)
+  |~ case1 "Union" (list expr_t) (fun x -> Union x)
+  |~ case1 "Complement" expr_t (fun x -> Complement x)
+  |~ case1 "Union_fam"
+    (pair expr_t (binder_t expr_t))
+    (fun (x, y) -> Union_fam (x, y))
+  |~ case1 "Isect_fam"
+    (pair expr_t (binder_t expr_t))
+    (fun (x, y) -> Isect_fam (x, y))
+  |> sealv
+
+
 (** A heuristic for computing an intersection of queries. *)
 let rec query_cost q =
   match q with

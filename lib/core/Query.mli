@@ -56,6 +56,8 @@ type 'var expr =
   | Isect_fam of 'var expr * 'var expr binder
 [@@deriving show]
 
+val expr_t : 'var Repr.t -> 'var expr Repr.t
+
 val rel : mode -> polarity -> rel -> 'var addr_expr -> 'var expr
 val isect : 'var expr list -> 'var expr
 val union : 'var expr list -> 'var expr

@@ -12,5 +12,3 @@ module TeX_cs = TeX_cs
 module Xml_tree = Xml_tree
 
 module Trie = Trie
-
-module Reps = Reps

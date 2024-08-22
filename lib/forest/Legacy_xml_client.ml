@@ -189,7 +189,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     | Resource resource ->
       [render_resource resource]
 
-  and render_resource (resource : T.resource) =
+  and render_resource (resource : T.content T.resource) =
     X.resource [X.hash "%s" resource.hash] [
       X.resource_content [] @@ render_content resource.content;
       render_resource_sources resource.sources
