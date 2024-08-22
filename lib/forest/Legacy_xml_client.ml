@@ -20,7 +20,16 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
 
   module PT = Plain_text_client.Make (F)
   module Util = Forest_util.Make (F)
-  module Xmlns = Xmlns_effect.Make ()
+  module Xmlns = struct
+    include (Xmlns_effect.Make ())
+
+    let run f =
+      let xmlns_prefix =
+        {prefix = X.reserved_prefix;
+         xmlns = X.forester_xmlns}
+      in
+      run ~reserved:[xmlns_prefix] f
+  end
 
   module Scope = Algaeff.Reader.Make (struct type t = addr end)
 
@@ -87,6 +96,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     ]
 
   let rec render_section (section : T.content T.section) : P.node =
+    Xmlns.run @@ fun () ->
     X.tree (render_section_flags section.flags) [
       render_frontmatter section.frontmatter;
       Scope.run ~env:section.frontmatter.addr @@ fun () ->
@@ -272,7 +282,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
   let render_article (article : T.content T.article) : P.node =
     let xmlns_prefix = Xmlns.{prefix = X.reserved_prefix; xmlns = X.forester_xmlns} in
     Scope.run ~env:article.frontmatter.addr @@ fun () ->
-    Xmlns.run ~reserved:[xmlns_prefix] @@ fun () ->
+    Xmlns.run @@ fun () ->
     X.tree [
       render_xmlns_prefix xmlns_prefix;
       X.root @@ addr_is_root article.frontmatter.addr
