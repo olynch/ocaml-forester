@@ -1,5 +1,11 @@
 open Forester_core
 
+type 'a _object = {
+  self : Trie.path option;
+  methods : (string * 'a) list
+}
+[@@deriving show]
+
 type node =
   | Text of string
   | Verbatim of string
@@ -17,7 +23,7 @@ type node =
 
   | Fun of Trie.path binding list * t
 
-  | Object of _object
+  | Object of t _object
   | Patch of patch
   | Call of t * string
 
@@ -27,9 +33,6 @@ type node =
   | Alloc of Trie.path
 
   | Namespace of Trie.path * t
-[@@deriving show]
-
-and _object = {self : Trie.path option; methods : (string * t) list}
 [@@deriving show]
 
 and patch = {obj : t; self : Trie.path option; methods: (string * t) list}
