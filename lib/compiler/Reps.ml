@@ -11,9 +11,9 @@ let _object (t : Code.t ty) : Code.t Code._object ty =
   |+ field "methods" (list (pair string t)) (fun (s : _ _object) -> s.methods)
   |> sealr
 
-let patch (t : Code.t ty) : Code.patch ty =
+let patch (t : Code.t ty) : Code.t Code.patch ty =
   let open Code in
-  record "patch" (fun obj self methods : patch -> { obj; self; methods })
+  record "patch" (fun obj self methods : _ patch -> { obj; self; methods })
   |+ field "obj" t (fun s -> s.obj)
   |+ field "self" (option (list string)) (fun s -> s.self)
   |+ field "methods" (list (pair string t)) (fun s -> s.methods)

@@ -6,6 +6,13 @@ type 'a _object = {
 }
 [@@deriving show]
 
+type 'a patch = {
+  obj : 'a;
+  self : Trie.path option;
+  methods: (string * 'a) list
+}
+[@@deriving show]
+
 type node =
   | Text of string
   | Verbatim of string
@@ -24,7 +31,7 @@ type node =
   | Fun of Trie.path binding list * t
 
   | Object of t _object
-  | Patch of patch
+  | Patch of t patch
   | Call of t * string
 
   | Import of visibility * string
@@ -33,9 +40,6 @@ type node =
   | Alloc of Trie.path
 
   | Namespace of Trie.path * t
-[@@deriving show]
-
-and patch = {obj : t; self : Trie.path option; methods: (string * t) list}
 [@@deriving show]
 
 and t = node Range.located list
