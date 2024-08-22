@@ -107,11 +107,21 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
         attrs @ xmlns_attrs
       in
       [P.std_tag name attrs content]
-
     | Prim (p, content) ->
       [render_prim_node p @@ render_content content]
     | Transclude transclusion ->
       render_transclusion transclusion
+    | Contextual_number addr ->
+      let custom_number =
+        Option.bind (F.get_article addr) @@ fun article ->
+        article.frontmatter.number
+      in
+      let num =
+        match custom_number with
+        | None -> Format.asprintf "[%a]" pp_addr addr
+        | Some num -> num
+      in
+      [P.txt "%s" num]
     | Link link ->
       render_link link
     | Results_of_query q ->

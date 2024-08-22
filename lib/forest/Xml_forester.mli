@@ -70,6 +70,8 @@ val src : _ string_attr
 
 val prim : Prim.t -> std_tag
 
+val contextual_number : void_tag
+
 val resource : std_tag
 val resource_content : std_tag
 val resource_source : _ text_tag

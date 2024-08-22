@@ -219,7 +219,7 @@ and eval_node node : V.t =
     let content = [
       T.Transclude {addr; target = T.Taxon; modifier = Sentence_case};
       T.Text " ";
-      T.Transclude {addr; target = T.Number; modifier = Identity}
+      T.Contextual_number addr
     ] in
     emit_content_node ~loc @@ Link {href; content}
 

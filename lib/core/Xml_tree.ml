@@ -79,8 +79,6 @@ type 'content content_target =
   | Mainmatter
   | Title
   | Taxon
-  | Number
-  (** TODO: when we support automatic subtree numbering *)
 [@@deriving show, repr]
 
 type modifier = Sentence_case | Identity
@@ -130,6 +128,7 @@ type content_node =
   | CDATA of string
   | Xml_elt of content xml_elt
   | Transclude of content transclusion
+  | Contextual_number of Addr.t
   | Results_of_query of Query.dbix Query.expr
   | Section of content section
   | Prim of Prim.t * content
@@ -262,7 +261,7 @@ struct
     | CDATA str -> Format.fprintf fmt "%s" str
     | KaTeX (_, xs) -> pp_content fmt xs
     | TeX_cs cs -> pp_tex_cs fmt cs
-    | Xml_elt _ | Transclude _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Resource _ ->
+    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Resource _ ->
       Reporter.fatalf Type_error "Cannot render this kind of content as TeX-like string"
 
   let string_of_content =

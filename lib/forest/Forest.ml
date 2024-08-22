@@ -21,7 +21,7 @@ struct
 
   let rec analyse_content_node (scope : addr) (node : T.content_node) : unit =
     match node with
-    | Text _ | CDATA _ | Results_of_query _ | TeX_cs _ | Img _ -> ()
+    | Text _ | CDATA _ | Results_of_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
     | Transclude transclusion ->
       analyse_transclusion scope transclusion
     | Xml_elt elt ->
@@ -45,7 +45,7 @@ struct
     match transclusion.target with
     | Full _ | Mainmatter ->
       Graphs.add_edge Q.Rel.transclusion ~source:scope ~target:transclusion.addr
-    | Title | Taxon | Number -> ()
+    | Title | Taxon -> ()
 
   and analyse_content (scope : addr) (content : T.content) : unit =
     content |> List.iter @@ analyse_content_node scope
@@ -143,14 +143,6 @@ struct
         let article = get_article_exn transclusion.addr in
         let taxon = Option.value ~default:section_symbol article.frontmatter.taxon in
         [T.Text taxon]
-      | Number ->
-        let article = get_article_exn transclusion.addr in
-        let number =
-          match article.frontmatter.number with
-          | Some number -> number
-          | None -> Format.asprintf "[%a]" Addr.pp article.frontmatter.addr
-        in
-        [T.Text number]
     in
     T.apply_modifier_to_content transclusion.modifier content
 end

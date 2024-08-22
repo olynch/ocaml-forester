@@ -19,6 +19,7 @@ module Make (F : Forest.S) : S = struct
     | TeX_cs cs -> Format.fprintf fmt "\\%a" TeX_cs.pp cs
     | Xml_elt elt -> pp_content fmt elt.content
     | Transclude trn -> pp_transclusion fmt trn
+    | Contextual_number addr -> Format.fprintf fmt "[%a]" pp_addr addr
     | Section section -> pp_section fmt section
     | Prim (_, content) -> pp_content fmt content
     | Link link -> pp_link fmt link

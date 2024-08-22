@@ -156,6 +156,16 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       [render_prim_node p @@ render_content content]
     | Transclude transclusion ->
       render_transclusion transclusion
+    | Contextual_number addr ->
+      let custom_number =
+        Option.bind (F.get_article addr) @@ fun article ->
+        article.frontmatter.number
+      in
+      begin
+        match custom_number with
+        | None -> [X.contextual_number [X.addr_ "%s" @@ addr_to_string addr]]
+        | Some num -> [P.txt "%s" num]
+      end
     | Link link ->
       render_link link
     | Results_of_query q ->

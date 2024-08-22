@@ -106,4 +106,6 @@ let resource_content = f_std_tag "resource-content"
 let resource_source attrs = f_text_tag ~raw:true "resource-source" attrs
 let resource_part fmt = string_attr "part" fmt
 
+let contextual_number = f_void_tag "contextual-number"
+
 let hash fmt = string_attr "hash" fmt
