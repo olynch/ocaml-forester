@@ -24,7 +24,13 @@ struct
   let mainmatter_cache : (addr, X.content) Hashtbl.t =
     Hashtbl.create 1000
 
-  module Xmlns_effect = Xmlns_effect.Make ()
+  module Xmlns_effect = struct
+    include (Xmlns_effect.Make ())
+
+    let run f =
+      run ~reserved:[{prefix = F.reserved_prefix; xmlns = F.forester_xmlns}] f
+  end
+
   let is_root addr =
     Some addr = Option.map (fun x -> User_addr x) I.root
 
@@ -258,6 +264,7 @@ struct
 
   and compile_tree_inner ?(include_backmatter = false) ~opts (tree : Sem.tree) =
     Current_addr.run ~env:tree.fm.addr @@ fun  () ->
+    Xmlns_effect.run @@ fun () ->
     let ancestors = Ancestors.read () in
     let options =
       X.{toc = opts.toc;
@@ -365,6 +372,5 @@ struct
 
   let compile_tree tree =
     Ancestors.run ~env:[] @@ fun () ->
-    Xmlns_effect.run ~reserved:[{prefix = F.reserved_prefix; xmlns = F.forester_xmlns}] @@ fun () ->
     compile_tree_inner ~include_backmatter:true ~opts:Sem.default_transclusion_opts tree
 end
