@@ -13,11 +13,14 @@ val null : node list -> node
 val null_ : attr
 
 val tree : std_tag
+
 val numbered : bool to_attr
 val toc : bool to_attr
 val expanded : bool to_attr
 val show_heading : bool to_attr
 val show_metadata : bool to_attr
+val hidden_when_empty : bool to_attr
+
 val root : bool to_attr
 
 val info : std_tag

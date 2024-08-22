@@ -7,9 +7,7 @@ type 'a env = 'a constraint 'a = <
     ..
   > as 'a
 
-val build_latex
+val latex_to_svg
   : env:_ env
-  -> ignore_tex_cache:bool
-  -> name:string
-  -> source:string
-  -> unit
+  -> string
+  -> string

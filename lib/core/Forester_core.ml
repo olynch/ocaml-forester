@@ -5,7 +5,6 @@ include Base
 module Env = Env
 
 module Syn = Syn
-module Sem = Sem
 module Code = Code
 
 module Resolver = Resolver
@@ -21,10 +20,8 @@ module Prim = Prim
 module TeX_cs = TeX_cs
 module Symbol = Symbol
 
-module Xml_tree = Xml_tree
-
-module Render_TeX_like = Render_TeX_like
-
 module Addr_graph = Addr_graph
 module Forester_graphs = Forester_graphs
 module Query_engine = Query_engine
+
+module Xml_tree = Xml_tree

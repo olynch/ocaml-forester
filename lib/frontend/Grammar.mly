@@ -63,7 +63,7 @@ let head_node :=
 | IMPORT; ~ = txt_arg; <Code.import_private>
 | EXPORT; ~ = txt_arg; <Code.import_public>
 | NAMESPACE; ~ = ident; ~ = braces(code_expr); <Code.Namespace>
-| SUBTREE; addr = option(squares(wstext)); body = braces(ws_list(locate(head_node))); <Code.Subtree>
+| SUBTREE; ~ = option(squares(wstext)); ~ = braces(ws_list(locate(head_node))); <Code.Subtree>
 | FUN; ~ = binder; ~ = arg; <Code.Fun>
 | LET; (~,~,~) = fun_spec; <Code.Let>
 | (~,~) = ident_with_method_calls; <Code.Ident>

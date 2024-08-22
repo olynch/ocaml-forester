@@ -1,4 +1,5 @@
 open Eio.Std
+open Forester_prelude
 open Forester_core
 open Forester_frontend
 open Cmdliner
@@ -12,13 +13,12 @@ let make_dirs ~env =
   List.map (make_dir ~env)
 
 let internal_config_from_config ~env (config : Forester_frontend.Config.Forest_config.t) =
-  Forest.
+  Forester.
     {env;
      root = config.root;
      assets_dirs = make_dirs ~env config.assets;
      theme_dir = make_dir ~env config.theme;
      stylesheet = config.stylesheet;
-     ignore_tex_cache = false;
      no_assets = false;
      no_theme = false}
 
@@ -28,109 +28,50 @@ let version =
   | None -> "n/a"
   | Some v -> Build_info.V1.Version.to_string v
 
-let build ~env config_filename dev render_only ignore_tex_cache no_assets no_theme  =
+let build ~env config_filename dev render_only no_assets no_theme  =
   let config, internal_cfg =
     Reporter.profile "read configuration" @@ fun () ->
     let config = Forester_frontend.Config.parse_forest_config_file config_filename in
     config, internal_config_from_config ~env config
   in
-  let parsed_trees =
-    Reporter.profile "parse trees" @@ fun () ->
-    Process.read_trees_in_dirs ~dev @@ make_dirs ~env config.trees
-  in
-  let forest =
-    Reporter.profile "expand, evaluate, and analyse forest" @@ fun () ->
-    Forest.plant_forest parsed_trees
-  in
-  Reporter.profile "render forest" @@ fun () ->
-  let render_only =
-    render_only |>
-    Option.map @@
-    List.map @@ fun addr ->
-    User_addr addr
-  in
-  Forest.render_trees ~cfg:internal_cfg ~forest ~render_only
+
+  Forester.read_and_render_forest ~cfg:internal_cfg @@
+  make_dirs ~env config.trees
 
 let new_tree ~env config_filename dest_dir prefix template random =
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let internal_config =
-    {(internal_config_from_config ~env config) with
-     no_assets = true;
-     no_theme = true}
-  in
-  let input_dirs = make_dirs ~env config.trees in
-  let forest =
-    Forest.plant_forest @@
-    Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true input_dirs
-  in
-  let addrs =
-    Addr_map.bindings forest.trees
-    |> List.to_seq
-    |> Seq.map fst
-    |> Seq.filter_map Addr.to_user_addr
-  in
-  let mode = if random then `Random else `Sequential in
-  let addr = Forest.create_tree ~cfg:internal_config ~dest:(make_dir ~env dest_dir) ~prefix ~template ~addrs ~mode in
-  Format.printf "%s/%s.tree\n" dest_dir addr
+  failwith "Todo"
+(* let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+   let internal_config =
+   {(internal_config_from_config ~env config) with
+   no_assets = true;
+   no_theme = true}
+   in
+   let input_dirs = make_dirs ~env config.trees in
+   let forest =
+   Forester.plant_forest @@
+   Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true input_dirs
+   in
+   let addrs =
+   Addr_map.bindings forest.trees
+   |> List.to_seq
+   |> Seq.map fst
+   |> Seq.filter_map Addr.to_user_addr
+   in
+   let mode = if random then `Random else `Sequential in
+   let addr = Forester.create_tree ~cfg:internal_config ~dest:(make_dir ~env dest_dir) ~prefix ~template ~addrs ~mode in
+   Format.printf "%s/%s.tree\n" dest_dir addr *)
 
 let complete ~env config_filename title =
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let forest =
-    Forest.plant_forest @@
-    Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true @@
-    make_dirs ~env config.trees
-  in
-  let completions = Forest.complete ~forest title in
-  completions |> Seq.iter @@ fun (addr, title) ->
-  Format.printf "%s, %s\n" addr title
-
-let query_taxon ~env filter_taxa config_filename =
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let forest =
-    Forest.plant_forest @@
-    Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true @@
-    make_dirs ~env config.trees
-  in
-  let taxa = Forest.taxa ~forest in
-  let filtered_taxa =
-    taxa |> Seq.filter @@ fun (_, taxon) ->
-    List.mem taxon filter_taxa
-  in
-  filtered_taxa
-  |> Seq.iter @@ fun (addr, taxon) ->
-  Format.printf "%s, %s\n" addr taxon
-
-let query_tag ~env filter_tags config_filename =
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let forest =
-    Forest.plant_forest @@
-    Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true @@
-    make_dirs ~env config.trees
-  in
-  let tags = Forest.tags ~forest in
-  let filtered =
-    tags |> Seq.filter @@ fun (_, ts) ->
-    List.for_all (fun t -> List.mem t ts) ts
-  in
-  filtered
-  |> Seq.iter @@ fun (addr, tags) ->
-  let rec tag_string = function
-    | [] -> ""
-    | hd :: tl -> ", " ^ hd ^ tag_string tl
-  in
-  Format.printf "%s%s\n" addr (tag_string tags)
-
-let query_all ~env config_filename =
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let (forest : Forest.forest) =
-    Forest.plant_forest @@
-    Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true @@
-    make_dirs ~env config.trees
-  in
-  forest.trees
-  |> Forester_render.Render_json.render_trees ~root:config.root ~dev:true
-  |> Yojson.Basic.to_string
-  |> Format.printf "%s"
+  failwith "Todo"
+(* let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+   let forest =
+   Forester.plant_forest @@
+   Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true @@
+   make_dirs ~env config.trees
+   in
+   let completions = Forester.complete ~forest title in
+   completions |> Seq.iter @@ fun (addr, title) ->
+   Format.printf "%s, %s\n" addr title *)
 
 
 let init ~env () =
@@ -212,7 +153,7 @@ theme = "theme"                      # The directory in which your theme is stor
       Reporter.emitf Initialization_warning "`index.tree` already exists"
   end;
 
-  build ~env "forest.toml" true None false false false ;
+  build ~env "forest.toml" true None false false ;
   Format.printf "%s" "Initialized forest, try editing `trees/index.tree` and running `forester build`. Afterwards, you can open `output/index.xml` in your browser to view your forest.\n"
 
 let arg_config =
@@ -223,11 +164,6 @@ let build_cmd ~env =
   let arg_dev =
     let doc = "Run forester in development mode; this will attach source file locations to the generated json." in
     Arg.value @@ Arg.flag @@ Arg.info ["dev"] ~doc
-  in
-
-  let arg_ignore_tex_cache =
-    let doc = "Ignore the SVG cache when building LaTeX assets." in
-    Arg.value @@ Arg.flag @@ Arg.info ["ignore-tex-cache"] ~doc
   in
 
   let arg_no_assets =
@@ -258,7 +194,6 @@ let build_cmd ~env =
       $ arg_config
       $ arg_dev
       $ arg_render_only
-      $ arg_ignore_tex_cache
       $ arg_no_assets
       $ arg_no_theme)
 
@@ -303,32 +238,6 @@ let complete_cmd ~env =
   let info = Cmd.info "complete" ~version ~doc in
   Cmd.v info Term.(const (complete ~env) $ arg_config $ arg_title)
 
-let query_taxon_cmd ~env =
-  let arg_taxa =
-    Arg.(value @@ pos_all string [] @@ info [] ~docv:"TAXON")
-  in
-  let doc = "List all trees of taxon TAXON" in
-  let info = Cmd.info "taxon" ~version ~doc in
-  Cmd.v info Term.(const (query_taxon ~env) $ arg_taxa $ arg_config)
-
-let query_tag_cmd ~env =
-  let arg_tags =
-    Arg.(value @@ pos_all string [] @@ info [] ~docv:"TAG")
-  in
-  let doc = "List all trees with tag TAG" in
-  let info = Cmd.info "tag" ~version ~doc in
-  Cmd.v info Term.(const (query_tag ~env) $ arg_tags $ arg_config)
-
-let query_all_cmd ~env =
-  let doc = "List all trees in JSON format" in
-  let info = Cmd.info "all" ~version ~doc in
-  Cmd.v info Term.(const (query_all ~env) $ arg_config)
-
-let query_cmd ~env =
-  let doc = "Query your forest" in
-  let info = Cmd.info "query" ~version ~doc in
-  Cmd.group info [query_taxon_cmd ~env; query_tag_cmd ~env; query_all_cmd ~env]
-
 let init_cmd ~env =
   let doc = "Initialize a new forest" in
   let man = [
@@ -350,7 +259,7 @@ let cmd ~env =
   in
 
   let info = Cmd.info "forester" ~version ~doc ~man in
-  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; query_cmd ~env; init_cmd ~env;]
+  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; init_cmd ~env;]
 
 
 let () =

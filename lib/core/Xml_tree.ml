@@ -1,170 +1,292 @@
 open Forester_prelude
 open Base
 
+type section_flags = {
+  hidden_when_empty : bool option;
+  included_in_toc : bool option;
+  header_shown : bool option;
+  metadata_shown : bool option;
+  numbered : bool option;
+  expanded : bool option
+}
+[@@deriving show]
+
+let default_section_flags = {
+  hidden_when_empty = None;
+  included_in_toc = None;
+  header_shown = None;
+  metadata_shown = Some false;
+  numbered = None;
+  expanded = None
+}
+
+type 'content frontmatter_overrides = {
+  title : 'content option;
+  taxon : string option option
+}
+[@@deriving show]
+
+let empty_frontmatter_overrides = {
+  title = None;
+  taxon = None
+}
+
 type xml_attr = {key : xml_qname; value : string}
-[@@deriving repr]
+[@@deriving show]
 
-type 'content attribution =
-  | Author of 'content
-  | Contributor of 'content
-[@@deriving repr]
-
-type date_ = {
-  addr : addr option;
-  year : int;
-  month : int option;
-  day : int option
-}
-[@@deriving repr]
-
-type date =
-  | Date of date_
-[@@deriving repr]
-
-type 'content meta_ = {
-  key : string;
-  body : 'content
-}
-[@@deriving repr]
-
-type 'content meta =
-  | Meta of 'content meta_
-[@@deriving repr]
-
-type 'content xml_tag = {
+type 'content xml_elt = {
   name : xml_qname;
   attrs : xml_attr list;
   content : 'content
 }
-[@@deriving repr]
+[@@deriving show]
 
-type ref = {
+type attribution =
+  | Author of string
+  | Contributor of string
+[@@deriving show]
+
+type 'content frontmatter = {
   addr : addr;
+  title : 'content;
+  dates : Date.t list;
+  attributions : attribution list;
   taxon : string option;
-  number : string option
+  number : string option;
+  designated_parent : addr option;
+  source_path : string option;
+  tags : string list;
+  metas : (string * 'content) list
 }
-[@@deriving repr]
+[@@deriving show]
 
-type 'content local_link = {
+type 'content section = {
+  frontmatter : 'content frontmatter;
+  mainmatter : 'content;
+  flags : section_flags
+}
+[@@deriving show]
+
+type 'content article = {
+  frontmatter: 'content frontmatter;
+  mainmatter: 'content;
+  backmatter: 'content;
+}
+[@@deriving show]
+
+type 'content content_target =
+  | Full of section_flags * 'content frontmatter_overrides
+  | Mainmatter
+  | Title
+  | Taxon
+  | Number
+  (** TODO: when we support automatic subtree numbering *)
+[@@deriving show]
+
+type modifier = Sentence_case | Identity
+[@@deriving show]
+
+type 'content transclusion = {
   addr : addr;
-  content : 'content;
-  title : string option
+  target : 'content content_target;
+  modifier : modifier
 }
-[@@deriving repr]
+[@@deriving show]
 
-type 'content external_link = {
+type 'content link = {
   href : string;
-  content : 'content;
-  title : string option;
+  content : 'content
 }
-[@@deriving repr]
-
-type tex = {
-  display : [`Inline | `Block];
-  body : string
-}
-[@@deriving repr]
+[@@deriving show]
 
 type inline_img = {
   format : string;
   base64 : string
 }
-[@@deriving repr]
+[@@deriving show]
 
 type img =
   | Inline of inline_img
   | Remote of string
-[@@deriving repr]
+[@@deriving show]
 
 type resource_source = {
   type_ : string;
   part : string;
   source : string
 }
-[@@deriving repr]
+[@@deriving show]
 
-type 'content resource = {
-  hash : string;
-  content : 'content;
-  sources : resource_source list
-}
-[@@deriving repr]
-
-
-type ('content, 'tree) content_node =
+type content_node =
   | Text of string
   | CDATA of string
-  | Xml_tag of 'content xml_tag
-  | Prim of Prim.t * 'content
-  | Subtree of 'tree
-  | Ref of ref
-  | Local_link of 'content local_link
-  | External_link of 'content external_link
-  | TeX of tex
+  | Xml_elt of content xml_elt
+  | Transclude of content transclusion
+  | Results_of_query of Query.dbix Query.expr
+  | Section of content section
+  | Prim of Prim.t * content
+  | KaTeX of math_mode * content
+  | TeX_cs of TeX_cs.t
+  | Link of content link
   | Img of img
-  | Resource of 'content resource
-  | Info of string
-[@@deriving repr]
+  | Resource of resource
+[@@deriving show]
 
-type 'content frontmatter = {
-  title : 'content option;
-  title_text : string option;
-  anchor : string option;
-  number : string option;
-  taxon : string option;
-  designated_parent : string option;
-  metas : 'content meta list;
-  addr : addr option;
-  source_path : string option;
-  dates : date list;
-  last_changed : date option;
-  attributions : 'content attribution list
+and content = content_node list
+[@@deriving show]
+
+and resource = {
+  hash : string;
+  content : content;
+  sources : resource_source list
 }
-[@@deriving repr]
+[@@deriving show]
 
-type tree_options = {
-  toc : bool;
-  numbered : bool;
-  show_heading : bool;
-  show_metadata : bool;
-  expanded : bool;
-  root : bool
+let is_whitespace node =
+  match node with
+  | Text txt -> String.trim txt = ""
+  | _ -> false
+
+let strip_whitespace =
+  List.filter @@ fun x ->
+  not @@ is_whitespace x
+
+let trim_whitespace xs =
+  let rec trim_front xs =
+    match xs with
+    | x :: xs when is_whitespace x ->
+      trim_front xs
+    | xs -> xs
+  and trim_back xs =
+    List.rev @@ trim_front @@ List.rev xs
+  in
+  trim_back @@ trim_front xs
+
+
+let empty_frontmatter = {
+  addr = Anon;
+  source_path = None;
+  designated_parent = None;
+  dates = [];
+  attributions = [];
+  taxon = None;
+  number = None;
+  metas = [];
+  tags = [];
+  title = []
 }
-[@@deriving repr]
 
-type 'content tree = {
-  options : tree_options;
-  frontmatter : 'content frontmatter;
-  mainmatter : 'content;
-  backmatter : 'content tree list
-}
+let default_backmatter ~addr : content =
+  let a = Query.Addr addr in
+  let make_section title query =
+    let query = Query.distill_expr query in
+    let section =
+      let frontmatter =
+        {empty_frontmatter with
+         title = [Text title]}
+      in
+      let mainmatter = [Results_of_query query] in
+      let flags = {default_section_flags with hidden_when_empty = Some true} in
+      {frontmatter; mainmatter; flags}
+    in
+    Section section
+  in
+  [make_section "references" @@ Query.references a;
+   make_section "context" @@ Query.context a;
+   make_section "backlinks" @@ Query.backlinks a;
+   make_section "related" @@ Query.related a;
+   make_section "contributions" @@ Query.contributions a]
 
-let tree_t content_t =
-  let open Repr in
-  mu @@ fun tree_t ->
-  record "tree"
-    (fun
-      options
-      frontmatter
-      mainmatter
-      backmatter
-      -> {
-          options;
-          frontmatter;
-          mainmatter;
-          backmatter;
-        })
-  |+ field "options" tree_options_t (fun t -> t.options)
-  |+ field "frontmatter" (frontmatter_t content_t)(fun t -> t.frontmatter)
-  |+ field "mainmatter" content_t(fun t -> t.mainmatter)
-  |+ field "backmatter" (list (tree_t))(fun t -> t.backmatter)
-  |> sealr
 
-(* Tie the knot *)
-type tree_ = Tree of content tree
-[@@deriving repr]
-and content = Content of (content, tree_) content_node list
-[@@deriving repr]
+let apply_overrides (overrides : _ frontmatter_overrides) frontmatter =
+  {frontmatter with
+   title = Option.value ~default:frontmatter.title overrides.title;
+   taxon = Option.value ~default:frontmatter.taxon overrides.taxon}
 
-let splice (Content xs) = xs
-let splice_tree (Tree tree) = tree
+let article_to_section ?(flags = default_section_flags) ?(overrides = empty_frontmatter_overrides) : 'a article -> 'a section =
+  fun {frontmatter; mainmatter; _} ->
+  {frontmatter = apply_overrides overrides frontmatter;
+   mainmatter;
+   flags}
+
+module Comparators (I : sig val string_of_content : content -> string end) =
+struct
+  let compare_content =
+    Compare.under I.string_of_content String.compare
+
+  let compare_frontmatter =
+    let latest_date (fm : content frontmatter) =
+      let sorted_dates = fm.dates |> List.sort @@ Compare.invert Date.compare in
+      List.nth_opt sorted_dates 0
+    in
+    let by_date =
+      Fun.flip @@
+      Compare.under latest_date @@
+      Compare.option Date.compare
+    in
+    let by_title =
+      compare_content |> Compare.under @@ fun fm ->
+      fm.title
+    in
+    Compare.cascade by_date by_title
+
+  let compare_article =
+    compare_frontmatter |> Compare.under @@ fun x ->
+    x.frontmatter
+end
+
+let compose_modifier mod0 mod1 =
+  match mod0, mod1 with
+  | Identity, mod1 -> mod1
+  | mod0, Identity -> mod0
+  | Sentence_case, Sentence_case -> Sentence_case
+
+let apply_modifier_to_string =
+  function
+  | Sentence_case -> String_util.sentence_case
+  | Identity -> Fun.id
+
+let rec apply_modifier_to_content modifier  =
+  function
+  | [] -> []
+  | Text txt1 :: Text txt2 :: content ->
+    apply_modifier_to_content modifier @@ Text (txt1 ^ txt2) :: content
+  | node :: content ->
+    apply_modifier_to_content_node modifier node :: content
+
+and apply_modifier_to_content_node modifier =
+  function
+  | Text str -> Text (apply_modifier_to_string modifier str)
+  | Transclude transclusion ->
+    Transclude {transclusion with modifier = compose_modifier modifier transclusion.modifier}
+  | Link link -> Link {link with content = apply_modifier_to_content modifier link.content}
+  | Prim (p, content) -> Prim (p, apply_modifier_to_content modifier content)
+  | node -> node
+
+module TeX_like : sig
+  val pp_content : Format.formatter -> content -> unit
+  val string_of_content : content -> string
+end =
+struct
+  let pp_tex_cs fmt =
+    function
+    | TeX_cs.Symbol x -> Format.fprintf fmt "\\%c" x
+    | TeX_cs.Word x -> Format.fprintf fmt "\\%s " x
+
+  let rec pp_content fmt =
+    List.iter @@ pp_content_node fmt
+
+  and pp_content_node fmt =
+    function
+    | Text str -> Format.fprintf fmt "%s" str
+    | CDATA str -> Format.fprintf fmt "%s" str
+    | KaTeX (_, xs) -> pp_content fmt xs
+    | TeX_cs cs -> pp_tex_cs fmt cs
+    | Xml_elt _ | Transclude _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Resource _ ->
+      Reporter.fatalf Type_error "Cannot render this kind of content as TeX-like string"
+
+  let string_of_content =
+    Format.asprintf "%a" pp_content
+
+end
+

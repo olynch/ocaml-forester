@@ -23,8 +23,9 @@ type node =
 
   | Query_polarity of Query.polarity
   | Query_mode of Query.mode
+  | Bool of bool
 
-  | Query_tree
+  | Results_of_query
   | Query_rel
   | Query_isect
   | Query_union

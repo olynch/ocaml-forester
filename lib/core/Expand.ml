@@ -308,7 +308,7 @@ let expand_tree (units : exports UnitMap.t) (tree : Code.tree) =
     ["parent"], Syn.Parent;
     ["number"], Syn.Number;
     ["tag"], Syn.Tag;
-    ["query"], Syn.Query_tree;
+    ["query"], Syn.Results_of_query;
     ["query"; "rel"], Syn.Query_rel;
     ["query"; "union"], Syn.Query_union;
     ["query"; "isect"], Syn.Query_isect;
@@ -330,6 +330,8 @@ let expand_tree (units : exports UnitMap.t) (tree : Code.tree) =
     ["rel"; "contributors"], Syn.Text Query.Rel.authors;
     ["rel"; "transclusion"], Syn.Text Query.Rel.transclusion;
     ["rel"; "links"], Syn.Text Query.Rel.links;
+    ["true"], Syn.Bool true;
+    ["false"], Syn.Bool false
   ];
 
   Builtins.Transclude.alloc_title ();

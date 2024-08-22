@@ -36,6 +36,7 @@ let tree = f_std_tag "tree"
 let numbered = bool_attr "numbered"
 let toc = bool_attr "toc"
 let expanded = bool_attr "expanded"
+let hidden_when_empty = bool_attr "hidden-when-empty"
 let show_heading = bool_attr "show-heading"
 let show_metadata = bool_attr "show-metadata"
 let root = bool_attr "root"
@@ -43,8 +44,6 @@ let root = bool_attr "root"
 let frontmatter = f_std_tag "frontmatter"
 let mainmatter = f_std_tag "mainmatter"
 let backmatter = f_std_tag "backmatter"
-
-let query_tree = f_std_tag "query-tree"
 
 let anchor attrs = f_text_tag "anchor" attrs
 let taxon attrs = f_text_tag "taxon" attrs

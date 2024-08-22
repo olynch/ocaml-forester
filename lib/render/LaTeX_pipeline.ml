@@ -53,14 +53,14 @@ let dvi_to_svg ~env dvi =
   let out_buf = Buffer.create 1000 in
   let err_buf = Buffer.create 1000 in
   let stdout = Eio.Flow.buffer_sink out_buf in
-  let stderr = Eio_util.null_sink () in
+  let stderr = Eio.Flow.buffer_sink err_buf in
   let stdin = Eio.Flow.string_source dvi in
 
   let cmd = ["dvisvgm"; "--exact"; "--clipjoin"; "--font-format=woff"; "--bbox=papersize"; "--zoom=1.5"; "--stdin"; "--stdout"] in
 
   begin
     try Eio.Process.run ~cwd ~stdin ~stdout ~stderr mgr cmd with _ ->
-      Reporter.fatalf External_error "Encountered fatal error running `dvisvgm`"
+      Reporter.fatalf External_error "Encountered fatal error running `dvisvgm`: %s / %s" (Buffer.contents out_buf) (Buffer.contents err_buf)
   end;
 
   Buffer.contents out_buf

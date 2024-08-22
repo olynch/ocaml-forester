@@ -6,6 +6,7 @@ struct
     | Parse_error
     | Type_error
     | Resolution_error
+    | Resolution_warning
     | Expansion_error
     | Duplicate_attribute
     | Frontmatter_in_body
@@ -27,6 +28,7 @@ struct
     | Parse_error -> Error
     | Type_error -> Error
     | Resolution_error -> Error
+    | Resolution_warning -> Warning
     | Expansion_error -> Error
     | Duplicate_attribute -> Error
     | Frontmatter_in_body -> Error

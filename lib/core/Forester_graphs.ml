@@ -51,7 +51,10 @@ struct
     Addr_graph.add_vertex gph addr
 
   let add_edge rel ~source ~target =
-    Hashtbl.remove rel_to_preorder rel;
-    let gph = get_graph rel in
-    Addr_graph.add_edge gph source target
+    match source, target with
+    | Anon, _ | _, Anon -> ()
+    | _ ->
+      Hashtbl.remove rel_to_preorder rel;
+      let gph = get_graph rel in
+      Addr_graph.add_edge gph source target
 end
