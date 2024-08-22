@@ -137,7 +137,7 @@ let init ~env () =
   let default_theme_url =
     "https://git.sr.ht/~jonsterling/forester-base-theme"
   in
-  let theme_version = "4.3-dev" in
+  let theme_version = "4.3.0" in
   let (/) = Eio.Path.(/) in
   let fs = Eio.Stdenv.fs env in
   let try_create_dir name =
