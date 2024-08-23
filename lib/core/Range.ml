@@ -30,10 +30,14 @@ let curry f x y = f (x, y)
 
 let t : t Repr.t =
   let open Repr in
-  record "range" (curry make)
-  |+ field "start" position_t (Fun.compose fst split)
-  |+ field "end" position_t (Fun.compose snd split)
-  |> sealr
+  variant "t" (fun range end_of_file ->
+    fun t -> match view t with
+      | `Range (x, y) -> range (x,y)
+      | `End_of_file x -> end_of_file x
+  )
+  |~ case1 "Range" (pair position_t position_t) (fun (x, y) -> make (x, y))
+  |~ case1 "End_of_file" position_t (fun x -> eof x)
+  |> sealv
 
 type 'a located = 'a Asai.Range.located = {loc : t option; value : 'a}
 [@@deriving repr]
