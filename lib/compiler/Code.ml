@@ -49,7 +49,7 @@ type tree =
   {source_path : string option;
    addr : string option;
    code : t}
-[@@deriving show]
+[@@deriving show, repr]
 
 let import_private x = Import (Private, x)
 let import_public x = Import (Public, x)
