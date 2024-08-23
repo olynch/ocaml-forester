@@ -18,7 +18,7 @@ Please mail patches by [email](https://git-send-email.io/) to
 [Join us on IRC](irc://irc.libera.chat/#forester)
 
 
-#### Using nix (Optional)
+### Using nix (Optional)
 
 Forester can also be used with `nix`. To run `forester`, use `nix run sourcehut:~jonsterling/ocaml-forester`. If you are working with a Nix flake-based project and want to include Forester as a build input, you can add it to your `flake.nix`:
 
@@ -44,4 +44,4 @@ Forester can also be used with `nix`. To run `forester`, use `nix run sourcehut:
 
 ### Example Use
 
-Please see my [Forest](https://github.com/jonsterling/forest) for an example of using forester, or clone your own [template forest](https://git.sr.ht/~jonsterling/forest-template).
+Please see my [Forest](https://github.com/jonsterling/forest) for an example of using forester, or create your own forest using `forester init`.
