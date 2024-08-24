@@ -2,7 +2,7 @@
  (name Forester_frontend)
  (public_name forester.frontend)
  (preprocess
-  (pps ppx_deriving.show))
+  (pps ppx_deriving.show ppx_repr))
  (libraries
   bwd
   forester.prelude

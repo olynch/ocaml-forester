@@ -8,7 +8,7 @@ struct
      theme : string;
      root : string option;
      stylesheet : string}
-  [@@deriving show]
+  [@@deriving show, repr]
 end
 
 let default_forest_config : Forest_config.t =
