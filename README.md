@@ -7,7 +7,7 @@ You need to have [OCaml 5](https://ocaml.org) and [opam](https://opam.ocaml.org)
 
 ### Installation
 
-You can install forester by running `opam install forester`.
+You can install forester by running `opam install forester`. See [README.nix.md](README.nix.md) for instructions for using Forester with `nix`.
 
 ### Contributing
 
@@ -17,30 +17,6 @@ Please mail patches by [email](https://git-send-email.io/) to
 
 [Join us on IRC](irc://irc.libera.chat/#forester)
 
-
-### Using nix (Optional)
-
-Forester can also be used with `nix`. To run `forester`, use `nix run sourcehut:~jonsterling/ocaml-forester`. If you are working with a Nix flake-based project and want to include Forester as a build input, you can add it to your `flake.nix`:
-
-```nix
-{
-  inputs = {
-    forester.url = "sourcehut:~jonsterling/ocaml-forester";
-    forester.inputs.nixpkgs.follows = "nixpkgs";
-  };
-
-  outputs = inputs@{ self, forester, nixpkgs }:
-    let
-      system = "x86_64-linux"; # make sure to change this to your use case!
-      pkgs = import nixpkgs { inherit system inputs; };
-    in
-    {
-      devShells.${system}.default = pkgs.mkShell {
-        buildInputs = [ forester.packages.${system}.default ];
-      };
-    };
-}
-```
 
 ### Example Use
 
