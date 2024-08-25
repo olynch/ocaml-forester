@@ -26,17 +26,16 @@ type position = Asai.Range.position = {
 }
 [@@deriving repr]
 
-let curry f x y = f (x, y)
-
 let t : t Repr.t =
   let open Repr in
-  variant "t" (fun range end_of_file ->
-    fun t -> match view t with
+  variant "t" begin
+    fun range end_of_file t ->
+      match view t with
       | `Range (x, y) -> range (x,y)
       | `End_of_file x -> end_of_file x
-  )
-  |~ case1 "Range" (pair position_t position_t) (fun (x, y) -> make (x, y))
-  |~ case1 "End_of_file" position_t (fun x -> eof x)
+  end
+  |~ case1 "Range" (pair position_t position_t) make
+  |~ case1 "End_of_file" position_t eof
   |> sealv
 
 type 'a located = 'a Asai.Range.located = {loc : t option; value : 'a}
