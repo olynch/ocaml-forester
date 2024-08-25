@@ -38,7 +38,7 @@ let latex_to_dvi ~(env : _ env) code  =
     with exn ->
       let formatted_output = Buffer.contents out_buf |> indent_string in
       Reporter.fatalf External_error
-        "Encountered fatal LuaLaTeX error: @.@.%s@.@. while running `%s` in directory `%s`."
+        "Encountered fatal LaTeX error: @.@.%s@.@. while running `%s` in directory `%s`."
         formatted_output
         (String.concat " " cmd)
         (Eio.Path.native_exn tmp)
