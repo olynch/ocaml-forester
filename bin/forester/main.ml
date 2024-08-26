@@ -4,24 +4,15 @@ open Forester_core
 open Forester_frontend
 open Cmdliner
 
+module EP = Eio.Path
 module Tty = Asai.Tty.Make (Forester_core.Reporter.Message)
 
 let path_of_dir ~env dir =
-  Eio.Path.(Eio.Stdenv.fs env / dir)
+  EP.(Eio.Stdenv.fs env / dir)
 
 let paths_of_dirs ~env =
   List.map (path_of_dir ~env)
 
-let internal_config_from_config ~env ?(dev = false) (config : Forester_frontend.Config.Forest_config.t) =
-  Forester.
-    {env;
-     root = config.root;
-     assets_dirs = paths_of_dirs ~env config.assets;
-     theme_dir = path_of_dir ~env config.theme;
-     stylesheet = config.stylesheet;
-     no_assets = false;
-     no_theme = false;
-     dev = dev}
 
 let version =
   Format.asprintf "%s" @@
@@ -30,60 +21,53 @@ let version =
   | Some v -> Build_info.V1.Version.to_string v
 
 let build ~env config_filename dev render_only no_assets no_theme  =
-  let tree_dirs, internal_cfg =
-    Reporter.profile "read configuration" @@ fun () ->
-    let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-    config.trees, internal_config_from_config ~dev ~env config
-  in
+  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+  Forester.plant_forest_from_dirs ~env ~dev:true @@ paths_of_dirs ~env config.trees;
+  Forester.render_forest ~env ~dev ~root:config.root ~stylesheet:config.stylesheet;
 
-  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ paths_of_dirs ~env tree_dirs;
-  Forester.render_forest ~cfg:internal_cfg
+  if not no_theme then begin
+    let theme_dir = path_of_dir ~env config.theme in
+    Forester.copy_contents_of_dir ~env theme_dir
+  end;
+
+  if not no_assets then begin
+    paths_of_dirs ~env config.assets |> List.iter @@ fun dir ->
+    Forester.copy_contents_of_dir ~env dir
+  end
+
 
 let new_tree ~env config_filename dest_dir prefix template random =
   Reporter.silence @@ fun _ ->
-  let tree_dirs, internal_cfg =
-    Reporter.profile "read configuration" @@ fun () ->
-    let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-    config.trees, internal_config_from_config ~dev:true ~env config
-  in
-
-  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ paths_of_dirs ~env tree_dirs;
+  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+  Forester.plant_forest_from_dirs ~env ~dev:true @@ paths_of_dirs ~env config.trees;
   let mode = if random then `Random else `Sequential in
   let dest = path_of_dir ~env dest_dir in
-  let addr = Forester.create_tree ~cfg:internal_cfg ~dest ~prefix ~template ~mode in
+  let addr = Forester.create_tree ~env ~dest ~prefix ~template ~mode in
   Format.printf "%s/%s.tree\n" dest_dir addr
 
 let complete ~env config_filename title =
   Reporter.silence @@ fun _ ->
-  let tree_dirs, internal_cfg =
-    Reporter.profile "read configuration" @@ fun () ->
-    let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-    config.trees, internal_config_from_config ~dev:true ~env config
-  in
-  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ paths_of_dirs ~env tree_dirs;
+  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+  Forester.plant_forest_from_dirs ~env ~dev:true @@ paths_of_dirs ~env config.trees;
   Forester.complete title |> Seq.iter @@ fun (addr, title) ->
   Format.printf "%a, %s\n" pp_addr addr title
 
 
 let query_all ~env config_filename =
   Reporter.silence @@ fun _ ->
-  let tree_dirs, internal_cfg =
-    Reporter.profile "read configuration" @@ fun () ->
-    let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-    config.trees, internal_config_from_config ~dev:true ~env config
-  in
-  Forester.plant_forest_from_dirs ~cfg:internal_cfg @@ paths_of_dirs ~env tree_dirs;
-  Forester.generate_json ~cfg:internal_cfg |> Format.printf "%s"
+  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+  Forester.plant_forest_from_dirs ~env ~dev:true @@ paths_of_dirs ~env config.trees;
+  Forester.json_manifest ~root:config.root ~dev:true |> Format.printf "%s"
 
 let init ~env () =
   let default_theme_url =
     "https://git.sr.ht/~jonsterling/forester-base-theme"
   in
   let theme_version = "4.3.0" in
-  let (/) = Eio.Path.(/) in
+  let (/) = EP.(/) in
   let fs = Eio.Stdenv.fs env in
   let try_create_dir name =
-    try Eio.Path.mkdir ~perm:0o700 (fs / name)
+    try EP.mkdir ~perm:0o700 (fs / name)
     with _ ->
       Reporter.emitf Initialization_warning "Directory `%s` already exists" name
   in
@@ -112,13 +96,13 @@ theme = "theme"                      # The directory in which your theme is stor
 |} in
   let gitignore = {|output/|} in
   begin
-    if Eio.Path.is_file (Eio.Stdenv.fs env / "forest.toml") then
+    if EP.is_file (Eio.Stdenv.fs env / "forest.toml") then
       Reporter.emitf Initialization_warning "forest.toml already exists"
     else
-      Eio.Path.(save ~create:(`Exclusive 0o600) (fs / "forest.toml") default_config_str)
+      EP.(save ~create:(`Exclusive 0o600) (fs / "forest.toml") default_config_str)
   end;
 
-  Eio.Path.(save ~create:(`Exclusive 0o600) (fs / ".gitignore") gitignore);
+  EP.(save ~create:(`Exclusive 0o600) (fs / ".gitignore") gitignore);
 
   let proc_mgr = Eio.Stdenv.process_mgr env in
   begin
@@ -148,7 +132,7 @@ theme = "theme"                      # The directory in which your theme is stor
 
   begin
     try
-      Eio.Path.(save ~create:(`Exclusive 0o600) (fs / "trees" / "index.tree") index_tree_str)
+      EP.(save ~create:(`Exclusive 0o600) (fs / "trees" / "index.tree") index_tree_str)
     with _ ->
       Reporter.with_backtrace Emp @@ fun () ->
       Reporter.emitf Initialization_warning "`index.tree` already exists"

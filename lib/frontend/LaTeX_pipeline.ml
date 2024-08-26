@@ -58,7 +58,9 @@ let dvi_to_svg ~env dvi =
 
   begin
     try Eio.Process.run ~cwd ~stdin ~stdout ~stderr mgr cmd with _ ->
-      Reporter.fatalf External_error "Encountered fatal error running `dvisvgm`: %s / %s" (Buffer.contents out_buf) (Buffer.contents err_buf)
+      Reporter.fatalf External_error
+        "Encountered fatal error running `dvisvgm`: %s / %s"
+        (Buffer.contents out_buf) (Buffer.contents err_buf)
   end;
 
   Buffer.contents out_buf

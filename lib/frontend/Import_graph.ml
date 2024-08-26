@@ -8,7 +8,7 @@ include Gph
 module Topo = Graph.Topological.Make (Gph)
 let topo_fold = Topo.fold
 
-let build_import_graph (trees : Code.tree list) =
+let build (trees : Code.tree list) =
   let import_graph = Gph.create () in
 
   let rec analyse_tree roots (tree : Code.tree) =

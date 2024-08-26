@@ -32,7 +32,6 @@ let read_trees ~(env : _ env) (trees : Code.tree list) : T.content T.article Add
   in
 
   let (_, trees, jobs) =
-    let import_graph = Import_graph.build_import_graph trees in
     let task addr (units, trees, jobs) =
       let tree = Addr_map.find_opt addr unexpanded_trees in
       match tree with
@@ -42,7 +41,7 @@ let read_trees ~(env : _ env) (trees : Code.tree list) : T.content T.article Add
         let result = Eval.eval_tree ~addr ~source_path:tree.source_path syn in
         units, List.fold_right add_tree (result.main :: result.side) trees,   result.jobs @ jobs
     in
-    Import_graph.topo_fold task import_graph
+    Import_graph.topo_fold task (Import_graph.build trees)
       (Expand.Env.empty, Addr_map.empty, [])
   in
 

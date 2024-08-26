@@ -5,22 +5,15 @@ open Forester_compiler
 
 module M = Addr_map
 
-type config =
-  {env : Eio_unix.Stdenv.base;
-   assets_dirs : Eio.Fs.dir_ty Eio.Path.t list;
-   theme_dir : Eio.Fs.dir_ty Eio.Path.t;
-   root : string option;
-   stylesheet : string;
-   no_assets: bool;
-   no_theme: bool;
-   dev : bool}
-
 module T = Xml_tree
 module F = Forest.Make (Forest_graphs.Make ())
 module FU = Forest_util.Make (F)
 
 module PT = Plain_text_client.Make (F)
 module C = T.Comparators (PT)
+
+type env = Eio_unix.Stdenv.base
+type dir = Eio.Fs.dir_ty Eio.Path.t
 
 let get_sorted_articles addrs =
   addrs
@@ -69,7 +62,7 @@ let next_addr ~prefix ~mode (addrs : string list) =
   in
   prefix ^ "-" ^ BaseN.Base36.string_of_int next
 
-let create_tree ~cfg ~dest ~prefix ~template ~mode =
+let create_tree ~env ~dest ~prefix ~template ~mode =
   let addrs =
     get_all_articles () |> List.filter_map @@ fun (article : _ T.article) ->
     match article.frontmatter.addr with
@@ -82,7 +75,7 @@ let create_tree ~cfg ~dest ~prefix ~template ~mode =
   let template_content =
     match template with
     | None -> ""
-    | Some name -> Eio.Path.load Eio.Path.(Eio.Stdenv.cwd cfg.env / "templates" / (name ^ ".tree"))
+    | Some name -> Eio.Path.load Eio.Path.(Eio.Stdenv.cwd env / "templates" / (name ^ ".tree"))
   in
   let body = Format.asprintf "\\date{%a}\n" Date.pp now in
   let create = `Exclusive 0o644 in
@@ -105,19 +98,11 @@ let complete prefix =
 let is_hidden_file fname =
   String.starts_with ~prefix:"." fname
 
-let copy_theme ~env ~theme_dir =
+let copy_contents_of_dir ~env dir =
   let cwd = Eio.Stdenv.cwd env in
-  Eio.Path.read_dir theme_dir |> List.iter @@ fun fname ->
+  Eio.Path.read_dir dir |> List.iter @@ fun fname ->
   if not @@ is_hidden_file fname then
-    Eio.Path.native @@ Eio.Path.(theme_dir / fname) |> Option.iter @@ fun source ->
-    Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir:"output"
-
-let copy_assets ~env ~assets_dirs =
-  let cwd = Eio.Stdenv.cwd env in
-  assets_dirs |> List.iter @@ fun assets_dir ->
-  Eio.Path.read_dir assets_dir |> List.iter @@ fun fname ->
-  if not @@ is_hidden_file fname then
-    let path = Eio.Path.(assets_dir / fname) in
+    let path = Eio.Path.(dir / fname) in
     let source = Eio.Path.native_exn path in
     Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir:"output"
 
@@ -133,30 +118,30 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
   | exception exn ->
     if ignore_malformed then None else raise exn
 
-let plant_forest_from_dirs ~cfg tree_dirs : unit =
+let plant_forest_from_dirs ~env ~dev tree_dirs : unit =
   let parsed_trees =
     Reporter.profile "parse trees" @@ fun () ->
-    parse_trees_in_dirs ~dev:cfg.dev tree_dirs
+    parse_trees_in_dirs ~dev tree_dirs
   in
   Reporter.profile "expand, evaluate, and analyse forest" @@ fun () ->
-  Forest_reader.read_trees ~env:cfg.env parsed_trees
+  Forest_reader.read_trees ~env parsed_trees
   |> Addr_map.iter (fun _ -> F.plant_article)
 
 
-let generate_json ~cfg : string =
+let json_manifest ~root ~dev : string =
   let all_articles = FU.get_all_articles () in
-  let module P = struct let root = cfg.root end in
+  let module P = struct let root = root end in
   let module Client = Legacy_xml_client.Make (P) (F) () in
   let module R = Render_json.Make (Client) (F) in
-  Yojson.Basic.to_string @@ R.render_trees ~dev:cfg.dev all_articles
+  Yojson.Basic.to_string @@ R.render_trees ~dev all_articles
 
-let render_forest ~cfg : unit =
+let render_forest ~env ~dev ~root ~stylesheet : unit =
   begin
     Reporter.profile "render forest" @@ fun () ->
-    let cwd = Eio.Stdenv.cwd cfg.env in
+    let cwd = Eio.Stdenv.cwd env in
     Eio_util.ensure_dir_path cwd ["output"];
 
-    let module P = struct let root = cfg.root end in
+    let module P = struct let root = root end in
     let module Client = Legacy_xml_client.Make (P) (F) () in
     let module R = Render_json.Make (Client) (F) in
 
@@ -166,7 +151,7 @@ let render_forest ~cfg : unit =
       all_articles |> List.iter @@ fun article ->
       let xml =
         Format.asprintf "%a"
-          (Client.pp_xml ~stylesheet:cfg.stylesheet)
+          (Client.pp_xml ~stylesheet)
           article
       in
       Client.route article.frontmatter.addr |> Option.iter @@ fun route ->
@@ -176,17 +161,5 @@ let render_forest ~cfg : unit =
     end;
 
     Yojson.Basic.to_file "./output/forest.json" @@
-    R.render_trees ~dev:cfg.dev all_articles;
-  end;
-
-
-  if not cfg.no_assets then
-    begin
-      Reporter.profile "copying assets" @@ fun () ->
-      copy_assets ~env:cfg.env ~assets_dirs:cfg.assets_dirs;
-    end;
-  if not cfg.no_theme then
-    begin
-      Reporter.profile "copying theme" @@ fun () ->
-      copy_theme ~env:cfg.env ~theme_dir:cfg.theme_dir
-    end
+    R.render_trees ~dev all_articles;
+  end
