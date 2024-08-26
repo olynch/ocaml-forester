@@ -40,10 +40,10 @@ struct
       gph
     | Some gph -> gph
 
-  let get (mode : Query.mode) =
-    match mode with
-    | Edges -> get_graph
-    | Paths -> get_preorder
+  let get =
+    function
+    | Query.Edges -> get_graph
+    | Query.Paths -> get_preorder
 
   let register_addr addr =
     Hashtbl.clear rel_to_preorder;
