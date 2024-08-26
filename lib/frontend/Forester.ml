@@ -145,9 +145,8 @@ let render_forest ~env ~dev ~root ~stylesheet : unit =
   let module R = Render_json.Make(Client)(F) in
   let all_articles = FU.get_all_articles () in
   begin
-    let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) EP.(cwd / output_dir_name / "forest.json") in
-    let@ writer = Eio.Buf_write.with_flow flow in
-    Yojson.Basic.pp (Eio_util.formatter_of_writer writer) @@ R.render_trees ~dev all_articles
+    let json_string = Yojson.Basic.to_string @@ R.render_trees ~dev all_articles in
+    EP.save ~create: (`Or_truncate 0o644) EP.(cwd / output_dir_name / "forest.json") json_string
   end;
   begin
     let@ article = List.iter @~ all_articles in
