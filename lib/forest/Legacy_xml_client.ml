@@ -96,10 +96,10 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     ]
 
   let rec render_section (section : T.content T.section) : P.node =
-    Xmlns.run @@ fun () ->
+    let@ () = Xmlns.run in
     X.tree (render_section_flags section.flags) [
       render_frontmatter section.frontmatter;
-      Scope.run ~env:section.frontmatter.addr @@ fun () ->
+      let@ () = Scope.run ~env:section.frontmatter.addr in
       X.mainmatter [] @@ render_content section.mainmatter
     ]
 
@@ -142,7 +142,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       [P.txt ~raw:true "<![CDATA[%s]]>" str]
     | Xml_elt elt ->
       let prefixes_to_add, (name, attrs, content) =
-        Xmlns.within_scope @@ fun () ->
+        let@ () = Xmlns.within_scope in
         render_xml_qname elt.name,
         List.map render_xml_attr elt.attrs,
         render_content elt.content
@@ -158,7 +158,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       render_transclusion transclusion
     | Contextual_number addr ->
       let custom_number =
-        Option.bind (F.get_article addr) @@ fun article ->
+        let@ article = Option.bind @@ F.get_article addr in
         article.frontmatter.number
       in
       begin
@@ -291,8 +291,8 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
 
   let render_article (article : T.content T.article) : P.node =
     let xmlns_prefix = Xmlns.{prefix = X.reserved_prefix; xmlns = X.forester_xmlns} in
-    Scope.run ~env:article.frontmatter.addr @@ fun () ->
-    Xmlns.run @@ fun () ->
+    let@ () = Scope.run ~env:article.frontmatter.addr in
+    let@ () = Xmlns.run in
     X.tree [
       render_xmlns_prefix xmlns_prefix;
       X.root @@ addr_is_root article.frontmatter.addr
@@ -306,7 +306,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     Format.fprintf fmt {|<?xml version="1.0" encoding="UTF-8"?>|};
     Format.pp_print_newline fmt ();
     begin
-      stylesheet |> Option.iter @@ fun uri ->
+      let@ uri = Option.iter @~ stylesheet in
       Format.fprintf fmt "<?xml-stylesheet type=\"text/xsl\" href=\"%s\"?>" uri
     end;
     Format.pp_print_newline fmt ();
