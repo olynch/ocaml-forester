@@ -1,3 +1,4 @@
+open Forester_prelude
 open Eio
 
 let formatter_of_writer w =
@@ -43,7 +44,7 @@ let rec rm_rec path =
     Eio.Path.unlink path
   | false ->
     match
-      Eio.Path.read_dir path |> List.iter @@ fun fn ->
+      let@ fn = List.iter @~ Eio.Path.read_dir path in
       rm_rec Eio.Path.(path / fn)
     with
     | _ -> Eio.Path.rmdir path
@@ -56,7 +57,7 @@ let with_open_tmp_dir ~env kont =
   let tmp = "_tmp" in
   let () = ensure_dir_path cwd [tmp; dir_name] in
   let tmp_path = Eio.Path.(cwd / tmp / dir_name) in
-  Eio.Path.with_open_dir tmp_path @@ fun p ->
+  let@ p = Eio.Path.with_open_dir tmp_path in
   let result = kont p in
   rm_rec tmp_path;
   result
@@ -78,7 +79,10 @@ let run_process ?(quiet = false) ~env ~cwd cmd =
 
 
 let file_exists path =
-  try Eio.Path.with_open_in path @@ fun _ -> true with
+  try
+    let@ _ = Eio.Path.with_open_in path in
+    true
+  with
   | Eio.Io (Eio.Fs.E (Eio.Fs.Not_found _), _) -> false
 
 (* TODO: make this portable *)
