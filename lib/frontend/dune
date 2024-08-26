@@ -10,10 +10,13 @@
   forester.compiler
   forester.forest
   ocamlgraph
-  eio_main
   toml
-  pure-html
-  yuujinchou))
+  eio
+  eio.core
+  eio.unix
+  yojson
+  asai
+  algaeff))
 
 (env
  (dev

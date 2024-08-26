@@ -11,6 +11,7 @@
 (version 4.3.1)
 
 (generate_opam_files true)
+(implicit_transitive_deps false)
 
 (source
  (sourcehut jonsterling/ocaml-forester))

@@ -1,3 +1,11 @@
 (tests
  (names parse)
- (libraries forester.frontend))
+ (preprocess
+  (pps ppx_deriving.show))
+ (libraries
+  forester.frontend
+  forester.prelude
+  forester.compiler
+  forester.core
+  eio
+  asai))

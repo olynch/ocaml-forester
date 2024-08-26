@@ -9,7 +9,15 @@
  (name Forester_compiler)
  (preprocess
   (pps ppx_deriving.show ppx_repr))
- (libraries forester.prelude forester.core yuujinchou asai menhirLib repr)
+ (libraries
+  forester.prelude
+  forester.core
+  yuujinchou
+  asai
+  menhirLib
+  bwd
+  algaeff
+  base64)
  (public_name forester.compiler))
 
 (env

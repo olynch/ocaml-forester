@@ -4,13 +4,12 @@
  (preprocess
   (pps ppx_deriving.show))
  (libraries
-  bwd
   forester.prelude
   forester.core
   ocamlgraph
   yojson
-  pure-html
-  yuujinchou))
+  algaeff
+  pure-html))
 
 (env
  (dev

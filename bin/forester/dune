@@ -5,4 +5,4 @@
  (link_flags (-g))
  (preprocess
   (pps ppx_deriving.show))
- (libraries forester.frontend cmdliner dune-build-info asai))
+ (libraries forester.prelude forester.core forester.frontend cmdliner dune-build-info asai eio eio.unix bwd eio_main))
