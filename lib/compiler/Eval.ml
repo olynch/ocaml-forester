@@ -108,12 +108,7 @@ let default_backmatter ~addr : T.content =
   let make_section title query =
     let query = QLN.distill query in
     let section =
-      let frontmatter =
-        {
-          T.empty_frontmatter with
-          title = [T.Text title]
-        }
-      in
+      let frontmatter = { T.empty_frontmatter with title = [T.Text title] } in
       let mainmatter = [T.Results_of_query query] in
       let flags = { T.default_section_flags with hidden_when_empty = Some true } in
       T.{ frontmatter; mainmatter; flags }
