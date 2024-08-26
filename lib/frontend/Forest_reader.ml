@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 open Forester_compiler
 
@@ -46,7 +47,7 @@ let read_trees ~(env : _ env) (trees : Code.tree list) : T.content T.article Add
   in
 
   let run_job ~env job : _ T.article =
-    Reporter.easy_run @@ fun () ->
+    let@ () = Reporter.easy_run in
     match job with
     | Eval.LaTeX_to_svg {hash; source; content} ->
       let svg = Build_latex.latex_to_svg ~env source in
