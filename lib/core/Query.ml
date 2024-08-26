@@ -52,14 +52,15 @@ type 'var expr =
 let expr_t var_t =
   let open Repr in
   mu @@ fun expr_t ->
-  variant "expr" (fun rel isect union complement union_fam isect_fam ->
-      function
-      | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
-      | Isect x -> isect x
-      | Union x -> union x
-      | Complement x -> complement x
-      | Union_fam (x, y) -> union_fam (x, y)
-      | Isect_fam (x, y) -> isect_fam (x, y))
+  variant "expr" begin fun rel isect union complement union_fam isect_fam ->
+    function
+    | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
+    | Isect x -> isect x
+    | Union x -> union x
+    | Complement x -> complement x
+    | Union_fam (x, y) -> union_fam (x, y)
+    | Isect_fam (x, y) -> isect_fam (x, y)
+  end
   |~ case1 "Rel"
     (quad mode_t polarity_t Rel.t (addr_expr_t var_t))
     (fun (x1, x2, x3, x4) -> Rel (x1, x2, x3, x4))
@@ -110,7 +111,6 @@ let rec union qs =
   | Union qs :: qs' -> union @@ qs @ qs'
   | qs -> Union qs
 
-
 let rec complement =
   function
   | Union qs -> isect @@ List.map complement qs
@@ -121,12 +121,10 @@ let tree_under x =
   rel Paths Outgoing Rel.transclusion x
 
 
-
 type 'name lnvar =
   | F of 'name
   | B of dbix
 [@@deriving show]
-
 
 let rec close_expr k x =
   function
