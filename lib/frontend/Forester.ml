@@ -4,16 +4,17 @@ open Forester_forest
 open Forester_compiler
 
 module M = Addr_map
-
 module T = Xml_tree
 module F = Forest.Make (Forest_graphs.Make ())
 module FU = Forest_util.Make (F)
-
 module PT = Plain_text_client.Make (F)
 module C = T.Comparators (PT)
+module EP = Eio.Path
 
 type env = Eio_unix.Stdenv.base
-type dir = Eio.Fs.dir_ty Eio.Path.t
+type dir = Eio.Fs.dir_ty EP.t
+
+let output_dir_name = "output"
 
 let get_sorted_articles addrs =
   addrs
@@ -119,11 +120,8 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
     if ignore_malformed then None else raise exn
 
 let plant_forest_from_dirs ~env ~dev tree_dirs : unit =
-  let parsed_trees =
-    Reporter.profile "parse trees" @@ fun () ->
-    parse_trees_in_dirs ~dev tree_dirs
-  in
-  Reporter.profile "expand, evaluate, and analyse forest" @@ fun () ->
+  let parsed_trees = parse_trees_in_dirs ~dev tree_dirs in
+  let@ () = Reporter.profile "expand, evaluate, and analyse forest" in
   Forest_reader.read_trees ~env parsed_trees
   |> Addr_map.iter (fun _ -> F.plant_article)
 
@@ -136,30 +134,26 @@ let json_manifest ~root ~dev : string =
   Yojson.Basic.to_string @@ R.render_trees ~dev all_articles
 
 let render_forest ~env ~dev ~root ~stylesheet : unit =
+  let@ () = Reporter.profile "render forest" in
+  let cwd = Eio.Stdenv.cwd env in
+  Eio_util.ensure_dir_path cwd [output_dir_name];
+
+  let module P = struct let root = root end in
+  let module Client = Legacy_xml_client.Make (P) (F) () in
+  let module R = Render_json.Make (Client) (F) in
+
+  let all_articles = FU.get_all_articles () in
+
   begin
-    Reporter.profile "render forest" @@ fun () ->
-    let cwd = Eio.Stdenv.cwd env in
-    Eio_util.ensure_dir_path cwd ["output"];
+    let@ flow = EP.with_open_out ~create:(`Or_truncate 0o644) EP.(cwd / output_dir_name / "forest.json") in
+    let@ writer = Eio.Buf_write.with_flow flow in
+    Yojson.Basic.pp (Eio_util.formatter_of_writer writer) @@ R.render_trees ~dev all_articles
+  end;
 
-    let module P = struct let root = root end in
-    let module Client = Legacy_xml_client.Make (P) (F) () in
-    let module R = Render_json.Make (Client) (F) in
-
-    let all_articles = FU.get_all_articles () in
-
-    begin
-      all_articles |> List.iter @@ fun article ->
-      let xml =
-        Format.asprintf "%a"
-          (Client.pp_xml ~stylesheet)
-          article
-      in
-      Client.route article.frontmatter.addr |> Option.iter @@ fun route ->
-      Eio.Path.save
-        ~create:(`Or_truncate 0o644)
-        Eio.Path.(cwd / "output" / route) xml
-    end;
-
-    Yojson.Basic.to_file "./output/forest.json" @@
-    R.render_trees ~dev all_articles;
+  begin
+    let@ article = List.iter @~ all_articles in
+    let@ route = Option.iter @~ Client.route article.frontmatter.addr in
+    let@ flow = EP.with_open_out ~create:(`Or_truncate 0o644) EP.(cwd / output_dir_name / route) in
+    let@ writer = Eio.Buf_write.with_flow flow in
+    Client.pp_xml ~stylesheet (Eio_util.formatter_of_writer writer) article
   end
