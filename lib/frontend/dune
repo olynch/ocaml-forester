@@ -11,7 +11,6 @@
   forester.forest
   ocamlgraph
   eio_main
-  str
   toml
   pure-html
   yuujinchou))

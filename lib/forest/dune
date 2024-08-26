@@ -8,8 +8,6 @@
   forester.prelude
   forester.core
   ocamlgraph
-  str
-  toml
   yojson
   pure-html
   yuujinchou))
