@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 open Lexing
 
@@ -127,7 +128,11 @@ let try_parse lexbuf =
 let maybe_with_errors (f : unit -> 'a) : ('a, 'a * 'b list) result =
   let errors = ref [] in
   let result =
-    Reporter.map_diagnostic (fun d -> errors := d :: !errors; d) @@ fun () ->
+    let@ () =
+      Reporter.map_diagnostic @@ fun d ->
+      errors := d :: !errors;
+      d
+    in
     f ()
   in
   match !errors with
@@ -135,17 +140,19 @@ let maybe_with_errors (f : unit -> 'a) : ('a, 'a * 'b list) result =
   | errs -> Result.error (result, List.rev errs)
 
 let parse_channel filename ch =
-  Reporter.tracef "when parsing file `%s`" filename @@ fun () ->
+  let@ () = Reporter.tracef "when parsing file `%s`" filename in
   let lexbuf = Lexing.from_channel ch in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  maybe_with_errors (fun () -> try_parse lexbuf)
+  let@ () = maybe_with_errors in
+  try_parse lexbuf
 
 let parse_file filename =
   let ch = open_in filename in
-  Fun.protect ~finally:(fun _ -> close_in ch) @@ fun _ ->
+  let@ () = Fun.protect ~finally:(fun _ -> close_in ch) in
   parse_channel filename ch
 
 let parse_string str =
-  Reporter.tracef "when parsing string" @@ fun () ->
+  let@ () =  Reporter.tracef "when parsing string" in
   let lexbuf = Lexing.from_string str in
-  maybe_with_errors (fun () -> try_parse lexbuf)
+  let@ () = maybe_with_errors in
+  try_parse lexbuf
