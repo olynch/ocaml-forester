@@ -1,3 +1,5 @@
+open Fun_util
+
 type t = {yyyy : int; mm : int option; dd : int option}
 [@@deriving repr]
 
@@ -51,9 +53,9 @@ let parse str =
 
 let pp fmt date =
   Format.fprintf fmt "%04d" date.yyyy;
-  date.mm |> Option.iter @@ fun mm ->
+  let@ mm = Option.iter @~ date.mm in
   Format.fprintf fmt "-%02d" mm;
-  date.dd |> Option.iter @@ fun dd ->
+  let@ dd = Option.iter @~ date.dd in
   Format.fprintf fmt "-%02d" dd
 
 let pp_month fmt i =
