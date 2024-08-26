@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 
 module type S = sig
@@ -34,11 +35,11 @@ struct
       not @@ check_query ~env q addr
     | Union_fam (q, scope) ->
       let xs = Addr_set.to_list @@ run_query ~env q in
-      xs |> List.exists @@ fun x ->
+      let@ x = List.exists @~ xs in
       check_query ~env:(x :: env) scope.body addr
     | Isect_fam (q, scope) ->
       let xs = Addr_set.to_list @@ run_query ~env q in
-      xs |> List.for_all @@ fun x ->
+      let@ x = List.for_all @~ xs in
       check_query ~env:(x :: env) scope.body addr
 
   and eval_addr ~env : Q.dbix Q.addr_expr -> _ =
@@ -52,15 +53,15 @@ struct
       end
 
   and check_isect ~env qs addr =
-    qs |> List.for_all @@ fun q ->
+    let@ q = List.for_all @~ qs in
     check_query ~env q addr
 
   and check_isect' qs addr =
-    qs |> List.for_all @@ fun (env, q) ->
+    let@ env, q = List.for_all @~ qs in
     check_query ~env q addr
 
   and check_union ~env qs addr =
-    qs |> List.exists @@ fun q ->
+    let@ q = List.exists @~ qs in
     check_query ~env q addr
 
   and run_query ~env (q : Query.dbix Query.expr) : Addr_set.t =
@@ -75,14 +76,14 @@ struct
     | Union_fam (q, scope) ->
       let xs = Addr_set.to_list @@ run_query ~env q in
       let qs =
-        xs |> List.map @@ fun x ->
+        let@ x = List.map @~ xs in
         x :: env, scope.body
       in
       run_union' qs
     | Isect_fam (q, scope) ->
       let xs = Addr_set.to_list @@ run_query ~env q in
       let qs =
-        xs |> List.map @@ fun x ->
+        let@ x = List.map @~ xs in
         x :: env, scope.body
       in
       run_isect' qs
