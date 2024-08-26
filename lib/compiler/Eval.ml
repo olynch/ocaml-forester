@@ -6,15 +6,13 @@ module QLN = Query.Locally_nameless(Symbol)
 
 module Env = struct
   include Map.Make(Symbol)
-  let pp (pp_el : Format.formatter -> 'a -> unit) : Format.formatter -> 'a t -> unit = fun fmt map ->
-      Format.fprintf fmt "@[<v1>{";
-      begin
-        map
-        |> iter @@
-          fun k v ->
-            Format.fprintf fmt "@[%a ~> %a@]@;" Symbol.pp k pp_el v
-      end;
-      Format.fprintf fmt "}@]"
+  let pp (pp_el : Format.formatter -> 'a -> unit) (fmt : Format.formatter) (map : 'a t) =
+    Format.fprintf fmt "@[<v1>{";
+    begin
+      let@ k, v = Seq.iter @~ to_seq map in
+      Format.fprintf fmt "@[%a ~> %a@]@;" Symbol.pp k pp_el v
+    end;
+    Format.fprintf fmt "}@]"
 end
 
 module V = struct
@@ -219,7 +217,7 @@ and eval_node node : V.t =
       ]
     in
     emit_content_node ~loc @@ Link { href; content }
-  | Link{ title; dest } ->
+  | Link { title; dest } ->
     let href = { node with value = dest } |> Range.map eval_tape |> V.extract_text in
     let content =
       match title with
@@ -360,7 +358,7 @@ and eval_node node : V.t =
       T.{ addr; target; modifier = Identity }
     in
     emit_content_node ~loc @@ T.Transclude transclusion
-  | Object{ self; methods } ->
+  | Object { self; methods } ->
     let table =
       let env = Lex_env.read () in
       let add (name, body) =
@@ -372,7 +370,7 @@ and eval_node node : V.t =
     let sym = Symbol.named ["obj"] in
     Heap.modify @@ Env.add sym V.{ prototype = None; methods = table };
     focus ?loc: node.loc @@ V.Obj sym
-  | Patch{ obj; self; super; methods } ->
+  | Patch { obj; self; super; methods } ->
     let obj_ptr = { node with value = obj } |> Range.map eval_tape |> V.extract_obj_ptr in
     let table =
       let env = Lex_env.read () in

@@ -104,7 +104,7 @@ let rec expand : Code.t -> Syn.t = function
     { value = Syn.Get k; loc } :: expand rest
   | { value = Fun (xs, body); loc } :: rest ->
     expand_lambda loc (xs, body) :: expand rest
-  | { value = Object{ self; methods }; loc } :: rest ->
+  | { value = Object { self; methods }; loc } :: rest ->
     let self, methods =
       let@ () = Sc.section [] in
       let sym = Symbol.fresh () in
@@ -116,7 +116,7 @@ let rec expand : Code.t -> Syn.t = function
       sym, List.map expand_method methods
     in
     { value = Syn.Object { self; methods }; loc } :: expand rest
-  | { value = Patch{ obj; self; methods }; loc } :: rest ->
+  | { value = Patch { obj; self; methods }; loc } :: rest ->
     let self, super, methods =
       let@ () = Sc.section [] in
       let self_sym = Symbol.fresh () in
@@ -177,16 +177,16 @@ let rec expand : Code.t -> Syn.t = function
 and expand_method (key, body) =
   key, expand body
 
-and expand_lambda loc : Trie.path binding list * Code.t -> Syn.node Range.located = fun (xs, body) ->
-    let@ () = Sc.section [] in
-    let syms =
-      let@ strategy, x = List.map @~ xs in
-      let sym = Symbol.named x in
-      let var = Range.locate_opt None @@ Syn.Var sym in
-      Sc.import_singleton x @@ Term [var];
-      strategy, sym
-    in
-    Range.{ value = Syn.Fun (syms, expand body); loc }
+and expand_lambda loc (xs, body) =
+  let@ () = Sc.section [] in
+  let syms =
+    let@ strategy, x = List.map @~ xs in
+    let sym = Symbol.named x in
+    let var = Range.locate_opt None @@ Syn.Var sym in
+    Sc.import_singleton x @@ Term [var];
+    strategy, sym
+  in
+  Range.{ value = Syn.Fun (syms, expand body); loc }
 
 and expand_ident loc path =
   match Sc.resolve path, path with
@@ -214,7 +214,7 @@ and expand_ident loc path =
   | Some (Term x, ()), _ ->
     let relocate Range.{ value; _ } = Range.{ value; loc } in
     List.map relocate x
-  | Some (Xmlns{ xmlns; prefix }, ()), _ ->
+  | Some (Xmlns { xmlns; prefix }, ()), _ ->
     Reporter.fatalf
       ?loc
       Resolution_error
@@ -229,7 +229,7 @@ and expand_xml_ident loc (prefix, uname) =
   | None -> { xmlns = None; prefix = ""; uname }
   | Some prefix ->
     match Sc.resolve ["xmlns"; prefix] with
-    | Some (Xmlns{ xmlns; prefix }, ()) ->
+    | Some (Xmlns { xmlns; prefix }, ()) ->
       { xmlns = Some xmlns; prefix = prefix; uname }
     | _ ->
       Reporter.fatalf
@@ -259,65 +259,64 @@ and expand_tree_inner (tree : Code.tree) : Syn.tree =
 
 let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
   let@ () = U.run ~init: units in
-  Sc.run @@
-    fun () ->
-      Builtins.register_builtins
-        [
-          ["p"], Syn.Prim `P;
-          ["em"], Syn.Prim `Em;
-          ["strong"], Syn.Prim `Strong;
-          ["li"], Syn.Prim `Li;
-          ["ol"], Syn.Prim `Ol;
-          ["ul"], Syn.Prim `Ul;
-          ["code"], Syn.Prim `Code;
-          ["blockquote"], Syn.Prim `Blockquote;
-          ["pre"], Syn.Prim `Pre;
-          ["figure"], Syn.Prim `Figure;
-          ["figcaption"], Syn.Prim `Figcaption;
-          ["transclude"], Syn.Transclude;
-          ["tex"], Syn.Embed_tex;
-          ["ref"], Syn.Ref;
-          ["title"], Syn.Title;
-          ["taxon"], Syn.Taxon;
-          ["date"], Syn.Date;
-          ["meta"], Syn.Meta;
-          ["author"], Syn.Author;
-          ["contributor"], Syn.Contributor;
-          ["parent"], Syn.Parent;
-          ["number"], Syn.Number;
-          ["tag"], Syn.Tag;
-          ["query"], Syn.Results_of_query;
-          ["query"; "rel"], Syn.Query_rel;
-          ["query"; "union"], Syn.Query_union;
-          ["query"; "isect"], Syn.Query_isect;
-          ["query"; "isect-fam"], Syn.Query_isect_fam;
-          ["query"; "union-fam"], Syn.Query_union_fam;
-          ["query"; "isect-fam-rel"], Syn.Query_isect_fam_rel;
-          ["query"; "union-fam-rel"], Syn.Query_union_fam_rel;
-          ["query"; "compl"], Syn.Query_compl;
-          ["query"; "tag"], Syn.Query_builtin `Tag;
-          ["query"; "taxon"], Syn.Query_builtin `Taxon;
-          ["query"; "author"], Syn.Query_builtin `Author;
-          ["query"; "incoming"], Syn.Query_polarity Incoming;
-          ["query"; "outgoing"], Syn.Query_polarity Outgoing;
-          ["query"; "edges"], Syn.Query_mode Edges;
-          ["query"; "paths"], Syn.Query_mode Paths;
-          ["rel"; "tags"], Syn.Text Query.Rel.tags;
-          ["rel"; "taxa"], Syn.Text Query.Rel.taxa;
-          ["rel"; "authors"], Syn.Text Query.Rel.authors;
-          ["rel"; "contributors"], Syn.Text Query.Rel.authors;
-          ["rel"; "transclusion"], Syn.Text Query.Rel.transclusion;
-          ["rel"; "links"], Syn.Text Query.Rel.links;
-          ["true"], Syn.Bool true;
-          ["false"], Syn.Bool false
-        ];
-      Builtins.Transclude.alloc_title ();
-      Builtins.Transclude.alloc_taxon ();
-      Builtins.Transclude.alloc_expanded ();
-      Builtins.Transclude.alloc_show_heading ();
-      Builtins.Transclude.alloc_toc ();
-      Builtins.Transclude.alloc_numbered ();
-      Builtins.Transclude.alloc_show_metadata ();
-      let tree = expand_tree_inner tree in
-      let units = U.get () in
-      units, tree
+  let@ () = Sc.easy_run in
+  Builtins.register_builtins
+    [
+      ["p"], Syn.Prim `P;
+      ["em"], Syn.Prim `Em;
+      ["strong"], Syn.Prim `Strong;
+      ["li"], Syn.Prim `Li;
+      ["ol"], Syn.Prim `Ol;
+      ["ul"], Syn.Prim `Ul;
+      ["code"], Syn.Prim `Code;
+      ["blockquote"], Syn.Prim `Blockquote;
+      ["pre"], Syn.Prim `Pre;
+      ["figure"], Syn.Prim `Figure;
+      ["figcaption"], Syn.Prim `Figcaption;
+      ["transclude"], Syn.Transclude;
+      ["tex"], Syn.Embed_tex;
+      ["ref"], Syn.Ref;
+      ["title"], Syn.Title;
+      ["taxon"], Syn.Taxon;
+      ["date"], Syn.Date;
+      ["meta"], Syn.Meta;
+      ["author"], Syn.Author;
+      ["contributor"], Syn.Contributor;
+      ["parent"], Syn.Parent;
+      ["number"], Syn.Number;
+      ["tag"], Syn.Tag;
+      ["query"], Syn.Results_of_query;
+      ["query"; "rel"], Syn.Query_rel;
+      ["query"; "union"], Syn.Query_union;
+      ["query"; "isect"], Syn.Query_isect;
+      ["query"; "isect-fam"], Syn.Query_isect_fam;
+      ["query"; "union-fam"], Syn.Query_union_fam;
+      ["query"; "isect-fam-rel"], Syn.Query_isect_fam_rel;
+      ["query"; "union-fam-rel"], Syn.Query_union_fam_rel;
+      ["query"; "compl"], Syn.Query_compl;
+      ["query"; "tag"], Syn.Query_builtin `Tag;
+      ["query"; "taxon"], Syn.Query_builtin `Taxon;
+      ["query"; "author"], Syn.Query_builtin `Author;
+      ["query"; "incoming"], Syn.Query_polarity Incoming;
+      ["query"; "outgoing"], Syn.Query_polarity Outgoing;
+      ["query"; "edges"], Syn.Query_mode Edges;
+      ["query"; "paths"], Syn.Query_mode Paths;
+      ["rel"; "tags"], Syn.Text Query.Rel.tags;
+      ["rel"; "taxa"], Syn.Text Query.Rel.taxa;
+      ["rel"; "authors"], Syn.Text Query.Rel.authors;
+      ["rel"; "contributors"], Syn.Text Query.Rel.authors;
+      ["rel"; "transclusion"], Syn.Text Query.Rel.transclusion;
+      ["rel"; "links"], Syn.Text Query.Rel.links;
+      ["true"], Syn.Bool true;
+      ["false"], Syn.Bool false
+    ];
+  Builtins.Transclude.alloc_title ();
+  Builtins.Transclude.alloc_taxon ();
+  Builtins.Transclude.alloc_expanded ();
+  Builtins.Transclude.alloc_show_heading ();
+  Builtins.Transclude.alloc_toc ();
+  Builtins.Transclude.alloc_numbered ();
+  Builtins.Transclude.alloc_show_metadata ();
+  let tree = expand_tree_inner tree in
+  let units = U.get () in
+  units, tree

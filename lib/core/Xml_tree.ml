@@ -185,12 +185,16 @@ let apply_overrides (overrides : _ frontmatter_overrides) frontmatter =
     taxon = Option.value ~default: frontmatter.taxon overrides.taxon
   }
 
-let article_to_section ?(flags = default_section_flags) ?(overrides = empty_frontmatter_overrides) : 'a article -> 'a section = fun { frontmatter; mainmatter; _ } ->
-    {
-      frontmatter = apply_overrides overrides frontmatter;
-      mainmatter;
-      flags
-    }
+let article_to_section
+    ?(flags = default_section_flags)
+    ?(overrides = empty_frontmatter_overrides)
+    ({ frontmatter; mainmatter; _ }: 'a article)
+  =
+  {
+    frontmatter = apply_overrides overrides frontmatter;
+    mainmatter;
+    flags
+  }
 
 module Comparators (I: sig val string_of_content : content -> string end) = struct
   let compare_content =

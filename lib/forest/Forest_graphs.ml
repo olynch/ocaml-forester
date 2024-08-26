@@ -45,10 +45,8 @@ module Make () = struct
   let register_addr addr =
     Hashtbl.clear rel_to_preorder;
     all_addrs_ref := Addr_set.add addr !all_addrs_ref;
-    rel_to_graph
-    |> Hashtbl.iter @@
-      fun _ gph ->
-        Addr_graph.add_vertex gph addr
+    let@ gph = Seq.iter @~ Hashtbl.to_seq_values rel_to_graph in
+    Addr_graph.add_vertex gph addr
 
   let add_edge rel ~source ~target =
     match source, target with

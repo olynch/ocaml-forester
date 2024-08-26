@@ -23,6 +23,8 @@ module Scope = struct
 
   let include_subtree ?modifier path subtree =
     include_subtree ?modifier (path, subtree)
+
+  let easy_run kont = run kont
 end
 
 module Lang = Yuujinchou.Language

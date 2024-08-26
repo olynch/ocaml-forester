@@ -50,7 +50,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     tag_of_prim_node p []
 
   let render_img = function
-    | T.Inline{ format; base64 } ->
+    | T.Inline { format; base64 } ->
       H.img [H.src "data:image/%s;base64,%s" format base64]
     | T.Remote url ->
       H.img [H.src "%s" url]

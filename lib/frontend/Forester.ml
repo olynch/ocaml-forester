@@ -126,8 +126,8 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
 let plant_forest_from_dirs ~env ~dev tree_dirs : unit =
   let parsed_trees = parse_trees_in_dirs ~dev tree_dirs in
   let@ () = Reporter.profile "expand, evaluate, and analyse forest" in
-  Forest_reader.read_trees ~env parsed_trees
-  |> Addr_map.iter (fun _ -> F.plant_article)
+  let@ _, article = Seq.iter @~ Addr_map.to_seq @@ Forest_reader.read_trees ~env parsed_trees in
+  F.plant_article article
 
 let json_manifest ~root ~dev : string =
   let all_articles = FU.get_all_articles () in

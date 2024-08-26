@@ -76,7 +76,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     X.prim p []
 
   let render_img = function
-    | T.Inline{ format; base64 } ->
+    | T.Inline { format; base64 } ->
       X.img [X.src "data:image/%s;base64,%s" format base64]
     | T.Remote url ->
       X.img [X.src "%s" url]

@@ -43,7 +43,7 @@ let read_trees ~(env : env) (trees : Code.tree list) : T.content T.article Addr_
   let run_job ~env job : _ T.article =
     let@ () = Reporter.easy_run in
     match job with
-    | Eval.LaTeX_to_svg{ hash; source; content } ->
+    | Eval.LaTeX_to_svg { hash; source; content } ->
       let svg = Build_latex.latex_to_svg ~env source in
       let frontmatter = { T.empty_frontmatter with addr = Addr.hash_addr hash } in
       let mainmatter = content ~svg in
