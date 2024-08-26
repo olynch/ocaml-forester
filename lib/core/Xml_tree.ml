@@ -149,8 +149,8 @@ let is_whitespace node =
   | _ -> false
 
 let strip_whitespace =
-  List.filter @@ fun x ->
-  not @@ is_whitespace x
+  List.filter @@
+  Fun.compose not is_whitespace
 
 let trim_whitespace xs =
   let rec trim_front xs =
