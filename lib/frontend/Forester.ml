@@ -153,5 +153,5 @@ let render_forest ~env ~dev ~root ~stylesheet : unit =
     let@ route = Option.iter @~ Client.route article.frontmatter.addr in
     let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) EP.(cwd / output_dir_name / route) in
     let@ writer = Eio.Buf_write.with_flow flow in
-    Client.pp_xml ~stylesheet (Eio_util.formatter_of_writer writer) article
+    Client.pp_xml ~stylesheet (Eio.Buf_write.make_formatter writer) article
   end

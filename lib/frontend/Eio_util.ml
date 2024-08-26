@@ -1,13 +1,6 @@
 open Forester_prelude
 open Eio
 
-let formatter_of_writer w =
-  let out buf off len =
-    Eio.Buf_write.string w buf ~off ~len
-  in
-  let flush () = () in
-  Format.make_formatter out flush
-
 module NullSink: Flow.Pi.SINK with type t = unit = struct
   type t = unit
   let single_write _ _ = 0
