@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 
 module Xmlns_map =
@@ -27,12 +28,14 @@ struct
       { effc =
           fun (type a) (eff : a Effect.t) ->
             match eff with
-            | Yield x -> Option.some @@ fun (k : (a, _) continuation) ->
+            | Yield x ->
+              Option.some @@ fun (k : (a, _) continuation) ->
               let xs, r = continue k () in
               x::xs, r
             | _ -> None }
 
-  let register_printer f = Printexc.register_printer @@ function
+  let register_printer f =
+    Printexc.register_printer @@ function
     | Effect.Unhandled (Yield elt) -> f (`Yield elt)
     | _ -> None
 
@@ -84,7 +87,7 @@ struct
   let within_scope kont =
     let old_scope = E.get () in
     let added, r =
-      Decls.run @@ fun () ->
+      let@ () = Decls.run in
       kont ()
     in
     E.set old_scope;
