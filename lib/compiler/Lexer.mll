@@ -65,12 +65,7 @@ rule token = parse
       let () = rangle lexbuf in
       XML_ELT_IDENT qname
     }
-  |
-  "\\xmlns:"
-    {
-      let prefix = xml_base_ident lexbuf in
-      DECL_XMLNS prefix
-    }
+  | "\\xmlns:" { DECL_XMLNS (xml_base_ident lexbuf) }
   | ident { Grammar.IDENT (drop_sigil '\\' (Lexing.lexeme lexbuf)) }
   | '{' { Grammar.LBRACE }
   | '}' { Grammar.RBRACE }
@@ -91,36 +86,21 @@ and comment = parse
   | _ { comment lexbuf }
 
 and custom_verbatim_herald = parse
-  | verbatim_herald as herald
-    {
-      let buffer = Buffer.create 2000 in
-      eat_verbatim_herald_sep (custom_verbatim herald buffer) lexbuf
-    }
-  | newline
-    {
-      Lexing.new_line lexbuf;
-      raise_err lexbuf
-    }
-  | _
-    { raise_err lexbuf }
+  | verbatim_herald as herald { eat_verbatim_herald_sep (custom_verbatim herald (Buffer.create 2000)) lexbuf }
+  | newline { Lexing.new_line lexbuf; raise_err lexbuf }
+  | _ { raise_err lexbuf }
 
 and eat_verbatim_herald_sep kont = parse
-  | verbatim_herald_sep
-    { kont lexbuf }
-  | newline
-    {
-      Lexing.new_line lexbuf;
-      raise_err lexbuf
-    }
-  | _
-    { raise_err lexbuf }
+  | verbatim_herald_sep { kont lexbuf }
+  | newline { Lexing.new_line lexbuf; raise_err lexbuf }
+  | _ { raise_err lexbuf }
 
 and custom_verbatim herald buffer = parse
   | newline as c
     {
       Lexing.new_line lexbuf;
       Buffer.add_string buffer c;
-      custom_verbatim herald buffer lexbuf;
+      custom_verbatim herald buffer lexbuf
     }
   | _ as c
     {
@@ -141,30 +121,15 @@ and custom_verbatim herald buffer = parse
 
 and xml_qname = parse
   | xml_qname as qname { qname }
-  | newline
-    {
-      Lexing.new_line lexbuf;
-      raise_err lexbuf
-    }
-  | _
-    { raise_err lexbuf }
+  | newline { Lexing.new_line lexbuf; raise_err lexbuf }
+  | _ { raise_err lexbuf }
 
 and xml_base_ident = parse
   | xml_base_ident as x { x }
-  | newline
-    {
-      Lexing.new_line lexbuf;
-      raise_err lexbuf
-    }
-  | _
-    { raise_err lexbuf }
+  | newline { Lexing.new_line lexbuf; raise_err lexbuf }
+  | _ { raise_err lexbuf }
 
 and rangle = parse
   | ">" { () }
-  | newline
-    {
-      Lexing.new_line lexbuf;
-      raise_err lexbuf
-    }
-  | _
-    { raise_err lexbuf }
+  | newline { Lexing.new_line lexbuf; raise_err lexbuf }
+  | _ { raise_err lexbuf }
