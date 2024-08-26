@@ -1,8 +1,11 @@
+open Forester_prelude
 open Forester_core
 
 module Unit_map = Map.Make (String)
+module R = Resolver
+module Sc = R.Scope
 
-type exports = Resolver.P.data Trie.Untagged.t
+type exports = R.P.data Trie.Untagged.t
 
 module Env = struct
   type t = exports Unit_map.t
@@ -17,14 +20,14 @@ struct
   let create_sym path =
     let sym = Symbol.named path in
     sym, fun () ->
-      Resolver.Scope.include_singleton path @@
+      Sc.include_singleton path @@
       Term [Range.locate_opt None (Syn.Sym sym)]
 
   let register_builtins builtins =
     let make (path, node) =
-      path, (Resolver.P.Term [Range.locate_opt None node], ())
+      path, (R.P.Term [Range.locate_opt None node], ())
     in
-    Resolver.Scope.include_subtree [] @@ Yuujinchou.Trie.of_seq @@
+    Sc.include_subtree [] @@ Yuujinchou.Trie.of_seq @@
     Seq.map make @@ List.to_seq builtins
 
   module Transclude =
@@ -50,20 +53,18 @@ let rec expand : Code.t -> Syn.t =
 
   | {value = Namespace (path, body); _} :: rest ->
     let result =
-      Resolver.Scope.section path @@ fun () ->
+      let@ () = Sc.section path in
       expand body
     in
     result @ expand rest
 
   | {value = Open path; _} :: rest ->
-    Resolver.Scope.section [] @@ fun () ->
-    begin
-      Resolver.Scope.modify_visible @@
-      Resolver.Lang.union [
-        Resolver.Lang.all;
-        Resolver.Lang.renaming path []
-      ]
-    end;
+    let@ () = Sc.section path in
+    Sc.modify_visible @@
+    R.Lang.union [
+      R.Lang.all;
+      R.Lang.renaming path []
+    ];
     expand rest
 
   | {value = Group (Squares, title); loc = loc1} :: {value = Group (Parens, dest); _} :: rest ->
@@ -97,7 +98,7 @@ let rec expand : Code.t -> Syn.t =
 
   | {value = Scope body; _} :: rest ->
     let body =
-      Resolver.Scope.section [] @@ fun () ->
+      let@ () = Sc.section [] in
       expand body
     in
     body @ expand rest
@@ -121,12 +122,12 @@ let rec expand : Code.t -> Syn.t =
 
   | {value = Object {self; methods}; loc} :: rest ->
     let self, methods =
-      Resolver.Scope.section [] @@ fun () ->
+      let@ () = Sc.section [] in
       let sym = Symbol.fresh () in
       let var = Range.{value = Syn.Var sym; loc} in
       begin
-        self |> Option.iter @@ fun self ->
-        Resolver.Scope.import_singleton self @@ Resolver.P.Term [var]
+        let@ self = Option.iter @~ self in
+        Sc.import_singleton self @@ R.P.Term [var]
       end;
       sym, List.map expand_method methods
     in
@@ -134,15 +135,15 @@ let rec expand : Code.t -> Syn.t =
 
   | {value = Patch {obj; self; methods}; loc} :: rest ->
     let self, super, methods =
-      Resolver.Scope.section [] @@ fun () ->
+      let@ () = Sc.section [] in
       let self_sym = Symbol.fresh () in
       let super_sym = Symbol.fresh () in
       let self_var = Range.locate_opt None @@ Syn.Var self_sym in
       let super_var = Range.locate_opt None @@ Syn.Var super_sym in
       begin
-        self |> Option.iter @@ fun self ->
-        Resolver.Scope.import_singleton self @@ Term [self_var];
-        Resolver.Scope.import_singleton (self @ ["super"]) @@ Term [super_var]
+        let@ self = Option.iter @~ self in
+        Sc.import_singleton self @@ Term [self_var];
+        Sc.import_singleton (self @ ["super"]) @@ Term [super_var]
       end;
       self_sym, super_sym, List.map expand_method methods
     in
@@ -155,7 +156,7 @@ let rec expand : Code.t -> Syn.t =
   | {value = Xml_tag (title, attrs, body); loc} :: rest ->
     let title = expand_xml_ident loc title in
     let attrs =
-      attrs |> List.map @@ fun (k, v) ->
+      let@ k, v = List.map @~ attrs in
       expand_xml_ident loc k, expand v
     in
     let body = expand body in
@@ -169,31 +170,31 @@ let rec expand : Code.t -> Syn.t =
         Reporter.emitf ?loc:loc Tree_not_found "Could not find tree %s" dep
       | Some tree -> begin
           match vis with
-          | Public -> Resolver.Scope.include_subtree [] tree
-          | Private -> Resolver.Scope.import_subtree [] tree
+          | Public -> Sc.include_subtree [] tree
+          | Private -> Sc.import_subtree [] tree
         end
     end;
     expand rest
 
   | {value = Let (a, bs, def); loc} :: rest ->
     let lam = expand_lambda loc (bs, def) in
-    Resolver.Scope.section [] @@ fun _ ->
-    Resolver.Scope.import_singleton a @@ Term [lam];
+    let@ () = Sc.section [] in
+    Sc.import_singleton a @@ Term [lam];
     expand rest
 
   | {value = Def (path, xs, body); loc} :: rest ->
     let lam = expand_lambda loc (xs, body) in
-    Resolver.Scope.include_singleton path @@ Term [lam];
+    Sc.include_singleton path @@ Term [lam];
     expand rest
 
   | {value = Decl_xmlns (prefix, xmlns); _} :: rest ->
     let path = ["xmlns"; prefix] in
-    Resolver.Scope.include_singleton path @@ Xmlns {prefix; xmlns};
+    Sc.include_singleton path @@ Xmlns {prefix; xmlns};
     expand rest
 
   | {value = Alloc path; loc} :: rest ->
     let symbol = Symbol.named path in
-    Resolver.Scope.include_singleton path @@ Term [Range.locate_opt loc (Syn.Sym symbol)];
+    Sc.include_singleton path @@ Term [Range.locate_opt loc (Syn.Sym symbol)];
     expand rest
 
 and expand_method (key, body) =
@@ -201,18 +202,18 @@ and expand_method (key, body) =
 
 and expand_lambda loc : Trie.path binding list * Code.t -> Syn.node Range.located =
   fun (xs, body) ->
-  Resolver.Scope.section [] @@ fun () ->
+  let@ () = Sc.section [] in
   let syms =
-    xs |> List.map @@ fun (strategy, x) ->
+    let@ strategy, x = List.map @~ xs in
     let sym = Symbol.named x in
     let var = Range.locate_opt None @@ Syn.Var sym in
-    Resolver.Scope.import_singleton x @@ Term [var];
+    Sc.import_singleton x @@ Term [var];
     strategy, sym
   in
   Range.{value = Syn.Fun (syms, expand body); loc}
 
 and expand_ident loc path =
-  match Resolver.Scope.resolve path, path with
+  match Sc.resolve path, path with
   | None, [name] ->
     begin
       match TeX_cs.parse name with
@@ -242,7 +243,7 @@ and expand_xml_ident loc (prefix, uname) =
   match prefix with
   | None -> {xmlns = None; prefix = ""; uname}
   | Some prefix ->
-    match Resolver.Scope.resolve ["xmlns"; prefix] with
+    match Sc.resolve ["xmlns"; prefix] with
     | Some (Xmlns {xmlns; prefix}, ()) ->
       {xmlns = Some xmlns; prefix = prefix; uname}
     | _ ->
@@ -257,11 +258,11 @@ and expand_tree_inner (tree : Code.tree) : Syn.tree =
     | None -> f ()
   in
 
-  trace @@ fun () ->
-  Resolver.Scope.section [] @@ fun () ->
+  let@ () = trace in
+  let@ () = Sc.section [] in
   let units = U.get () in
   let syn = expand tree.code in
-  let exports = Resolver.Scope.get_export () in
+  let exports = Sc.get_export () in
   let units =
     match tree.addr with
     | None -> units
@@ -272,9 +273,8 @@ and expand_tree_inner (tree : Code.tree) : Syn.tree =
 
 
 let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
-  U.run ~init:units @@ fun () ->
-  Resolver.Scope.run @@ fun () ->
-
+  let@ () = U.run ~init:units in
+  Sc.run @@ fun () ->
   Builtins.register_builtins [
     ["p"], Syn.Prim `P;
     ["em"], Syn.Prim `Em;
