@@ -31,13 +31,13 @@ let build ~env config_filename dev render_only no_assets no_theme  =
   end;
 
   if not no_assets then begin
-    paths_of_dirs ~env config.assets |> List.iter @@ fun dir ->
-    Forester.copy_contents_of_dir ~env dir
+    paths_of_dirs ~env config.assets |> List.iter @@
+    Forester.copy_contents_of_dir ~env
   end
 
 
 let new_tree ~env config_filename dest_dir prefix template random =
-  Reporter.silence @@ fun _ ->
+  let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   Forester.plant_forest_from_dirs ~env ~dev:true @@ paths_of_dirs ~env config.trees;
   let mode = if random then `Random else `Sequential in
@@ -46,15 +46,15 @@ let new_tree ~env config_filename dest_dir prefix template random =
   Format.printf "%s/%s.tree\n" dest_dir addr
 
 let complete ~env config_filename title =
-  Reporter.silence @@ fun _ ->
+  let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   Forester.plant_forest_from_dirs ~env ~dev:true @@ paths_of_dirs ~env config.trees;
-  Forester.complete title |> Seq.iter @@ fun (addr, title) ->
+  let@ addr, title = Seq.iter @~ Forester.complete title in
   Format.printf "%a, %s\n" pp_addr addr title
 
 
 let query_all ~env config_filename =
-  Reporter.silence @@ fun _ ->
+  let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   Forester.plant_forest_from_dirs ~env ~dev:true @@ paths_of_dirs ~env config.trees;
   Forester.json_manifest ~root:config.root ~dev:true |> Format.printf "%s"
@@ -134,7 +134,7 @@ theme = "theme"                      # The directory in which your theme is stor
     try
       EP.(save ~create:(`Exclusive 0o600) (fs / "trees" / "index.tree") index_tree_str)
     with _ ->
-      Reporter.with_backtrace Emp @@ fun () ->
+      let@ () = Reporter.with_backtrace Emp in
       Reporter.emitf Initialization_warning "`index.tree` already exists"
   end;
 
@@ -260,6 +260,6 @@ let cmd ~env =
 let () =
   Random.self_init ();
   Printexc.record_backtrace true;
-  Eio_main.run @@ fun env ->
-  Forester_core.Reporter.easy_run @@ fun () ->
+  let@ env = Eio_main.run in
+  let@ () = Forester_core.Reporter.easy_run in
   exit @@ Cmd.eval ~catch:false @@ cmd ~env
