@@ -34,11 +34,11 @@ module V = struct
     env: t Env.t
   }
 
-  module MethodTable = Map.Make(String)
+  module Method_table = Map.Make(String)
 
   type obj = {
     prototype: Symbol.t option;
-    methods: obj_method MethodTable.t
+    methods: obj_method Method_table.t
   }
 
   type located = t Range.located
@@ -363,9 +363,9 @@ and eval_node node : V.t =
       let env = Lex_env.read () in
       let add (name, body) =
         let super = Symbol.fresh () in
-        V.MethodTable.add name V.{ body; self; super; env }
+        V.Method_table.add name V.{ body; self; super; env }
       in
-      List.fold_right add methods V.MethodTable.empty
+      List.fold_right add methods V.Method_table.empty
     in
     let sym = Symbol.named ["obj"] in
     Heap.modify @@ Env.add sym V.{ prototype = None; methods = table };
@@ -375,11 +375,11 @@ and eval_node node : V.t =
     let table =
       let env = Lex_env.read () in
       let add (name, body) =
-        V.MethodTable.add
+        V.Method_table.add
           name
           V.{ body; self; super; env }
       in
-      List.fold_right add methods V.MethodTable.empty
+      List.fold_right add methods V.Method_table.empty
     in
     let sym = Symbol.named ["obj"] in
     Heap.modify @@ Env.add sym V.{ prototype = Some obj_ptr; methods = table };
@@ -400,7 +400,7 @@ and eval_node node : V.t =
           fun ptr ->
             V.Obj ptr
       in
-      match V.MethodTable.find_opt method_name obj.methods with
+      match V.Method_table.find_opt method_name obj.methods with
       | Some mthd ->
         let env =
           let env = Env.add mthd.self (V.Obj sym) mthd.env in
