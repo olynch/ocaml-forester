@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 
 module type S = sig
@@ -33,7 +34,7 @@ struct
     match Hashtbl.find_opt rel_to_preorder rel with
     | None ->
       let message = Format.asprintf "Computing reflexive-transitive closure of %s" rel in
-      Reporter.profile message @@ fun () ->
+      let@ () = Reporter.profile message in
       let gph = Addr_graph.transitive_closure ~reflexive:true @@ get_graph rel in
       Hashtbl.add rel_to_preorder rel gph;
       gph
