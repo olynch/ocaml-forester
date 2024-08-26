@@ -1,30 +1,33 @@
+open Forester_prelude
 open Forester_core
 
 module Forest_config =
 struct
-  type t =
-    {trees : string list;
-     assets : string list;
-     theme : string;
-     root : string option;
-     stylesheet : string}
+  type t = {
+    trees : string list;
+    assets : string list;
+    theme : string;
+    root : string option;
+    stylesheet : string
+  }
   [@@deriving show, repr]
 end
 
-let default_forest_config : Forest_config.t =
-  {trees = ["trees"];
-   assets = [];
-   theme = "theme";
-   root = None;
-   stylesheet = "default.xsl"}
+let default_forest_config : Forest_config.t = {
+  trees = ["trees"];
+  assets = [];
+  theme = "theme";
+  root = None;
+  stylesheet = "default.xsl"
+}
 
 let parse_forest_config_file filename =
   let ch = open_in filename in
-  Fun.protect ~finally:(fun _ -> close_in ch) @@ fun () ->
+  let@ () = Fun.protect ~finally:(fun _ -> close_in ch) in
   let lexbuf = Lexing.from_channel ch in
   match Toml.Parser.parse lexbuf filename with
   | `Error (desc, { source; _ }) ->
-    Reporter.tracef "when parsing configuration file" @@ fun () ->
+    let@ () = Reporter.tracef "when parsing configuration file" in
     let loc = Asai.Range.of_lexbuf ~source:(`File source) lexbuf in
     Reporter.fatalf ~loc Configuration_error "%s" desc
   | `Ok tbl ->
