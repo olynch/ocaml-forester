@@ -23,16 +23,12 @@ let build ~env config_filename dev render_only no_assets no_theme =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   Forester.plant_forest_from_dirs ~env ~dev @@ paths_of_dirs ~env config.trees;
   Forester.render_forest ~env ~dev ~root: config.root ~stylesheet: config.stylesheet;
-  if not no_theme then
-    begin
-      let theme_dir = path_of_dir ~env config.theme in
-      Forester.copy_contents_of_dir ~env theme_dir
-    end;
-  if not no_assets then
-    begin
-      let@ asset_dir = List.iter @~ paths_of_dirs ~env config.assets in
-      Forester.copy_contents_of_dir ~env asset_dir
-    end
+  let dirs_to_copy =
+    (if not no_theme then [config.theme] else []) @
+      (if not no_assets then config.assets else [])
+  in
+  let@ dir_to_copy = List.iter @~ dirs_to_copy in
+  Forester.copy_contents_of_dir ~env @@ path_of_dir ~env dir_to_copy
 
 let new_tree ~env config_filename dest_dir prefix template random =
   let@ () = Reporter.silence in
