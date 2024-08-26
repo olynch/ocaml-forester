@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 
 module T = Xml_tree
@@ -97,7 +98,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       [P.txt ~raw:true "<![CDATA[%s]]>" str]
     | Xml_elt elt ->
       let prefixes_to_add, (name, attrs, content) =
-        Xmlns.within_scope @@ fun () ->
+        let@ () = Xmlns.within_scope in
         render_xml_qname elt.name,
         List.map render_xml_attr elt.attrs,
         render_content elt.content
@@ -113,7 +114,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       render_transclusion transclusion
     | Contextual_number addr ->
       let custom_number =
-        Option.bind (F.get_article addr) @@ fun article ->
+        let@ article = Option.bind @@ F.get_article addr in
         article.frontmatter.number
       in
       let num =
