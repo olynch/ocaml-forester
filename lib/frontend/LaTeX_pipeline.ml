@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 
 module EP = Eio.Path
@@ -18,7 +19,8 @@ let indent_string string =
 let latex_to_dvi ~(env : _ env) code  =
   let mgr = Eio.Stdenv.process_mgr env in
 
-  Eio_util.with_open_tmp_dir ~env @@ fun tmp ->
+  let@ tmp = Eio_util.with_open_tmp_dir ~env in
+
   let tex_fn = "job.tex" in
 
   EP.save ~append:false ~create:(`Or_truncate 0o644) EP.(tmp / tex_fn) code;
