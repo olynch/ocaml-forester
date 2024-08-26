@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 open Forester_compiler
 
@@ -29,5 +30,8 @@ let _ =
     }
     |}
   in
-  errors |> List.iter (fun (e : Forester_core.Reporter.Message.t Asai.Diagnostic.t) -> Format.printf "error: %s\n" (Asai.Diagnostic.string_of_text e.explanation.value));
+  begin
+    let@ e = List.iter @~ errors in
+    Format.printf "error: %s\n" @@ Asai.Diagnostic.string_of_text e.explanation.value
+  end;
   Format.printf "parse_bad_result:\n%s\n\n" (Code.show bad)
