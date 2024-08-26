@@ -67,5 +67,5 @@ let silence k =
     Tty.display diagnostics;
     exit 1
   in
-  let emit diagnostics = () in
+  let emit _diagnostics = () in
   run ~emit ~fatal k

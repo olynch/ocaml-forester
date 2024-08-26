@@ -26,8 +26,6 @@ type polarity =
   | Outgoing
 [@@deriving show, repr]
 
-open Base
-
 type dbix = int
 [@@deriving show, repr]
 

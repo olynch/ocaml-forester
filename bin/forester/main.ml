@@ -5,7 +5,6 @@ open Forester_frontend
 open Cmdliner
 
 module EP = Eio.Path
-module Tty = Asai.Tty.Make(Forester_core.Reporter.Message)
 
 let path_of_dir ~env dir =
   EP.(Eio.Stdenv.fs env / dir)

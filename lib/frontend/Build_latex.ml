@@ -1,4 +1,3 @@
-open Forester_prelude
 open Forester_core
 
 type env = Eio_unix.Stdenv.base
