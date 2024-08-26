@@ -1,3 +1,4 @@
+open Forester_prelude
 open Forester_core
 
 module T = Xml_tree
@@ -61,7 +62,7 @@ struct
     Graphs.add_edge Q.Rel.tags ~source:scope ~target:(Addr.user_addr tag)
 
   and analyse_taxon (scope : addr) (taxon_opt : string option) =
-    taxon_opt |> Option.iter @@ fun taxon ->
+    let@ taxon = Option.iter @~ taxon_opt in
     Graphs.add_edge Q.Rel.taxa ~source:scope ~target:(Addr.user_addr taxon)
 
   and analyse_attributions (scope : addr) (attrs : T.attribution list) =
