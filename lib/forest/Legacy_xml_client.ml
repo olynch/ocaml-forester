@@ -20,17 +20,18 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
 
   module PT = Plain_text_client.Make(F)
   module Util = Forest_util.Make(F)
-  module Xmlns = struct
-    include (Xmlns_effect.Make ())
 
-    let run f =
+  module Xmlns = struct
+    include Xmlns_effect.Make ()
+
+    let run =
       let xmlns_prefix =
         {
           prefix = X.reserved_prefix;
           xmlns = X.forester_xmlns
         }
       in
-      run ~reserved: [xmlns_prefix] f
+      run ~reserved: [xmlns_prefix]
   end
 
   module Scope = Algaeff.Reader.Make(struct type t = addr end)

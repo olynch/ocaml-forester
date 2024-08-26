@@ -21,12 +21,8 @@ module Make (R: sig val route : addr -> string option end) (F: Forest.S) = struc
     let route = `String route in
     let metas =
       let meta_string meta = String.trim @@ PT.string_of_content meta in
-      `Assoc
-        (
-          List.map
-            (fun (s, meta) -> (s, `String (meta_string meta)))
-            doc.frontmatter.metas
-        )
+      let meta_assoc (s, meta) = (s, `String (meta_string meta)) in
+      `Assoc (List.map meta_assoc doc.frontmatter.metas)
     in
     let path =
       if dev then
@@ -37,26 +33,19 @@ module Make (R: sig val route : addr -> string option end) (F: Forest.S) = struc
     in
     match addr with
     | User_addr addr ->
-      Some
-        (
-          addr,
-          `Assoc
-            (
-              path @
-                [
-                  ("title", title);
-                  ("taxon", taxon);
-                  ("tags", tags);
-                  ("route", route);
-                  ("metas", metas);
-                ]
-            )
-        )
+      let fm =
+        path @
+          [
+            ("title", title);
+            ("taxon", taxon);
+            ("tags", tags);
+            ("route", route);
+            ("metas", metas)
+          ]
+      in
+      Some (addr, `Assoc fm)
     | _ -> None
 
   let render_trees ~(dev : bool) (trees : T.content T.article list) : Yojson.Basic.t =
-    `Assoc
-      begin
-        trees |> List.filter_map (render_tree ~dev)
-      end
+    `Assoc (List.filter_map (render_tree ~dev) trees)
 end

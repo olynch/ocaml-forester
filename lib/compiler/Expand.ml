@@ -24,12 +24,10 @@ module Builtins = struct
         Term [Range.locate_opt None (Syn.Sym sym)]
 
   let register_builtins builtins =
-    let make (path, node) =
-      path, (R.P.Term [Range.locate_opt None node], ())
-    in
     Sc.include_subtree [] @@
     Yuujinchou.Trie.of_seq @@
-    Seq.map make @@ List.to_seq builtins
+    let@ path, node = Seq.map @~ List.to_seq builtins in
+    path, (R.P.Term [Range.locate_opt None node], ())
 
   module Transclude = struct
     let title_sym, alloc_title = create_sym ["transclude"; "title"]
