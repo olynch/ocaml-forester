@@ -10,7 +10,7 @@ struct
 
   let render_tree ~dev (doc : T.content T.article) =
     let addr = doc.frontmatter.addr in
-    Option.bind (R.route addr) @@ fun route ->
+    let@ route = Option.bind @@ R.route addr in
     let title_string = String_util.sentence_case @@ PT.string_of_content @@ F.get_expanded_title doc.frontmatter in
     let title = `String title_string in
     let taxon =
