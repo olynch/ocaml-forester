@@ -145,11 +145,11 @@ module Frontmatter = Algaeff.State.Make (struct type t = T.content T.frontmatter
 let get_frontmatter_overrides ~loc =
   let dynenv = Dyn_env.read () in
   let title =
-    Env.find_opt Expand.Builtins.Transclude.title_sym dynenv |> Option.map @@ fun value ->
+    let@ value = Option.map @~ Env.find_opt Expand.Builtins.Transclude.title_sym dynenv in
     V.extract_content @@ Range.locate_opt loc value
   in
   let taxon =
-    Env.find_opt Expand.Builtins.Transclude.taxon_sym dynenv |> Option.map @@ fun value ->
+    let@ value = Option.map @~ Env.find_opt Expand.Builtins.Transclude.taxon_sym dynenv in
     match V.extract_text @@ Range.locate_opt loc value with
     | "" -> None
     | txt -> Some txt
@@ -159,7 +159,7 @@ let get_frontmatter_overrides ~loc =
 let get_transclusion_flags ~loc =
   let dynenv = Dyn_env.read () in
   let get_bool key =
-    Env.find_opt key dynenv |> Option.map @@ fun value ->
+    let@ value = Option.map @~ Env.find_opt key dynenv in
     V.extract_bool @@ Range.locate_opt loc value
   in
   let module S = Expand.Builtins.Transclude in
@@ -264,14 +264,14 @@ and eval_node node : V.t =
 
   | Query_isect ->
     let queries =
-      Tape.pop_args () |> List.map @@ fun arg ->
+      let@ arg = List.map @~ Tape.pop_args () in
       arg |> Range.map eval_tape |> V.extract_query_expr
     in
     focus ?loc @@ V.Query_expr (Query.isect queries)
 
   | Query_union ->
     let queries =
-      Tape.pop_args () |> List.map @@ fun arg ->
+      let@ arg = List.map @~ Tape.pop_args () in
       arg |> Range.map eval_tape |> V.extract_query_expr
     in
     focus ?loc @@ V.Query_expr (Query.union queries)
@@ -434,7 +434,7 @@ and eval_node node : V.t =
           | Some proto_val ->
             Env.add mthd.super proto_val env
         in
-        Lex_env.run ~env @@ fun () ->
+        let@ () = Lex_env.run ~env in
         eval_tape mthd.body
       | None ->
         match obj.prototype with
@@ -450,7 +450,7 @@ and eval_node node : V.t =
   | Put (k, v, body) ->
     let k = {node with value = k} |> Range.map eval_tape |> V.extract_sym in
     let body =
-      Dyn_env.scope (Env.add k @@ eval_tape v) @@ fun () ->
+      let@ () = Dyn_env.scope (Env.add k (eval_tape v)) in
       eval_tape body
     in
     focus ?loc:node.loc body
@@ -459,7 +459,7 @@ and eval_node node : V.t =
     let k = {node with value = k} |> Range.map eval_tape |> V.extract_sym in
     let body =
       let upd flenv = if Env.mem k flenv then flenv else Env.add k (eval_tape v) flenv in
-      Dyn_env.scope upd @@ fun () ->
+      let@ () = Dyn_env.scope upd in
       eval_tape body
     in
     focus ?loc:node.loc body
@@ -566,7 +566,7 @@ and focus_clo ?loc rho xs body =
   match xs with
   | [] ->
     focus ?loc @@
-    Lex_env.run ~env:rho @@ fun () ->
+    let@ () = Lex_env.run ~env:rho in
     eval_tape body
   | (strategy, y) :: ys ->
     match Tape.pop_arg_opt () with
@@ -604,7 +604,7 @@ and eval_tree_inner ~addr (tree : Syn.tree) : T.content T.article =
      attributions = List.filter attribution_is_author outer_frontmatter.attributions;
      dates = outer_frontmatter.dates}
   in
-  Frontmatter.run ~init:frontmatter @@ fun () ->
+  let@ () = Frontmatter.run ~init:frontmatter in
   let mainmatter = {value = eval_tape tree; loc = None} |> V.extract_content in
   let frontmatter = Frontmatter.get () in
   let backmatter = default_backmatter ~addr in
@@ -612,12 +612,12 @@ and eval_tree_inner ~addr (tree : Syn.tree) : T.content T.article =
 
 let eval_tree ~addr ~source_path (tree : Syn.tree) : result =
   let fm = {T.empty_frontmatter with addr; source_path} in
-  Frontmatter.run ~init:fm @@ fun () ->
-  Emitted_trees.run ~init:[] @@ fun () ->
-  Jobs.run ~init:[] @@ fun () ->
-  Heap.run ~init:Env.empty @@ fun () ->
-  Lex_env.run ~env:Env.empty @@ fun () ->
-  Dyn_env.run ~env:Env.empty @@ fun () ->
+  let@ () = Frontmatter.run ~init:fm in
+  let@ () = Emitted_trees.run ~init:[] in
+  let@ () = Jobs.run ~init:[] in
+  let@ () = Heap.run ~init:Env.empty in
+  let@ () = Lex_env.run ~env:Env.empty in
+  let@ () = Dyn_env.run ~env:Env.empty in
   let main = eval_tree_inner ~addr tree in
   let side = Emitted_trees.get () in
   let jobs = Jobs.get () in
