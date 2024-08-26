@@ -38,7 +38,7 @@ struct
       check_query ~env:(x :: env) scope.body addr
     | Isect_fam (q, scope) ->
       let xs = Addr_set.to_list @@ run_query ~env q in
-      xs |> List.exists @@ fun x ->
+      xs |> List.for_all @@ fun x ->
       check_query ~env:(x :: env) scope.body addr
 
   and eval_addr ~env : Q.dbix Q.addr_expr -> _ =
