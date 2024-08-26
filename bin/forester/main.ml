@@ -21,7 +21,7 @@ let version =
 
 let build ~env config_filename dev render_only no_assets no_theme =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  Forester.plant_forest_from_dirs ~env ~dev: true @@ paths_of_dirs ~env config.trees;
+  Forester.plant_forest_from_dirs ~env ~dev @@ paths_of_dirs ~env config.trees;
   Forester.render_forest ~env ~dev ~root: config.root ~stylesheet: config.stylesheet;
   if not no_theme then
     begin
