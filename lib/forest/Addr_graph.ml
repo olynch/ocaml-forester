@@ -1,8 +1,8 @@
 open Forester_core
 
-module G = Graph.Imperative.Digraph.ConcreteBidirectional (Addr)
+module G = Graph.Imperative.Digraph.ConcreteBidirectional(Addr)
 include G
-include Graph.Oper.I (G)
+include Graph.Oper.I(G)
 
 let safe_succ g x =
   if mem_vertex g x then succ g x else []

@@ -1,8 +1,7 @@
-module P =
-struct
+module P = struct
   type data =
     | Term of Syn.t
-    | Xmlns of {xmlns : string; prefix : string}
+    | Xmlns of { xmlns: string; prefix: string }
 
   type tag = unit
 
@@ -10,9 +9,8 @@ struct
   type context = unit (* for advanced printing and reporting; unused here *)
 end
 
-module Scope =
-struct
-  include Yuujinchou.Scope.Make (P)
+module Scope = struct
+  include Yuujinchou.Scope.Make(P)
 
   let import_singleton x v =
     import_singleton (x, (v, ()))

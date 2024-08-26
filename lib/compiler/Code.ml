@@ -1,14 +1,14 @@
 open Forester_core
 
 type 'a _object = {
-  self : Trie.path option;
-  methods : (string * 'a) list
+  self: Trie.path option;
+  methods: (string * 'a) list
 }
 [@@deriving show, repr]
 
 type 'a patch = {
-  obj : 'a;
-  self : Trie.path option;
+  obj: 'a;
+  self: Trie.path option;
   methods: (string * 'a) list
 }
 [@@deriving show, repr]
@@ -27,28 +27,25 @@ type node =
   | Put of Trie.path * t
   | Default of Trie.path * t
   | Get of Trie.path
-
   | Fun of Trie.path binding list * t
-
   | Object of t _object
   | Patch of t patch
   | Call of t * string
-
   | Import of visibility * string
   | Def of Trie.path * Trie.path binding list * t
   | Decl_xmlns of string * string
   | Alloc of Trie.path
-
   | Namespace of Trie.path * t
 [@@deriving show, repr]
 
 and t = node Range.located list
 [@@deriving show, repr]
 
-type tree =
-  {source_path : string option;
-   addr : string option;
-   code : t}
+type tree = {
+  source_path: string option;
+  addr: string option;
+  code: t
+}
 [@@deriving show, repr]
 
 let import_private x = Import (Private, x)

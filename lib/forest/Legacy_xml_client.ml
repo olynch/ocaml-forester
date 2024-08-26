@@ -9,42 +9,42 @@ module type S = sig
   val route : addr -> string option
   val render_article : T.content T.article -> P.node
 
-  val pp_xml : ?stylesheet:string -> Format.formatter -> T.content T.article -> unit
+  val pp_xml : ?stylesheet: string -> Format.formatter -> T.content T.article -> unit
 end
 
 module type Params = sig
   val root : string option
 end
 
-module Make (Params : Params) (F : Forest.S) () : S = struct
+module Make (Params: Params) (F: Forest.S) () : S = struct
 
-  module PT = Plain_text_client.Make (F)
-  module Util = Forest_util.Make (F)
+  module PT = Plain_text_client.Make(F)
+  module Util = Forest_util.Make(F)
   module Xmlns = struct
     include (Xmlns_effect.Make ())
 
     let run f =
       let xmlns_prefix =
-        {prefix = X.reserved_prefix;
-         xmlns = X.forester_xmlns}
+        {
+          prefix = X.reserved_prefix;
+          xmlns = X.forester_xmlns
+        }
       in
-      run ~reserved:[xmlns_prefix] f
+      run ~reserved: [xmlns_prefix] f
   end
 
-  module Scope = Algaeff.Reader.Make (struct type t = addr end)
+  module Scope = Algaeff.Reader.Make(struct type t = addr end)
 
   let transclusion_cache = Hashtbl.create 1000
 
   let addr_to_string addr =
     Format.asprintf "%a" Addr.pp addr
 
-  let addr_type : addr -> string =
-    function
+  let addr_type : addr -> string = function
     | User_addr _ -> "user"
     | Machine_addr _ -> "machine"
     | Anon -> "anon"
     | Hash_addr _ -> "content"
-
 
   let addr_is_root addr =
     Some addr = Option.map Addr.user_addr Params.root
@@ -60,7 +60,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
 
   let get_expanded_title frontmatter =
     let scope = Scope.read () in
-    let title = F.get_expanded_title ~scope:(Some scope) frontmatter in
+    let title = F.get_expanded_title ~scope: (Some scope) frontmatter in
     T.apply_modifier_to_content Sentence_case title
 
   let render_xml_qname qname =
@@ -69,20 +69,19 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     | "" -> qname.uname
     | _ -> Format.sprintf "%s:%s" qname.prefix qname.uname
 
-  let render_xml_attr T.{key; value} =
+  let render_xml_attr T.{ key; value } =
     P.string_attr (render_xml_qname key) "%s" value
 
   let render_prim_node p =
     X.prim p []
 
-  let render_img =
-    function
-    | T.Inline {format; base64} ->
+  let render_img = function
+    | T.Inline{ format; base64 } ->
       X.img [X.src "data:image/%s;base64,%s" format base64]
     | T.Remote url ->
       X.img [X.src "%s" url]
 
-  let render_xmlns_prefix Xmlns.{prefix; xmlns} =
+  let render_xmlns_prefix Xmlns.{ prefix; xmlns } =
     P.string_attr ("xmlns:" ^ prefix) "%s" xmlns
 
   let render_section_flags (dict : T.section_flags) =
@@ -97,32 +96,36 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
 
   let rec render_section (section : T.content T.section) : P.node =
     let@ () = Xmlns.run in
-    X.tree (render_section_flags section.flags) [
-      render_frontmatter section.frontmatter;
-      let@ () = Scope.run ~env:section.frontmatter.addr in
-      X.mainmatter [] @@ render_content section.mainmatter
-    ]
+    X.tree
+      (render_section_flags section.flags)
+      [
+        render_frontmatter section.frontmatter;
+        let@ () = Scope.run ~env: section.frontmatter.addr in
+        X.mainmatter [] @@ render_content section.mainmatter
+      ]
 
   and render_frontmatter (frontmatter : T.content T.frontmatter) : P.node =
-    X.frontmatter [] [
-      render_attributions frontmatter.addr frontmatter.attributions;
-      render_dates frontmatter.dates;
-      X.optional (X.source_path [] "%s") frontmatter.source_path;
-      X.anchor [] "%i" @@ Oo.id (object end);
-      X.addr [X.type_ "%s" @@ addr_type frontmatter.addr] "%s" @@ addr_to_string frontmatter.addr;
-      X.optional (X.route [] "%s") @@ route frontmatter.addr;
-      begin
-        let title = get_expanded_title frontmatter in
-        X.title [X.text_ "%s" @@ PT.string_of_content title] @@
-        render_content title
-      end;
-      X.optional (fun s -> X.taxon [] "%s" @@ String_util.sentence_case s) frontmatter.taxon;
-      X.null (List.map render_meta frontmatter.metas)
-    ]
+    X.frontmatter
+      []
+      [
+        render_attributions frontmatter.addr frontmatter.attributions;
+        render_dates frontmatter.dates;
+        X.optional (X.source_path [] "%s") frontmatter.source_path;
+        X.anchor [] "%i" @@ Oo.id ( object end);
+        X.addr [X.type_ "%s" @@ addr_type frontmatter.addr] "%s" @@ addr_to_string frontmatter.addr;
+        X.optional (X.route [] "%s") @@ route frontmatter.addr;
+        begin
+          let title = get_expanded_title frontmatter in
+          X.title [X.text_ "%s" @@ PT.string_of_content title] @@
+            render_content title
+        end;
+        X.optional (fun s -> X.taxon [] "%s" @@ String_util.sentence_case s) frontmatter.taxon;
+        X.null (List.map render_meta frontmatter.metas)
+      ]
 
   and render_meta (key, body) =
     X.meta [X.name "%s" key] @@
-    render_content body
+      render_content body
 
   and render_content (content : T.content) : P.node list =
     match content with
@@ -134,12 +137,11 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       xs @ ys
     | [] -> []
 
-  and render_content_node : T.content_node -> P.node list =
-    function
+  and render_content_node : T.content_node -> P.node list = function
     | Text str ->
       [P.txt "%s" str]
     | CDATA str ->
-      [P.txt ~raw:true "<![CDATA[%s]]>" str]
+      [P.txt ~raw: true "<![CDATA[%s]]>" str]
     | Xml_elt elt ->
       let prefixes_to_add, (name, attrs, content) =
         let@ () = Xmlns.within_scope in
@@ -170,13 +172,14 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       render_link link
     | Results_of_query q ->
       let article_to_section =
-        T.article_to_section ~flags:{
-          T.default_section_flags with
-          expanded = Some false;
-          numbered = Some false;
-          included_in_toc = Some false;
-          metadata_shown = Some true
-        }
+        T.article_to_section
+          ~flags: {
+            T.default_section_flags with
+            expanded = Some false;
+            numbered = Some false;
+            included_in_toc = Some false;
+            metadata_shown = Some true
+          }
       in
       F.run_query q
       |> Util.get_sorted_articles
@@ -193,17 +196,19 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       [X.tex [X.display "%s" display] "<![CDATA[%s]]>" body]
     | TeX_cs cs ->
       (* Should not happen! *)
-      [P.txt ~raw:true "\\%s" @@ TeX_cs.show cs]
+      [P.txt ~raw: true "\\%s" @@ TeX_cs.show cs]
     | Img img ->
       [render_img img]
     | Resource resource ->
       [render_resource resource]
 
   and render_resource (resource : T.content T.resource) =
-    X.resource [X.hash "%s" resource.hash] [
-      X.resource_content [] @@ render_content resource.content;
-      render_resource_sources resource.sources
-    ]
+    X.resource
+      [X.hash "%s" resource.hash]
+      [
+        X.resource_content [] @@ render_content resource.content;
+        render_resource_sources resource.sources
+      ]
 
   and render_resource_sources sources =
     X.null @@ List.map render_resource_source sources
@@ -225,20 +230,23 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     let attrs =
       match article_opt with
       | None ->
-        [X.href "%s" link.href;
-         X.type_ "external"]
+        [
+          X.href "%s" link.href;
+          X.type_ "external"
+        ]
       | Some article ->
-        [X.optional_ (X.href "%s") @@ route article.frontmatter.addr;
-         X.title_ "%s" @@ PT.string_of_content @@ get_expanded_title article.frontmatter;
-         X.addr_ "%s" @@ addr_to_string article.frontmatter.addr;
-         X.type_ "local"]
+        [
+          X.optional_ (X.href "%s") @@ route article.frontmatter.addr;
+          X.title_ "%s" @@ PT.string_of_content @@ get_expanded_title article.frontmatter;
+          X.addr_ "%s" @@ addr_to_string article.frontmatter.addr;
+          X.type_ "local"
+        ]
     in
     [X.link attrs @@ render_content link.content]
 
   and render_attributions scope attributions =
     let hered_contrs =
-      let attribution_name =
-        function
+      let attribution_name = function
         | T.Contributor name -> name
         | T.Author name -> name
       in
@@ -247,7 +255,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
         | User_addr addr when List.for_all (fun z -> not (addr = attribution_name z)) attributions -> Some (T.Contributor addr)
         | _ -> None
       in
-      let module QLN = Query.Locally_nameless (Query.Global_name) in
+      let module QLN = Query.Locally_nameless(Query.Global_name) in
       QLN.hereditary_contributors (Addr scope)
       |> QLN.distill
       |> F.run_query
@@ -257,8 +265,7 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     let all_attributions = List_util.nub (attributions @ hered_contrs) in
     X.authors [] @@ List.map render_attribution all_attributions
 
-  and render_attribution =
-    function
+  and render_attribution = function
     | T.Author x ->
       X.author [] @@ render_bio_link x
     | T.Contributor x ->
@@ -267,9 +274,8 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
   and render_bio_link ident =
     match F.get_article (Addr.user_addr ident) with
     | Some article ->
-      render_link {href = ident; content = article.frontmatter.title}
+      render_link { href = ident; content = article.frontmatter.title }
     | None -> [P.txt "%s" ident]
-
 
   and render_dates dates =
     X.null @@ List.map render_date dates
@@ -281,26 +287,30 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       | None -> X.null_
       | Some _ -> X.href "%s" str
     in
-    X.date [
-      href_attr
-    ] [
-      X.year [] "%i" date.yyyy;
-      date.mm |> X.optional @@ X.month [] "%i";
-      date.dd |> X.optional @@ X.day [] "%i"
-    ]
+    X.date
+      [
+        href_attr
+      ]
+      [
+        X.year [] "%i" date.yyyy;
+        date.mm |> X.optional @@ X.month [] "%i";
+        date.dd |> X.optional @@ X.day [] "%i"
+      ]
 
   let render_article (article : T.content T.article) : P.node =
-    let xmlns_prefix = Xmlns.{prefix = X.reserved_prefix; xmlns = X.forester_xmlns} in
-    let@ () = Scope.run ~env:article.frontmatter.addr in
+    let xmlns_prefix = Xmlns.{ prefix = X.reserved_prefix; xmlns = X.forester_xmlns } in
+    let@ () = Scope.run ~env: article.frontmatter.addr in
     let@ () = Xmlns.run in
-    X.tree [
-      render_xmlns_prefix xmlns_prefix;
-      X.root @@ addr_is_root article.frontmatter.addr
-    ] [
-      render_frontmatter article.frontmatter;
-      X.mainmatter [] @@ render_content article.mainmatter;
-      X.backmatter [] @@ render_content article.backmatter
-    ]
+    X.tree
+      [
+        render_xmlns_prefix xmlns_prefix;
+        X.root @@ addr_is_root article.frontmatter.addr
+      ]
+      [
+        render_frontmatter article.frontmatter;
+        X.mainmatter [] @@ render_content article.mainmatter;
+        X.backmatter [] @@ render_content article.backmatter
+      ]
 
   let pp_xml ?stylesheet fmt article =
     Format.fprintf fmt {|<?xml version="1.0" encoding="UTF-8"?>|};
@@ -311,5 +321,4 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     end;
     Format.pp_print_newline fmt ();
     P.pp_xml fmt @@ render_article article
-
 end

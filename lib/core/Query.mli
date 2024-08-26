@@ -2,7 +2,7 @@ open Base
 
 (** {1 Relation symbols}*)
 
-module Rel :
+module Rel:
 sig
   type t = string
 
@@ -44,7 +44,7 @@ type 'var addr_expr =
 [@@deriving show, repr]
 
 (** Don't use the constructor/destructor unless you know what you are doing! *)
-type 'a binder = {body : 'a}
+type 'a binder = { body: 'a }
 [@@deriving repr]
 
 type 'var expr =
@@ -69,16 +69,14 @@ type 'name lnvar =
   | B of dbix
 [@@deriving show]
 
-
-
 module type Name = sig
   type t
   val fresh : unit -> t
 end
 
-module Global_name : Name
+module Global_name: Name
 
-module Locally_nameless (N : Name) : sig
+module Locally_nameless (N: Name) : sig
   type lnexpr = N.t lnvar expr
 
   val distill : lnexpr -> dbix expr

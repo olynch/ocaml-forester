@@ -5,7 +5,7 @@ type node =
   | Verbatim of string
   | Group of delim * t
   | Math of math_mode * t
-  | Link of {dest : t; title : t option}
+  | Link of { dest: t; title: t option }
   | Subtree of string option * tree
   | Fun of Symbol.t binding list * t
   | Var of Symbol.t
@@ -16,14 +16,12 @@ type node =
   | Xml_tag of xml_qname * (xml_qname * t) list * t
   | TeX_cs of TeX_cs.t
   | Prim of Prim.t
-  | Object of {self : Symbol.t; methods: (string * t) list}
-  | Patch of {obj : t; self : Symbol.t; super : Symbol.t; methods : (string * t) list}
+  | Object of { self: Symbol.t; methods: (string * t) list }
+  | Patch of { obj: t; self: Symbol.t; super: Symbol.t; methods: (string * t) list }
   | Call of t * string
-
   | Query_polarity of Query.polarity
   | Query_mode of Query.mode
   | Bool of bool
-
   | Results_of_query
   | Query_rel
   | Query_isect
@@ -34,11 +32,9 @@ type node =
   | Query_isect_fam_rel
   | Query_union_fam_rel
   | Query_builtin of [`Taxon | `Author | `Tag]
-
   | Transclude
   | Embed_tex
   | Ref
-
   | Title
   | Parent
   | Taxon
@@ -48,11 +44,9 @@ type node =
   | Tag
   | Date
   | Number
-
 [@@deriving show]
 
 and t = node Range.located list
 [@@deriving show]
 
 and tree = t
-

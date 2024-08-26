@@ -5,8 +5,7 @@ module type S = sig
   val run_query : Query.dbix Query.expr -> Addr_set.t
 end
 
-module Make (Graphs : Forest_graphs.S) : S =
-struct
+module Make (Graphs: Forest_graphs.S) : S = struct
   module Q = Query
 
   let query_rel mode pol rel addr =
@@ -36,14 +35,13 @@ struct
     | Union_fam (q, scope) ->
       let xs = Addr_set.to_list @@ run_query ~env q in
       let@ x = List.exists @~ xs in
-      check_query ~env:(x :: env) scope.body addr
+      check_query ~env: (x :: env) scope.body addr
     | Isect_fam (q, scope) ->
       let xs = Addr_set.to_list @@ run_query ~env q in
       let@ x = List.for_all @~ xs in
-      check_query ~env:(x :: env) scope.body addr
+      check_query ~env: (x :: env) scope.body addr
 
-  and eval_addr ~env : Q.dbix Q.addr_expr -> _ =
-    function
+  and eval_addr ~env : Q.dbix Q.addr_expr -> _ = function
     | Query.Addr addr -> addr
     | Query.Var ix ->
       begin
@@ -96,11 +94,10 @@ struct
     let alg (env, q) = Addr_set.union (run_query ~env q) in
     List.fold_right alg qs Addr_set.empty
 
-  and run_isect' =
-    function
+  and run_isect' = function
     | [] -> Graphs.get_all_addrs ()
     | (env, q) :: qs ->
       run_query ~env q |> Addr_set.filter @@ check_isect' qs
 
-  let run_query = run_query ~env:[]
+  let run_query = run_query ~env: []
 end

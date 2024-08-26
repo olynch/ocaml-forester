@@ -1,9 +1,8 @@
 open Forester_core
 
-module Make (F : Forest.S) =
-struct
-  module PT = Plain_text_client.Make (F)
-  module C = Xml_tree.Comparators (PT)
+module Make (F: Forest.S) = struct
+  module PT = Plain_text_client.Make(F)
+  module C = Xml_tree.Comparators(PT)
 
   let get_sorted_articles addrs =
     addrs

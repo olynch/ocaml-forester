@@ -3,7 +3,6 @@ open Pure_html
 let reserved_prefix = "fr"
 let forester_xmlns = "http://www.jonmsterling.com/jms-005P.xml"
 
-
 let null = HTML.null
 let null_ = HTML.null_
 
@@ -17,13 +16,11 @@ let optional_ kont opt =
   | Some x -> kont x
   | None -> null_
 
-
 let register_ns tag attrs =
   let f_xmlns = string_attr ("xmlns:" ^ reserved_prefix) "%s" forester_xmlns in
   tag (f_xmlns :: attrs)
 
 let add_ns name = Format.sprintf "%s:%s" reserved_prefix name
-
 
 let f_std_tag name = std_tag @@ add_ns name
 let f_text_tag name = text_tag @@ add_ns name
@@ -71,7 +68,7 @@ let number attrs = f_text_tag "number" attrs
 let meta = f_std_tag "meta"
 let name fmt = string_attr "name" fmt
 
-let tex attrs = f_text_tag ~raw:true "tex" attrs
+let tex attrs = f_text_tag ~raw: true "tex" attrs
 let display fmt = string_attr "display" fmt
 
 let title_ fmt = string_attr "title" fmt
@@ -103,7 +100,7 @@ let src fmt = uri_attr "src" fmt
 
 let resource = f_std_tag "resource"
 let resource_content = f_std_tag "resource-content"
-let resource_source attrs = f_text_tag ~raw:true "resource-source" attrs
+let resource_source attrs = f_text_tag ~raw: true "resource-source" attrs
 let resource_part fmt = string_attr "part" fmt
 
 let contextual_number = f_void_tag "contextual-number"

@@ -4,7 +4,8 @@ open Bwd
 let title_case_word s =
   let did_uppercase = ref false in
   let rec loop buf s i max =
-    if i > max then Buffer.contents buf else
+    if i > max then Buffer.contents buf
+    else
       let dec = String.get_utf_8_uchar s i in
       let u = Uchar.utf_decode_uchar dec in
       let should_ignore = Uucp.Case.is_case_ignorable u || not (Uucp.Case.is_cased u) in
@@ -34,7 +35,6 @@ let trim_newlines str =
     | "" :: lines -> process_lines lines
     | _ -> lines
   in
-
   let lines = String.split_on_char '\n' str in
   String.concat "\n" @@ List.rev @@ process_lines @@ List.rev @@ process_lines lines
 

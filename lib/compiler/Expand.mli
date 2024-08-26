@@ -1,13 +1,13 @@
-module Env : sig
+module Env: sig
   type t
   val empty : t
 end
 
 val expand_tree : Env.t -> Code.tree -> Env.t * Syn.tree
 
-module Builtins :
+module Builtins:
 sig
-  module Transclude :
+  module Transclude:
   sig
     val title_sym : Symbol.t
     val taxon_sym : Symbol.t

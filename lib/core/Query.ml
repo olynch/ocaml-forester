@@ -1,5 +1,4 @@
-module Rel =
-struct
+module Rel = struct
   type t = string
   [@@deriving repr]
 
@@ -37,7 +36,7 @@ type 'var addr_expr =
   | Var of 'var
 [@@deriving show, repr]
 
-type 'a binder = {body : 'a}
+type 'a binder = { body: 'a }
 [@@deriving show, repr]
 
 type 'var expr =
@@ -51,30 +50,36 @@ type 'var expr =
 
 let expr_t var_t =
   let open Repr in
-  mu @@ fun expr_t ->
-  variant "expr" begin fun rel isect union complement union_fam isect_fam ->
-    function
-    | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
-    | Isect x -> isect x
-    | Union x -> union x
-    | Complement x -> complement x
-    | Union_fam (x, y) -> union_fam (x, y)
-    | Isect_fam (x, y) -> isect_fam (x, y)
-  end
-  |~ case1 "Rel"
-    (quad mode_t polarity_t Rel.t (addr_expr_t var_t))
-    (fun (x1, x2, x3, x4) -> Rel (x1, x2, x3, x4))
-  |~ case1 "Isect" (list expr_t) (fun x -> Isect x)
-  |~ case1 "Union" (list expr_t) (fun x -> Union x)
-  |~ case1 "Complement" expr_t (fun x -> Complement x)
-  |~ case1 "Union_fam"
-    (pair expr_t (binder_t expr_t))
-    (fun (x, y) -> Union_fam (x, y))
-  |~ case1 "Isect_fam"
-    (pair expr_t (binder_t expr_t))
-    (fun (x, y) -> Isect_fam (x, y))
-  |> sealv
-
+  mu @@
+    fun expr_t ->
+      variant
+        "expr"
+        begin
+          fun rel isect union complement union_fam isect_fam ->
+            function
+            | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
+            | Isect x -> isect x
+            | Union x -> union x
+            | Complement x -> complement x
+            | Union_fam (x, y) -> union_fam (x, y)
+            | Isect_fam (x, y) -> isect_fam (x, y)
+        end
+      |~ case1
+        "Rel"
+        (quad mode_t polarity_t Rel.t (addr_expr_t var_t))
+        (fun (x1, x2, x3, x4) -> Rel (x1, x2, x3, x4))
+      |~ case1 "Isect" (list expr_t) (fun x -> Isect x)
+      |~ case1 "Union" (list expr_t) (fun x -> Union x)
+      |~ case1 "Complement" expr_t (fun x -> Complement x)
+      |~ case1
+        "Union_fam"
+        (pair expr_t (binder_t expr_t))
+        (fun (x, y) -> Union_fam (x, y))
+      |~ case1
+        "Isect_fam"
+        (pair expr_t (binder_t expr_t))
+        (fun (x, y) -> Isect_fam (x, y))
+      |> sealv
 
 (** A heuristic for computing an intersection of queries. *)
 let rec query_cost q =
@@ -91,12 +96,16 @@ let rec query_cost q =
   | Complement _ -> 900
 
 let sort_by_ascending_cost qs =
-  qs |> List.sort @@ fun q0 q1 ->
-  compare (query_cost q0) (query_cost q1)
+  qs
+  |> List.sort @@
+    fun q0 q1 ->
+      compare (query_cost q0) (query_cost q1)
 
 let sort_by_descending_cost qs =
-  qs |> List.sort @@ fun q0 q1 ->
-  compare (query_cost q1) (query_cost q0)
+  qs
+  |> List.sort @@
+    fun q0 q1 ->
+      compare (query_cost q1) (query_cost q0)
 
 let rel mode pol rel a =
   Rel (mode, pol, rel, a)
@@ -111,8 +120,7 @@ let rec union qs =
   | Union qs :: qs' -> union @@ qs @ qs'
   | qs -> Union qs
 
-let rec complement =
-  function
+let rec complement = function
   | Union qs -> isect @@ List.map complement qs
   | Complement q -> q
   | q -> Complement q
@@ -120,14 +128,12 @@ let rec complement =
 let tree_under x =
   rel Paths Outgoing Rel.transclusion x
 
-
 type 'name lnvar =
   | F of 'name
   | B of dbix
 [@@deriving show]
 
-let rec close_expr k x =
-  function
+let rec close_expr k x = function
   | Rel (mode, pol, rel, a) -> Rel (mode, pol, rel, close_addr_expr k x a)
   | Isect qs -> Isect (List.map (close_expr k x) qs)
   | Union qs -> Union (List.map (close_expr k x) qs)
@@ -136,61 +142,54 @@ let rec close_expr k x =
   | Isect_fam (q, scope) -> Isect_fam (close_expr k x q, close_scope k x scope)
 
 and close_scope k x scope =
-  {body = close_expr (k + 1) x scope.body}
+  { body = close_expr (k + 1) x scope.body }
 
-and close_addr_expr k x =
-  function
+and close_addr_expr k x = function
   | Addr addr -> Addr addr
   | Var var -> Var (close_addr_var k x var)
 
-and close_addr_var k x =
-  function
+and close_addr_var k x = function
   | F name when x = name -> B k
   | F name -> F name
   | B i when i < k -> B i
   | B i -> B (i + 1)
-
 
 module type Name = sig
   type t
   val fresh : unit -> t
 end
 
-module Global_name : Name  = struct
+module Global_name: Name = struct
   type t = int
   let fresh () = Oo.id object end
 end
 
-module Locally_nameless (N : Name) = struct
+module Locally_nameless (N: Name) = struct
   type lnexpr = N.t lnvar expr
 
   exception Distill of N.t
 
-  let rec distill : _ expr -> dbix expr =
-    function
+  let rec distill : _ expr -> dbix expr = function
     | Rel (mode, pol, rel, a) -> Rel (mode, pol, rel, distill_addr_expr a)
     | Isect qs -> Isect (List.map distill qs)
     | Union qs -> Union (List.map distill qs)
     | Complement q -> Complement (distill q)
     | Union_fam (q, scope) -> Union_fam (distill q, distill_scope scope)
-    | Isect_fam (q, scope)-> Isect_fam (distill q, distill_scope scope)
+    | Isect_fam (q, scope) -> Isect_fam (distill q, distill_scope scope)
 
   and distill_scope scope =
-    {body = distill scope.body}
+    { body = distill scope.body }
 
-  and distill_addr_expr =
-    function
+  and distill_addr_expr = function
     | Addr addr -> Addr addr
     | Var var -> Var (distill_lnvar var)
 
-  and distill_lnvar =
-    function
+  and distill_lnvar = function
     | F name -> raise @@ Distill name
     | B ix -> ix
 
-
   let bind x qx : _ lnvar expr binder =
-    {body = close_expr 0 x qx}
+    { body = close_expr 0 x qx }
 
   let isect_fam q x qx =
     Isect_fam (q, bind x qx)
@@ -208,16 +207,18 @@ module Locally_nameless (N : Name) = struct
     rel Edges Incoming Rel.links addr
 
   let related addr =
-    isect [
-      rel Edges Outgoing Rel.links addr;
-      complement @@ has_taxon "reference"
-    ]
+    isect
+      [
+        rel Edges Outgoing Rel.links addr;
+        complement @@ has_taxon "reference"
+      ]
 
   let contributions addr =
-    union [
-      rel Edges Incoming Rel.authors addr;
-      rel Edges Incoming Rel.contributors addr
-    ]
+    union
+      [
+        rel Edges Incoming Rel.authors addr;
+        rel Edges Incoming Rel.contributors addr
+      ]
 
   let isect_fam_rel q mode pol r =
     let name = N.fresh () in
@@ -229,10 +230,11 @@ module Locally_nameless (N : Name) = struct
 
   let hereditary_contributors addr =
     let q_non_ref_under =
-      isect [
-        tree_under addr;
-        complement @@ has_taxon "reference"
-      ]
+      isect
+        [
+          tree_under addr;
+          complement @@ has_taxon "reference"
+        ]
     in
     let q_all_contributors =
       union_fam_rel
@@ -244,11 +246,10 @@ module Locally_nameless (N : Name) = struct
     let q_authors = rel Edges Outgoing Rel.authors addr in
     isect [q_all_contributors; complement q_authors]
 
-
   let references addr =
-    isect [
-      union_fam_rel (tree_under addr) Edges Outgoing Rel.links;
-      has_taxon "reference"
-    ]
-
+    isect
+      [
+        union_fam_rel (tree_under addr) Edges Outgoing Rel.links;
+        has_taxon "reference"
+      ]
 end

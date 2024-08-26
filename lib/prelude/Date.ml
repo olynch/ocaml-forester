@@ -1,6 +1,6 @@
 open Fun_util
 
-type t = {yyyy : int; mm : int option; dd : int option}
+type t = { yyyy: int; mm: int option; dd: int option }
 [@@deriving repr]
 
 let year d = d.yyyy
@@ -9,12 +9,12 @@ let day d = d.dd
 
 let now () =
   let t = Unix.localtime (Unix.time ()) in
-  {yyyy = 1900 + t.tm_year; mm = Some (1 + t.tm_mon); dd = Some t.tm_mday}
+  { yyyy = 1900 + t.tm_year; mm = Some (1 + t.tm_mon); dd = Some t.tm_mday }
 
 (* approximate, only for sorting *)
 let to_ptime (date : t) : Ptime.t =
-  let dd = Option.value ~default:1 date.dd in
-  let mm = Option.value ~default:1 date.mm in
+  let dd = Option.value ~default: 1 date.dd in
+  let mm = Option.value ~default: 1 date.mm in
   match Ptime.of_date (date.yyyy, mm, dd) with
   | None -> failwith "to_ptime"
   | Some t -> t
@@ -34,12 +34,12 @@ let parse_date str =
           match rest with
           | [dd] ->
             let dd = Some (int_of_string dd) in
-            Some {yyyy; mm; dd}
+            Some { yyyy; mm; dd }
           | _ ->
-            Some {yyyy; mm; dd = None}
+            Some { yyyy; mm; dd = None }
         end
       | _ ->
-        Some {yyyy; mm = None; dd = None}
+        Some { yyyy; mm = None; dd = None }
     end
   | _ ->
     None
@@ -60,21 +60,21 @@ let pp fmt date =
 
 let pp_month fmt i =
   Format.fprintf fmt "%s" @@
-  match i with
-  | 1 -> "January"
-  | 2 -> "February"
-  | 3 -> "March"
-  | 4 -> "April"
-  | 5 -> "May"
-  | 6 -> "June"
-  | 7 -> "July"
-  | 8 -> "August"
-  | 9 -> "September"
-  | 10 -> "October"
-  | 11 -> "November"
-  | 12 -> "December"
-  | _ ->
-    failwith @@ Format.sprintf "Invalid date: %i" i
+    match i with
+    | 1 -> "January"
+    | 2 -> "February"
+    | 3 -> "March"
+    | 4 -> "April"
+    | 5 -> "May"
+    | 6 -> "June"
+    | 7 -> "July"
+    | 8 -> "August"
+    | 9 -> "September"
+    | 10 -> "October"
+    | 11 -> "November"
+    | 12 -> "December"
+    | _ ->
+      failwith @@ Format.sprintf "Invalid date: %i" i
 
 let pp_human fmt date =
   match date.mm with

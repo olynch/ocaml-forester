@@ -1,5 +1,4 @@
-module Message =
-struct
+module Message = struct
   type t =
     | Tree_not_found
     | Duplicate_tree
@@ -21,8 +20,7 @@ struct
     | Log
   [@@deriving show]
 
-  let default_severity : t -> Asai.Diagnostic.severity =
-    function
+  let default_severity : t -> Asai.Diagnostic.severity = function
     | Duplicate_tree -> Error
     | Tree_not_found -> Error
     | Parse_error -> Error
@@ -46,7 +44,7 @@ struct
     show
 end
 
-include Asai.Reporter.Make (Message)
+include Asai.Reporter.Make(Message)
 
 let profile msg body =
   let before = Unix.gettimeofday () in
@@ -55,15 +53,14 @@ let profile msg body =
   emitf Profiling "[%fs] %s" (after -. before) msg;
   result
 
-
-module Tty = Asai.Tty.Make (Message)
+module Tty = Asai.Tty.Make(Message)
 
 let easy_run k =
   let fatal diagnostics =
     Tty.display diagnostics;
     exit 1
   in
-  run ~emit:Tty.display ~fatal k
+  run ~emit: Tty.display ~fatal k
 
 let silence k =
   let fatal diagnostics =

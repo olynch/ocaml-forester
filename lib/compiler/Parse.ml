@@ -55,8 +55,7 @@ let try_parse lexbuf =
         match last_token with
         | Grammar.RPAREN
         | Grammar.RSQUARE
-        | Grammar.RBRACE
-          ->
+        | Grammar.RBRACE ->
           begin
             match List.find_index (fun c -> c = last_token) bracketing with
             | Some i ->
@@ -91,25 +90,25 @@ let try_parse lexbuf =
         match last_token with
         | Grammar.RPAREN
         | Grammar.RSQUARE
-        | Grammar.RBRACE
-          -> assert (List.hd bracketing = last_token); List.tl bracketing
+        | Grammar.RBRACE ->
+          assert (List.hd bracketing = last_token); List.tl bracketing
         | _ -> bracketing
       in
       (* get new token *)
       let token, start, end_ = supplier () in
-      let bracketing = match token with
+      let bracketing =
+        match token with
         | Grammar.LPAREN -> Grammar.RPAREN :: bracketing
         | Grammar.LSQUARE -> Grammar.RSQUARE :: bracketing
         | Grammar.LBRACE
         | Grammar.HASH_LBRACE
-        | Grammar.HASH_HASH_LBRACE
-          -> Grammar.RBRACE :: bracketing
+        | Grammar.HASH_HASH_LBRACE ->
+          Grammar.RBRACE :: bracketing
         | _ -> bracketing
       in
       (* check if it's possible to end parsing here, update last_accept *)
       let la =
-        if I.acceptable checkpoint Grammar.EOF start
-        then checkpoint
+        if I.acceptable checkpoint Grammar.EOF start then checkpoint
         else last_accept
       in
       run bracketing token la checkpoint supplier @@ I.offer checkpoint (token, start, end_)
@@ -129,9 +128,10 @@ let maybe_with_errors (f : unit -> 'a) : ('a, 'a * 'b list) result =
   let errors = ref [] in
   let result =
     let@ () =
-      Reporter.map_diagnostic @@ fun d ->
-      errors := d :: !errors;
-      d
+      Reporter.map_diagnostic @@
+        fun d ->
+          errors := d :: !errors;
+          d
     in
     f ()
   in
@@ -148,11 +148,11 @@ let parse_channel filename ch =
 
 let parse_file filename =
   let ch = open_in filename in
-  let@ () = Fun.protect ~finally:(fun _ -> close_in ch) in
+  let@ () = Fun.protect ~finally: (fun _ -> close_in ch) in
   parse_channel filename ch
 
 let parse_string str =
-  let@ () =  Reporter.tracef "when parsing string" in
+  let@ () = Reporter.tracef "when parsing string" in
   let lexbuf = Lexing.from_string str in
   let@ () = maybe_with_errors in
   try_parse lexbuf

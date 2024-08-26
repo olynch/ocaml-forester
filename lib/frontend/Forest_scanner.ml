@@ -1,13 +1,13 @@
 open Forester_prelude
 module EP = Eio.Path
-module S = Algaeff.Sequencer.Make (struct type t = Eio.Fs.dir_ty EP.t end)
+module S = Algaeff.Sequencer.Make(struct type t = Eio.Fs.dir_ty EP.t end)
 
 let rec process_file fp =
   if EP.is_directory fp then
     process_dir fp
   else
     let@ _, basename = Option.iter @~ EP.split fp in
-    if Filename.extension basename = ".tree" && not @@ String.starts_with ~prefix:"." basename then
+    if Filename.extension basename = ".tree" && not @@ String.starts_with ~prefix: "." basename then
       S.yield fp
 
 and process_dir dir =
@@ -15,7 +15,7 @@ and process_dir dir =
     let@ fp = List.iter @~ EP.read_dir dir in
     process_file EP.(dir / fp)
   with
-    Eio.Io (Eio.Fs.E (Permission_denied _), _) -> ()
+    | Eio.Io (Eio.Fs.E (Permission_denied _), _) -> ()
 
 let scan_directories dirs =
   let@ () = S.run in

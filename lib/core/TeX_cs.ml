@@ -5,8 +5,7 @@ type t =
   | Symbol of char
 [@@deriving repr]
 
-let pp fmt =
-  function
+let pp fmt = function
   | Word x -> Format.fprintf fmt "%s" x
   | Symbol x -> Format.fprintf fmt "%c" x
 

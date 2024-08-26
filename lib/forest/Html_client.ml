@@ -14,10 +14,10 @@ module type Params = sig
   val root : string option
 end
 
-module Make (Params : Params) (F : Forest.S) () : S = struct
+module Make (Params: Params) (F: Forest.S) () : S = struct
 
-  module Util = Forest_util.Make (F)
-  module PT = Plain_text_client.Make (F)
+  module Util = Forest_util.Make(F)
+  module PT = Plain_text_client.Make(F)
   module Xmlns = Xmlns_effect.Make ()
 
   let route addr =
@@ -26,16 +26,14 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
     else
       Format.asprintf "%a.html" Addr.pp addr
 
-  let render_xml_qname =
-    function
-    | {prefix = ""; uname; _} -> uname
-    | {prefix; uname; _} -> Format.sprintf "%s:%s" prefix uname
+  let render_xml_qname = function
+    | { prefix = ""; uname; _ } -> uname
+    | { prefix; uname; _ } -> Format.sprintf "%s:%s" prefix uname
 
-  let render_xml_attr T.{key; value} =
+  let render_xml_attr T.{ key; value } =
     P.string_attr (render_xml_qname key) "%s" value
 
-  let tag_of_prim_node : Prim.t -> P.attr list -> P.node list -> P.node =
-    function
+  let tag_of_prim_node : Prim.t -> P.attr list -> P.node list -> P.node = function
     | `P -> H.p
     | `Em -> H.em
     | `Strong -> H.strong
@@ -51,51 +49,61 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
   let render_prim_node p =
     tag_of_prim_node p []
 
-  let render_img =
-    function
-    | T.Inline {format; base64} ->
+  let render_img = function
+    | T.Inline{ format; base64 } ->
       H.img [H.src "data:image/%s;base64,%s" format base64]
     | T.Remote url ->
       H.img [H.src "%s" url]
 
-  let render_xmlns_prefix Xmlns.{prefix; xmlns} =
+  let render_xmlns_prefix Xmlns.{ prefix; xmlns } =
     P.string_attr ("xmlns:" ^ prefix) "%s" xmlns
 
   let rec render_article (article : T.content T.article) : P.node =
-    H.html [] [
-      H.head [] [
-        H.meta [H.charset "utf-8"];
-        H.link [H.rel "stylesheet"; H.href "style.css"]
-      ];
-      H.body [] [
-        H.article [] [
-          render_frontmatter article.frontmatter;
-          H.null @@ render_content article.mainmatter;
-          H.section [H.class_ "backmatter"] @@ render_content article.backmatter
-        ]
+    H.html
+      []
+      [
+        H.head
+          []
+          [
+            H.meta [H.charset "utf-8"];
+            H.link [H.rel "stylesheet"; H.href "style.css"]
+          ];
+        H.body
+          []
+          [
+            H.article
+              []
+              [
+                render_frontmatter article.frontmatter;
+                H.null @@ render_content article.mainmatter;
+                H.section [H.class_ "backmatter"] @@ render_content article.backmatter
+              ]
+          ]
       ]
-    ]
 
   and render_section (section : T.content T.section) : P.node =
-    H.section [] [
-      render_frontmatter section.frontmatter;
-      H.null @@ render_content section.mainmatter
-    ]
+    H.section
+      []
+      [
+        render_frontmatter section.frontmatter;
+        H.null @@ render_content section.mainmatter
+      ]
 
   and render_frontmatter (frontmatter : T.content T.frontmatter) : P.node =
-    H.header [] [
-      H.h1 [] @@ render_content frontmatter.title
-    ]
+    H.header
+      []
+      [
+        H.h1 [] @@ render_content frontmatter.title
+      ]
 
   and render_content (content : T.content) : P.node list =
     List.concat_map render_content_node content
 
-  and render_content_node : T.content_node -> P.node list =
-    function
+  and render_content_node : T.content_node -> P.node list = function
     | Text str ->
       [P.txt "%s" str]
     | CDATA str ->
-      [P.txt ~raw:true "<![CDATA[%s]]>" str]
+      [P.txt ~raw: true "<![CDATA[%s]]>" str]
     | Xml_elt elt ->
       let prefixes_to_add, (name, attrs, content) =
         let@ () = Xmlns.within_scope in
@@ -138,9 +146,9 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
         | Inline -> {|\(|}, {|\)|}
       in
       let body = PT.string_of_content content in
-      [P.txt ~raw:true "%s%s%s" l body r]
+      [P.txt ~raw: true "%s%s%s" l body r]
     | TeX_cs cs ->
-      [P.txt ~raw:true "\\%s" (TeX_cs.show cs)]
+      [P.txt ~raw: true "\\%s" (TeX_cs.show cs)]
     | Img img ->
       [render_img img]
     | Resource resource ->
@@ -148,7 +156,6 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
 
   and render_resource resource =
     render_content resource.content
-
 
   and render_transclusion (transclusion : T.content T.transclusion) : P.node list =
     render_content @@ F.get_content_of_transclusion transclusion
@@ -161,9 +168,10 @@ module Make (Params : Params) (F : Forest.S) () : S = struct
       | None ->
         [H.href "%s" link.href]
       | Some article ->
-        [H.href "%s" @@ route article.frontmatter.addr;
-         H.title_ "%s" @@ PT.string_of_content article.frontmatter.title]
+        [
+          H.href "%s" @@ route article.frontmatter.addr;
+          H.title_ "%s" @@ PT.string_of_content article.frontmatter.title
+        ]
     in
-    [ H.a attrs @@ render_content link.content ]
-
+    [H.a attrs @@ render_content link.content]
 end

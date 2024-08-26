@@ -3,10 +3,9 @@ open Forester_core
 
 module T = Xml_tree
 
-module Make (R : sig val route : addr -> string option end) (F : Forest.S) =
-struct
+module Make (R: sig val route : addr -> string option end) (F: Forest.S) = struct
 
-  module PT = Plain_text_client.Make (F)
+  module PT = Plain_text_client.Make(F)
 
   let render_tree ~dev (doc : T.content T.article) =
     let addr = doc.frontmatter.addr in
@@ -23,11 +22,13 @@ struct
     let metas =
       let meta_string meta = String.trim @@ PT.string_of_content meta in
       `Assoc
-        (List.map (fun (s, meta) -> (s, `String (meta_string meta)))
-           doc.frontmatter.metas)
+        (
+          List.map
+            (fun (s, meta) -> (s, `String (meta_string meta)))
+            doc.frontmatter.metas
+        )
     in
-    let
-      path =
+    let path =
       if dev then
         match doc.frontmatter.source_path with
         | Some p -> [("sourcePath", `String p)]
@@ -37,21 +38,25 @@ struct
     match addr with
     | User_addr addr ->
       Some
-        (addr,
-         `Assoc
-           ( path @
-             [("title", title);
-              ("taxon", taxon);
-              ("tags", tags);
-              ("route",route);
-              ("metas", metas);
-             ]))
+        (
+          addr,
+          `Assoc
+            (
+              path @
+                [
+                  ("title", title);
+                  ("taxon", taxon);
+                  ("tags", tags);
+                  ("route", route);
+                  ("metas", metas);
+                ]
+            )
+        )
     | _ -> None
 
   let render_trees ~(dev : bool) (trees : T.content T.article list) : Yojson.Basic.t =
-    `Assoc begin
-      trees |> List.filter_map (render_tree ~dev)
-    end
-
-
+    `Assoc
+      begin
+        trees |> List.filter_map (render_tree ~dev)
+      end
 end

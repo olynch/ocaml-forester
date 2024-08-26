@@ -12,4 +12,4 @@ module type Params = sig
   val root : string option
 end
 
-module Make (_ : Params) (_ : Forest.S) () : S
+module Make (_: Params) (_: Forest.S) () : S

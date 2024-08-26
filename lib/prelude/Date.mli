@@ -1,4 +1,4 @@
-type t = {yyyy : int; mm : int option; dd : int option}
+type t = { yyyy: int; mm: int option; dd: int option }
 val t : t Repr.ty
 
 val pp : Format.formatter -> t -> unit
