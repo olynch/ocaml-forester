@@ -52,7 +52,7 @@ let split_addr addr =
 
 let next_addr ~prefix ~mode (addrs : string list) =
   let keys =
-    addrs |> List.filter_map @@ fun addr ->
+    let@ addr = List.filter_map @~ addrs in
     let prefix', key = split_addr addr in
     if prefix = prefix' then key else None
   in
@@ -65,7 +65,7 @@ let next_addr ~prefix ~mode (addrs : string list) =
 
 let create_tree ~env ~dest ~prefix ~template ~mode =
   let addrs =
-    get_all_articles () |> List.filter_map @@ fun (article : _ T.article) ->
+    let@ article = List.filter_map @~ get_all_articles () in
     match article.frontmatter.addr with
     | Addr.User_addr x -> Some x
     | _ -> None
@@ -76,16 +76,16 @@ let create_tree ~env ~dest ~prefix ~template ~mode =
   let template_content =
     match template with
     | None -> ""
-    | Some name -> Eio.Path.load Eio.Path.(Eio.Stdenv.cwd env / "templates" / (name ^ ".tree"))
+    | Some name -> EP.load EP.(Eio.Stdenv.cwd env / "templates" / (name ^ ".tree"))
   in
   let body = Format.asprintf "\\date{%a}\n" Date.pp now in
   let create = `Exclusive 0o644 in
-  let path = Eio.Path.(dest / fname) in
-  Eio.Path.save ~create path @@ body ^ template_content;
+  let path = EP.(dest / fname) in
+  EP.save ~create path @@ body ^ template_content;
   next
 
 let complete prefix =
-  get_all_articles () |> List.to_seq |> Seq.filter_map @@ fun (article : _ T.article) ->
+  let@ article = Seq.filter_map @~ List.to_seq @@ get_all_articles () in
   let addr = article.frontmatter.addr in
   let title =
     Format.asprintf "%a"
@@ -101,17 +101,18 @@ let is_hidden_file fname =
 
 let copy_contents_of_dir ~env dir =
   let cwd = Eio.Stdenv.cwd env in
-  Eio.Path.read_dir dir |> List.iter @@ fun fname ->
+  let@ fname = List.iter @~ EP.read_dir dir in
   if not @@ is_hidden_file fname then
-    let path = Eio.Path.(dir / fname) in
-    let source = Eio.Path.native_exn path in
-    Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir:"output"
+    let path = EP.(dir / fname) in
+    let source = EP.native_exn path in
+    Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir:output_dir_name
 
 let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
-  Forest_scanner.scan_directories dirs |> List.of_seq |> List.filter_map @@ fun fp ->
-  Option.bind (Eio.Path.split fp) @@ fun (_, basename) ->
+  let@ () = Reporter.profile "parse trees" in
+  let@ fp = List.filter_map @~ List.of_seq @@ Forest_scanner.scan_directories dirs in
+  let@ _, basename = Option.bind (EP.split fp) in
   let addr = Filename.chop_extension basename in
-  let native = Eio.Path.native_exn fp in
+  let native = EP.native_exn fp in
   let source_path = if dev then Some (Unix.realpath native) else None in
   match Parse.parse_file native with
   | Result.Ok code -> Some Code.{source_path; addr = Some addr; code}
