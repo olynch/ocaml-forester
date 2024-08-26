@@ -50,11 +50,11 @@ module V = struct
 
   let coalesce_text =
     let rec loop acc = function
-      | [] -> Option.some @@ String.concat "" @@ List.rev acc
-      | T.Text txt :: content -> loop (txt :: acc) content
+      | [] -> Option.some @@ String.concat "" @@ Bwd.prepend acc []
+      | T.Text txt :: content -> loop (Bwd.snoc acc txt) content
       | _ -> None
     in
-    loop []
+    loop Emp
 
   let extract_text (node : located) =
     let content = extract_content node in

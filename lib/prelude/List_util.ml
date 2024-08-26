@@ -1,8 +1,10 @@
+open Bwd
+
 let nub xs =
   let rec loop acc = function
-    | [] -> List.rev acc
+    | [] -> Bwd.prepend acc []
     | x :: xs ->
-      let acc = if List.mem x acc then acc else x :: acc in
+      let acc = if Bwd.mem x acc then acc else Bwd.snoc acc x in
       loop acc xs
   in
-  loop [] xs
+  loop Bwd.Emp xs

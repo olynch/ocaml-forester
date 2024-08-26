@@ -125,19 +125,19 @@ let try_parse lexbuf =
   run [] Grammar.EOF checkpoint checkpoint supplier checkpoint
 
 let maybe_with_errors (f : unit -> 'a) : ('a, 'a * 'b list) result =
-  let errors = ref [] in
+  let errors = ref Bwd.Emp in
   let result =
     let@ () =
       Reporter.map_diagnostic @@
         fun d ->
-          errors := d :: !errors;
+          errors := Bwd.snoc !errors d;
           d
     in
     f ()
   in
   match !errors with
-  | [] -> Result.ok result
-  | errs -> Result.error (result, List.rev errs)
+  | Emp -> Result.ok result
+  | errs -> Result.error (result, Bwd.prepend errs [])
 
 let parse_channel filename ch =
   let@ () = Reporter.tracef "when parsing file `%s`" filename in
