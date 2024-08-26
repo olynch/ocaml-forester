@@ -4,13 +4,9 @@ open Forester_compiler
 
 module T = Xml_tree
 
-type 'a env = 'a
-  constraint 'a = < cwd: Eio.Fs.dir_ty Eio.Path.t;
-  process_mgr: _ Eio.Process.mgr;
-  stdout: _ Eio.Flow.sink;
-  .. > as 'a
+type env = Eio_unix.Stdenv.base
 
-let read_trees ~(env : _ env) (trees : Code.tree list) : T.content T.article Addr_map.t =
+let read_trees ~(env : env) (trees : Code.tree list) : T.content T.article Addr_map.t =
   let unexpanded_trees =
     let alg acc (tree : Code.tree) =
       match tree.addr with

@@ -1,7 +1,3 @@
-type 'a env = 'a
-  constraint 'a = < cwd: Eio.Fs.dir_ty Eio.Path.t;
-  process_mgr: _ Eio.Process.mgr;
-  stdout: _ Eio.Flow.sink;
-  .. > as 'a
+type env = Eio_unix.Stdenv.base
 
-val latex_to_svg : env: _ env -> string -> string
+val latex_to_svg : env: env -> string -> string

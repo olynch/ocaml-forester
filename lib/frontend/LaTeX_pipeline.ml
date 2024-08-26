@@ -3,11 +3,7 @@ open Forester_core
 
 module EP = Eio.Path
 
-type 'a env = 'a
-  constraint 'a = < cwd: Eio.Fs.dir_ty EP.t;
-  process_mgr: _ Eio.Process.mgr;
-  stdout: _ Eio.Flow.sink;
-  .. > as 'a
+type env = Eio_unix.Stdenv.base
 
 let indent_string string =
   string
@@ -15,18 +11,19 @@ let indent_string string =
   |> List.map (Format.sprintf "\t%s")
   |> String.concat "\n"
 
-let latex_to_dvi ~(env : _ env) code =
+let pipe_latex_dvi ~env ~tex_source kont =
   let mgr = Eio.Stdenv.process_mgr env in
   let@ tmp = Eio_util.with_open_tmp_dir ~env in
   let tex_fn = "job.tex" in
-  EP.save ~append: false ~create: (`Or_truncate 0o644) EP.(tmp / tex_fn) code;
-
-  (* `latex' sends errors to stdout rather than stderr. *)
-  let out_buf = Buffer.create 1000 in
-  let stdout = Eio.Flow.buffer_sink out_buf in
-  let stderr = Eio_util.null_sink () in
-  let cmd = ["latex"; "-halt-on-error"; "-interaction=nonstopmode"; tex_fn] in
   begin
+    let@ tex_sink = EP.with_open_out ~create: (`Or_truncate 0o644) EP.(tmp / tex_fn) in
+    Eio.Flow.copy tex_source tex_sink
+  end;
+  begin
+    let out_buf = Buffer.create 1000 in
+    let stdout = Eio.Flow.buffer_sink out_buf in
+    let stderr = Eio_util.null_sink () in
+    let cmd = ["latex"; "-halt-on-error"; "-interaction=nonstopmode"; tex_fn] in
     try
       Eio.Process.run ~cwd: tmp ~stdout ~stderr mgr cmd
     with
@@ -39,31 +36,30 @@ let latex_to_dvi ~(env : _ env) code =
           (String.concat " " cmd)
           (Eio.Path.native_exn tmp)
   end;
-  EP.load EP.(tmp / "job.dvi")
+  EP.with_open_in EP.(tmp / "job.dvi") kont
 
-let dvi_to_svg ~env dvi =
+let pipe_dvi_svg ~env ~dvi_source ~svg_sink =
   let cwd = Eio.Stdenv.cwd env in
   let mgr = Eio.Stdenv.process_mgr env in
-  let out_buf = Buffer.create 1000 in
   let err_buf = Buffer.create 1000 in
-  let stdout = Eio.Flow.buffer_sink out_buf in
   let stderr = Eio.Flow.buffer_sink err_buf in
-  let stdin = Eio.Flow.string_source dvi in
   let cmd = ["dvisvgm"; "--exact"; "--clipjoin"; "--font-format=woff"; "--bbox=papersize"; "--zoom=1.5"; "--stdin"; "--stdout"] in
-  begin
-    try
-      Eio.Process.run ~cwd ~stdin ~stdout ~stderr mgr cmd
-    with
-      | _ ->
-        Reporter.fatalf
-          External_error
-          "Encountered fatal error running `dvisvgm`: %s / %s"
-          (Buffer.contents out_buf)
-          (Buffer.contents err_buf)
-  end;
-  Buffer.contents out_buf
+  try
+    Eio.Process.run ~cwd ~stdin: dvi_source ~stdout: svg_sink ~stderr mgr cmd
+  with
+    | _ ->
+      Reporter.fatalf
+        External_error
+        "Encountered fatal error running `dvisvgm`: %s"
+        (Buffer.contents err_buf)
+
+let pipe_latex_svg ~env ~tex_source ~svg_sink =
+  let@ dvi_source = pipe_latex_dvi ~env ~tex_source in
+  pipe_dvi_svg ~env ~dvi_source ~svg_sink
 
 let latex_to_svg ~env code =
-  code
-  |> latex_to_dvi ~env
-  |> dvi_to_svg ~env
+  let tex_source = Eio.Flow.string_source code in
+  let svg_buf = Buffer.create 1000 in
+  let svg_sink = Eio.Flow.buffer_sink svg_buf in
+  pipe_latex_svg ~env ~tex_source ~svg_sink;
+  Buffer.contents svg_buf
