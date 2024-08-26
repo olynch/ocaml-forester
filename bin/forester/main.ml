@@ -30,9 +30,8 @@ let build ~env config_filename dev render_only no_assets no_theme =
     end;
   if not no_assets then
     begin
-      paths_of_dirs ~env config.assets
-      |> List.iter @@
-        Forester.copy_contents_of_dir ~env
+      let@ asset_dir = List.iter @~ paths_of_dirs ~env config.assets in
+      Forester.copy_contents_of_dir ~env asset_dir
     end
 
 let new_tree ~env config_filename dest_dir prefix template random =
@@ -58,9 +57,7 @@ let query_all ~env config_filename =
   Forester.json_manifest ~root: config.root ~dev: true |> Format.printf "%s"
 
 let init ~env () =
-  let default_theme_url =
-    "https://git.sr.ht/~jonsterling/forester-base-theme"
-  in
+  let default_theme_url = "https://git.sr.ht/~jonsterling/forester-base-theme" in
   let theme_version = "4.3.0" in
   let ( / ) = EP.( / ) in
   let fs = Eio.Stdenv.fs env in
@@ -93,28 +90,26 @@ theme = "theme"                      # The directory in which your theme is stor
 }
 |}
   in
-  let gitignore = {|output/|} in
   begin
     if EP.is_file (Eio.Stdenv.fs env / "forest.toml") then
       Reporter.emitf Initialization_warning "forest.toml already exists"
     else
       EP.(save ~create: (`Exclusive 0o600) (fs / "forest.toml") default_config_str)
   end;
-  EP.(save ~create: (`Exclusive 0o600) (fs / ".gitignore") gitignore);
-  let proc_mgr = Eio.Stdenv.process_mgr env in
+  EP.(save ~create: (`Exclusive 0o600) (fs / ".gitignore") {|output/|});
   begin
     try
-      let shut_up = Stdlib.Buffer.create 1 |> Eio.Flow.buffer_sink in
-      let quietly_run cmd =
-        Eio.Process.run proc_mgr ~stdout: shut_up ~stderr: shut_up cmd
+      let shut_up = Eio_util.null_sink () in
+      let@ cmd =
+        List.iter @~
+          [
+            ["git"; "init"];
+            ["git"; "branch"; "-m"; "main"];
+            ["git"; "submodule"; "add"; default_theme_url; "theme"];
+            ["git"; "-C"; "theme"; "checkout"; theme_version];
+          ]
       in
-      [
-        ["git"; "init"];
-        ["git"; "branch"; "-m"; "main"];
-        ["git"; "submodule"; "add"; default_theme_url; "theme"];
-        ["git"; "-C"; "theme"; "checkout"; theme_version];
-      ]
-      |> List.iter quietly_run
+      Eio.Process.run (Eio.Stdenv.process_mgr env) ~stdout: shut_up ~stderr: shut_up cmd
     with
       | _ ->
         Reporter.fatalf
