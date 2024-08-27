@@ -111,7 +111,7 @@ let copy_contents_of_dir ~env dir =
     Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir: output_dir_name
 
 let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
-  let@ () = Reporter.profile "parse trees" in
+  let@ () = Reporter.profile "Parse trees" in
   let@ fp = List.filter_map @~ List.of_seq @@ Forest_scanner.scan_directories dirs in
   let@ _, basename = Option.bind (EP.split fp) in
   let addr = Filename.chop_extension basename in
@@ -125,7 +125,7 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
 
 let plant_forest_from_dirs ~env ~dev tree_dirs : unit =
   let parsed_trees = parse_trees_in_dirs ~dev tree_dirs in
-  let@ () = Reporter.profile "expand, evaluate, and analyse forest" in
+  let@ () = Reporter.profile "Expand, evaluate, and analyse forest" in
   let@ _, article = Seq.iter @~ Addr_map.to_seq @@ Forest_reader.read_trees ~env parsed_trees in
   F.plant_article article
 
@@ -137,7 +137,7 @@ let json_manifest ~root ~dev : string =
   Yojson.Basic.to_string @@ R.render_trees ~dev all_articles
 
 let render_forest ~env ~dev ~root ~stylesheet : unit =
-  let@ () = Reporter.profile "render forest" in
+  let@ () = Reporter.profile "Render forest" in
   let cwd = Eio.Stdenv.cwd env in
   Eio_util.ensure_dir_path cwd [output_dir_name];
   let module P = struct let root = root end in
