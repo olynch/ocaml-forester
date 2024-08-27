@@ -16,7 +16,9 @@
   eio.unix
   yojson
   asai
-  algaeff))
+  algaeff
+  str
+  unix))
 
 (env
  (dev
