@@ -8,7 +8,7 @@ module type S = sig
   val plant_article : T.content T.article -> unit
   val get_article : addr -> T.content T.article option
 
-  val get_expanded_title : ?scope: addr option -> T.content T.frontmatter -> T.content
+  val get_expanded_title : ?scope: addr -> T.content T.frontmatter -> T.content
   val get_content_of_transclusion : T.content T.transclusion -> T.content
   val run_query : Query.dbix Query.expr -> Addr_set.t
 end
@@ -111,7 +111,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   let section_symbol = "§"
 
-  let rec get_expanded_title ?(scope = None) (frontmatter : _ T.frontmatter) =
+  let rec get_expanded_title ?scope (frontmatter : _ T.frontmatter) =
     let short_title = frontmatter.title in
     match frontmatter.designated_parent with
     | Some (User_addr parent_addr) when not (scope = frontmatter.designated_parent) ->
@@ -139,7 +139,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
         begin
           match get_article transclusion.addr with
           | None -> [T.Text (Format.asprintf "%a" Addr.pp transclusion.addr)]
-          | Some article -> get_expanded_title ~scope: None article.frontmatter
+          | Some article -> get_expanded_title article.frontmatter
         end
       | Taxon ->
         let article = get_article_exn transclusion.addr in

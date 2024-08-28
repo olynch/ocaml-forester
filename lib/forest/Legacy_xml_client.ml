@@ -61,7 +61,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
 
   let get_expanded_title frontmatter =
     let scope = Scope.read () in
-    let title = F.get_expanded_title ~scope: (Some scope) frontmatter in
+    let title = F.get_expanded_title ~scope frontmatter in
     T.apply_modifier_to_content Sentence_case title
 
   let render_xml_qname qname =
