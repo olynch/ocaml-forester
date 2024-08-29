@@ -1,0 +1,14 @@
+{
+  "actions" : {
+    "run" : {
+      "enabled" : true,
+      "script" : "#!\/bin\/sh\ntopiary format $1"
+    }
+  },
+  "arguments" : [
+    "${File}"
+  ],
+  "environment" : {
+    "TOPIARY_LANGUAGE_DIR" : "topiary"
+  }
+}
