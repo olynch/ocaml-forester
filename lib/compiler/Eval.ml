@@ -52,6 +52,7 @@ module V = struct
     let rec loop acc = function
       | [] -> Option.some @@ String.concat "" @@ Bwd.prepend acc []
       | T.Text txt :: content -> loop (Bwd.snoc acc txt) content
+      | T.CDATA txt :: content -> loop (Bwd.snoc acc txt) content
       | _ -> None
     in
     loop Emp
@@ -60,7 +61,7 @@ module V = struct
     let content = extract_content node in
     match coalesce_text content with
     | Some txt -> String.trim txt
-    | None -> Reporter.fatalf ?loc: node.loc Type_error "Expected address but got: %a" pp node.value
+    | None -> Reporter.fatalf ?loc: node.loc Type_error "Expected text but got: %a" pp node.value
 
   let extract_query_polarity (x : located) =
     match x.value with
