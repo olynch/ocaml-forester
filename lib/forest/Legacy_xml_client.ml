@@ -62,7 +62,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
   let get_expanded_title frontmatter =
     let scope = Scope.read () in
     let title = F.get_expanded_title ~scope frontmatter in
-    T.apply_modifier_to_content Sentence_case title
+    T.map_content (T.apply_modifier_to_content Sentence_case) title
 
   let render_xml_qname qname =
     let qname = Xmlns.normalise_qname qname in
@@ -128,17 +128,17 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     X.meta [X.name "%s" key] @@
       render_content body
 
-  and render_content (content : T.content) : P.node list =
+  and render_content (Content content: T.content) : P.node list =
     match content with
     | T.Text txt0 :: T.Text txt1 :: content ->
-      render_content @@ T.Text (txt0 ^ txt1) :: content
+      render_content @@ Content (T.Text (txt0 ^ txt1) :: content)
     | node :: content ->
       let xs = render_content_node node in
-      let ys = render_content content in
+      let ys = render_content (Content content) in
       xs @ ys
     | [] -> []
 
-  and render_content_node : T.content_node -> P.node list = function
+  and render_content_node : 'a T.content_node -> P.node list = function
     | Text str ->
       [P.txt "%s" str]
     | CDATA str ->

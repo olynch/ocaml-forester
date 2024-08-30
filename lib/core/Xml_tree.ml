@@ -125,24 +125,28 @@ type 'content resource = {
 }
 [@@deriving show, repr]
 
-type content_node =
+type 'content content_node =
   | Text of string
   | CDATA of string
-  | Xml_elt of content xml_elt
-  | Transclude of content transclusion
+  | Xml_elt of 'content xml_elt
+  | Transclude of 'content transclusion
   | Contextual_number of Addr.t
   | Results_of_query of Query.dbix Query.expr
-  | Section of content section
-  | Prim of Prim.t * content
-  | KaTeX of math_mode * content
+  | Section of 'content section
+  | Prim of Prim.t * 'content
+  | KaTeX of math_mode * 'content
   | TeX_cs of TeX_cs.t
-  | Link of content link
+  | Link of 'content link
   | Img of img
-  | Resource of content resource
+  | Resource of 'content resource
 [@@deriving show, repr]
 
-and content = content_node list
+type content =
+  Content of content content_node list
 [@@deriving show, repr]
+
+let map_content f = function Content nodes -> Content (f nodes)
+let extract_content = function Content nodes -> nodes
 
 let is_whitespace node =
   match node with
@@ -150,8 +154,9 @@ let is_whitespace node =
   | _ -> false
 
 let strip_whitespace =
+  map_content @@
   List.filter @@
-    Fun.compose not is_whitespace
+  Fun.compose not is_whitespace
 
 let trim_whitespace xs =
   let rec trim_front xs =
@@ -175,7 +180,7 @@ let empty_frontmatter =
     number = None;
     metas = [];
     tags = [];
-    title = []
+    title = Content []
   }
 
 let apply_overrides (overrides : _ frontmatter_overrides) frontmatter =
@@ -246,8 +251,8 @@ and apply_modifier_to_content_node modifier = function
   | Text str -> Text (apply_modifier_to_string modifier str)
   | Transclude transclusion ->
     Transclude { transclusion with modifier = compose_modifier modifier transclusion.modifier }
-  | Link link -> Link { link with content = apply_modifier_to_content modifier link.content }
-  | Prim (p, content) -> Prim (p, apply_modifier_to_content modifier content)
+  | Link link -> Link { link with content = map_content (apply_modifier_to_content modifier) link.content }
+  | Prim (p, content) -> Prim (p, map_content (apply_modifier_to_content modifier) content)
   | node -> node
 
 module TeX_like: sig
@@ -259,8 +264,9 @@ module TeX_like: sig
     | TeX_cs.Symbol x -> Format.fprintf fmt "\\%c" x
     | TeX_cs.Word x -> Format.fprintf fmt "\\%s " x
 
-  let rec pp_content fmt =
-    List.iter @@ pp_content_node fmt
+  let rec pp_content fmt = function
+    | (Content nodes) ->
+      (List.iter @@ pp_content_node fmt) nodes
 
   and pp_content_node fmt = function
     | Text str -> Format.fprintf fmt "%s" str

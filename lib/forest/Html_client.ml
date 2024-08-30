@@ -96,10 +96,10 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
         H.h1 [] @@ render_content frontmatter.title
       ]
 
-  and render_content (content : T.content) : P.node list =
+  and render_content (Content content: T.content) : P.node list =
     List.concat_map render_content_node content
 
-  and render_content_node : T.content_node -> P.node list = function
+  and render_content_node : 'a T.content_node -> P.node list = function
     | Text str ->
       [P.txt "%s" str]
     | CDATA str ->

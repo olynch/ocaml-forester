@@ -59,7 +59,7 @@ module V = struct
 
   let extract_text (node : located) =
     let content = extract_content node in
-    match coalesce_text content with
+    match coalesce_text (T.extract_content content) with
     | Some txt -> String.trim txt
     | None -> Reporter.fatalf ?loc: node.loc Type_error "Expected text but got: %a" pp node.value
 
@@ -76,7 +76,7 @@ module V = struct
   let extract_query_addr_expr (x : located) =
     match x.value with
     | Sym sym -> Query.Var (Query.F sym)
-    | Content [Text txt] -> Query.Addr (Addr.user_addr txt)
+    | Content (T.Content [Text txt]) -> Query.Addr (Addr.user_addr txt)
     | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected addr expression in query"
 
   let extract_query_expr (x : located) =
@@ -98,8 +98,8 @@ module V = struct
     match x.value with
     | Bool bool -> bool
     (* TODO: deprecate the following two cases *)
-    | Content [Text "true"] -> true
-    | Content [Text "false"] -> false
+    | Content (T.Content [Text "true"]) -> true
+    | Content (T.Content [Text "false"]) -> false
     | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected boolean"
 end
 
@@ -109,20 +109,21 @@ let default_backmatter ~addr : T.content =
   let make_section title query =
     let query = QLN.distill query in
     let section =
-      let frontmatter = { T.empty_frontmatter with title = [T.Text title] } in
-      let mainmatter = [T.Results_of_query query] in
+      let frontmatter = { T.empty_frontmatter with title = T.Content [T.Text title] } in
+      let mainmatter = T.Content [T.Results_of_query query] in
       let flags = { T.default_section_flags with hidden_when_empty = Some true } in
       T.{ frontmatter; mainmatter; flags }
     in
     T.Section section
   in
-  [
-    make_section "references" @@ QLN.references a;
-    make_section "context" @@ QLN.context a;
-    make_section "backlinks" @@ QLN.backlinks a;
-    make_section "related" @@ QLN.related a;
-    make_section "contributions" @@ QLN.contributions a
-  ]
+  T.Content
+    [
+      make_section "references" @@ QLN.references a;
+      make_section "context" @@ QLN.context a;
+      make_section "backlinks" @@ QLN.backlinks a;
+      make_section "related" @@ QLN.related a;
+      make_section "contributions" @@ QLN.contributions a
+    ]
 
 type job = LaTeX_to_svg of { hash: string; source: string; content: svg: string -> T.content }
 type result = { main: T.content T.article; side: T.content T.article list; jobs: job list }
@@ -169,7 +170,7 @@ let get_transclusion_flags ~loc =
 
 let rec process_tape () =
   match Tape.pop_node_opt () with
-  | None -> V.Content []
+  | None -> V.Content (T.Content [])
   | Some node -> eval_node node
 
 and eval_tape tape =
@@ -197,8 +198,8 @@ and eval_node node : V.t =
   | Text str ->
     emit_content_node ~loc @@ T.Text str
   | Prim p ->
-    let content = pop_content_arg ~loc |> T.trim_whitespace in
-    emit_content_node ~loc @@ Prim (p, content)
+    let content = pop_content_arg ~loc |> T.extract_content |> T.trim_whitespace in
+    emit_content_node ~loc @@ Prim (p, T.Content content)
   | Fun (xs, body) ->
     let env = Lex_env.read () in
     focus_clo env xs body
@@ -206,18 +207,19 @@ and eval_node node : V.t =
     let href = pop_text_arg ~loc in
     let addr = Addr.user_addr href in
     let content =
-      [
-        T.Transclude { addr; target = T.Taxon; modifier = Sentence_case };
-        T.Text " ";
-        T.Contextual_number addr
-      ]
+      T.Content
+        [
+          T.Transclude { addr; target = T.Taxon; modifier = Sentence_case };
+          T.Text " ";
+          T.Contextual_number addr
+        ]
     in
     emit_content_node ~loc @@ Link { href; content }
   | Link { title; dest } ->
     let href = { node with value = dest } |> Range.map eval_tape |> V.extract_text in
     let content =
       match title with
-      | None -> [T.Transclude { addr = Addr.user_addr href; target = T.Title; modifier = Identity }]
+      | None -> T.Content [T.Transclude { addr = Addr.user_addr href; target = T.Title; modifier = Identity }]
       | Some title -> { node with value = eval_tape title } |> V.extract_content
     in
     emit_content_node ~loc @@ Link { href; content }
@@ -336,7 +338,7 @@ and eval_node node : V.t =
     let content ~svg =
       let base64 = Base64.encode_string svg in
       let img = T.Inline T.{ format = "svg+xml"; base64 } in
-      let content = [T.Img img] in
+      let content = T.Content [T.Img img] in
       let sources =
         [
           T.{ type_ = "latex"; part = "preamble"; source = preamble };
@@ -344,7 +346,7 @@ and eval_node node : V.t =
         ]
       in
       let resource = T.{ hash; content; sources } in
-      [T.Resource resource]
+      T.Content [T.Resource resource]
     in
     let job = LaTeX_to_svg { hash; source; content } in
     Jobs.modify (List.cons job);
@@ -383,8 +385,11 @@ and eval_node node : V.t =
   | Group (d, body) ->
     let l, r = delim_to_strings d in
     let content =
-      T.Text l :: V.extract_content { node with value = eval_tape body } @
-        [T.Text r]
+      T.Content
+        (
+          T.Text l :: (T.extract_content @@ V.extract_content { node with value = eval_tape body }) @
+            [T.Text r]
+        )
     in
     focus ?loc: node.loc @@ V.Content content
   | Call (obj, method_name) ->
@@ -513,16 +518,16 @@ and eval_var ~loc x =
 and focus ?loc = function
   | V.Clo (rho, xs, body) ->
     focus_clo ?loc rho xs body
-  | V.Content content ->
+  | V.Content (T.Content content) ->
     begin
       match process_tape () with
-      | V.Content content' -> V.Content (content @ content')
+      | V.Content (T.Content content') -> V.Content (T.Content (content @ content'))
       | value -> value
     end
   | V.Query_expr _ | V.Query_mode _ | V.Query_polarity _ | V.Sym _ | V.Obj _ | V.Bool _ as v ->
     begin
       match process_tape () with
-      | V.Content content when T.strip_whitespace content = [] -> v
+      | V.Content content when T.strip_whitespace content = T.Content [] -> v
       | _ -> Reporter.fatalf ?loc Type_error "Expected solitary node"
     end
 
@@ -545,14 +550,14 @@ and focus_clo ?loc rho xs body =
     | None ->
       begin
         match process_tape () with
-        | Content nodes when T.strip_whitespace nodes = [] ->
+        | Content nodes when T.strip_whitespace nodes = T.Content [] ->
           Clo (rho, xs, body)
         | _ ->
           Reporter.fatalf ?loc Type_error "Expected %i additional arguments" (List.length xs)
       end
 
 and emit_content_node ~loc content =
-  focus ?loc @@ Content [content]
+  focus ?loc @@ Content (T.Content [content])
 
 and eval_tree_inner ~addr (tree : Syn.tree) : T.content T.article =
   let attribution_is_author = function

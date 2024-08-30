@@ -47,7 +47,7 @@ let read_trees ~(env : env) (trees : Code.tree list) : T.content T.article Addr_
       let svg = Build_latex.latex_to_svg ~env source in
       let frontmatter = { T.empty_frontmatter with addr = Addr.hash_addr hash } in
       let mainmatter = content ~svg in
-      let backmatter = [] in
+      let backmatter = T.Content [] in
       T.{ frontmatter; mainmatter; backmatter }
   in
   let job_results = Eio.Fiber.List.map ~max_fibers: 20 (run_job ~env) jobs in

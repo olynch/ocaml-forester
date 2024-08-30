@@ -9,10 +9,10 @@ end
 
 module Make (F: Forest.S) : S = struct
 
-  let rec pp_content fmt =
-    List.iter @@ pp_content_node fmt
+  let rec pp_content fmt = function
+    | (T.Content c) -> (List.iter @@ pp_content_node fmt) c
 
-  and pp_content_node fmt : T.content_node -> unit = function
+  and pp_content_node fmt : 'a T.content_node -> unit = function
     | Text txt | CDATA txt -> Format.pp_print_string fmt txt
     | KaTeX (_, content) -> pp_content fmt content
     | TeX_cs cs -> Format.fprintf fmt "\\%a" TeX_cs.pp cs

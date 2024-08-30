@@ -18,7 +18,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   let articles : (addr, article) Hashtbl.t =
     Hashtbl.create 1000
 
-  let rec analyse_content_node (scope : addr) (node : T.content_node) : unit =
+  let rec analyse_content_node (scope : addr) (node : 'a T.content_node) : unit =
     match node with
     | Text _ | CDATA _ | Results_of_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
     | Transclude transclusion ->
@@ -46,8 +46,8 @@ module Make (Graphs: Forest_graphs.S) : S = struct
       Graphs.add_edge Q.Rel.transclusion ~source: scope ~target: transclusion.addr
     | Title | Taxon -> ()
 
-  and analyse_content (scope : addr) (content : T.content) : unit =
-    content |> List.iter @@ analyse_content_node scope
+  and analyse_content : addr -> T.content -> unit = fun scope (Content nodes) ->
+      nodes |> List.iter @@ analyse_content_node scope
 
   and analyse_attribution (scope : addr) (attr : T.attribution) =
     match attr with
@@ -112,39 +112,39 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   let section_symbol = "§"
 
   let rec get_expanded_title ?scope (frontmatter : _ T.frontmatter) =
-    let short_title = frontmatter.title in
+    let (T.Content short_title) = frontmatter.title in
     match frontmatter.designated_parent with
     | Some (User_addr parent_addr) when not (scope = frontmatter.designated_parent) ->
       begin
         match get_article @@ User_addr parent_addr with
-        | None -> short_title
+        | None -> T.Content short_title
         | Some parent ->
           let parent_title = get_expanded_title parent.frontmatter in
           let parent_link = T.Link { href = parent_addr; content = parent_title } in
           let chevron = T.Text " › " in
-          parent_link :: chevron :: short_title
+          T.Content (parent_link :: chevron :: short_title)
       end
-    | _ -> short_title
+    | _ -> T.Content short_title
 
   let get_content_of_transclusion (transclusion : T.content T.transclusion) =
     let content =
       match transclusion.target with
       | Full (flags, overrides) ->
         let article = get_article_exn transclusion.addr in
-        [T.Section (T.article_to_section article ~flags ~overrides)]
+        T.Content [T.Section (T.article_to_section article ~flags ~overrides)]
       | Mainmatter ->
         let article = get_article_exn transclusion.addr in
         article.mainmatter
       | Title ->
         begin
           match get_article transclusion.addr with
-          | None -> [T.Text (Format.asprintf "%a" Addr.pp transclusion.addr)]
+          | None -> T.Content [T.Text (Format.asprintf "%a" Addr.pp transclusion.addr)]
           | Some article -> get_expanded_title article.frontmatter
         end
       | Taxon ->
         let article = get_article_exn transclusion.addr in
         let taxon = Option.value ~default: section_symbol article.frontmatter.taxon in
-        [T.Text taxon]
+        T.Content [T.Text taxon]
     in
-    T.apply_modifier_to_content transclusion.modifier content
+    T.map_content (T.apply_modifier_to_content transclusion.modifier) content
 end
