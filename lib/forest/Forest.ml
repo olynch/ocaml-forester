@@ -74,7 +74,14 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     analyse_content fm.addr fm.title;
     analyse_taxon fm.addr fm.taxon;
     analyse_attributions fm.addr fm.attributions;
-    analyse_tags fm.addr fm.tags
+    analyse_tags fm.addr fm.tags;
+    analyse_metas fm.addr fm.metas
+
+  and analyse_metas (scope : addr) (metas : (string * T.content) list) : unit =
+    metas |> List.iter @@ analyse_meta scope
+
+  and analyse_meta (scope : addr) (key, value) =
+    analyse_content scope value
 
   and analyse_section (scope : addr) (section : T.content T.section) : unit =
     Graphs.add_edge Q.Rel.transclusion ~source: scope ~target: section.frontmatter.addr;
