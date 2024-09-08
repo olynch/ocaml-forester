@@ -6,19 +6,20 @@ module Q = Query
 
 module type S = sig
   val plant_article : T.content T.article -> unit
-  val get_article : addr -> T.content T.article option
+  val get_article : Iri.t -> T.content T.article option
 
-  val get_expanded_title : ?scope: addr -> T.content T.frontmatter -> T.content
+  val get_expanded_title : ?scope: iri -> T.content T.frontmatter -> T.content
   val get_content_of_transclusion : T.content T.transclusion -> T.content
-  val run_query : Query.dbix Query.expr -> Addr_set.t
+  val get_title_or_content_of_vertex : ?not_found: (iri -> T.content option) -> modifier: T.modifier -> T.content T.vertex -> T.content option
+  val run_query : T.query -> Vertex_set.t
 end
 
 module Make (Graphs: Forest_graphs.S) : S = struct
   type article = T.content T.article
-  let articles : (addr, article) Hashtbl.t =
+  let articles : (Iri.t, article) Hashtbl.t =
     Hashtbl.create 1000
 
-  let rec analyse_content_node (scope : addr) (node : 'a T.content_node) : unit =
+  let rec analyse_content_node (scope : Iri.t) (node : 'a T.content_node) : unit =
     match node with
     | Text _ | CDATA _ | Results_of_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
     | Transclude transclusion ->
@@ -28,7 +29,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     | Section section ->
       analyse_section scope section
     | Link link ->
-      Graphs.add_edge Q.Rel.links ~source: scope ~target: (Addr.user_addr link.href);
+      Graphs.add_edge Q.Rel.links ~source: (Iri_vertex scope) ~target: (Iri_vertex link.href);
       analyse_content scope link.content
     | Prim (_, content) ->
       analyse_content scope content
@@ -40,62 +41,87 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   and analyse_resource scope resource =
     analyse_content scope resource.content
 
-  and analyse_transclusion (scope : addr) (transclusion : T.content T.transclusion) : unit =
+  and analyse_transclusion (scope : Iri.t) (transclusion : T.content T.transclusion) : unit =
     match transclusion.target with
     | Full _ | Mainmatter ->
-      Graphs.add_edge Q.Rel.transclusion ~source: scope ~target: transclusion.addr
+      Graphs.add_edge Q.Rel.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex transclusion.href)
     | Title | Taxon -> ()
 
-  and analyse_content : addr -> T.content -> unit = fun scope (Content nodes) ->
-      nodes |> List.iter @@ analyse_content_node scope
+  and analyse_content (scope : Iri.t) (content : T.content) : unit =
+    T.extract_content content |> List.iter @@ analyse_content_node scope
 
-  and analyse_attribution (scope : addr) (attr : T.attribution) =
-    match attr with
-    | Author author ->
-      Graphs.add_edge Q.Rel.authors ~source: scope ~target: (Addr.user_addr author);
-    | Contributor contributor ->
-      Graphs.add_edge Q.Rel.contributors ~source: scope ~target: (Addr.user_addr contributor)
+  and analyse_attribution (scope : Iri.t) (attr : _ T.attribution) =
+    let rel =
+      match attr.role with
+      | Author -> Q.Rel.authors
+      | Contributor -> Q.Rel.contributors
+    in
+    Graphs.add_edge rel ~source: (Iri_vertex scope) ~target: attr.vertex;
+    analyse_vertex scope attr.vertex
 
-  and analyse_tag (scope : addr) (tag : string) =
-    Graphs.add_edge Q.Rel.tags ~source: scope ~target: (Addr.user_addr tag)
+  and analyse_vertex scope = function
+    | Iri_vertex _ -> ()
+    | Content_vertex content -> analyse_content scope content
 
-  and analyse_taxon (scope : addr) (taxon_opt : string option) =
+  and analyse_tag (scope : Iri.t) (tag : _ T.vertex) =
+    analyse_vertex scope tag;
+    Graphs.add_edge Q.Rel.tags ~source: (Iri_vertex scope) ~target: tag
+
+  and analyse_taxon (scope : Iri.t) (taxon_opt : _ T.vertex option) =
     let@ taxon = Option.iter @~ taxon_opt in
-    Graphs.add_edge Q.Rel.taxa ~source: scope ~target: (Addr.user_addr taxon)
+    analyse_vertex scope taxon;
+    Graphs.add_edge Q.Rel.taxa ~source: (Iri_vertex scope) ~target: taxon
 
-  and analyse_attributions (scope : addr) (attrs : T.attribution list) =
+  and analyse_attributions (scope : Iri.t) (attrs : _ T.attribution list) =
     attrs |> List.iter @@ analyse_attribution scope
 
-  and analyse_tags (scope : addr) (tags : string list) =
+  and analyse_tags (scope : Iri.t) (tags : _ T.vertex list) =
     tags |> List.iter @@ analyse_tag scope
 
   and analyse_frontmatter (fm : T.content T.frontmatter) : unit =
-    Graphs.register_addr fm.addr;
-    analyse_content fm.addr fm.title;
-    analyse_taxon fm.addr fm.taxon;
-    analyse_attributions fm.addr fm.attributions;
-    analyse_tags fm.addr fm.tags;
-    analyse_metas fm.addr fm.metas
+    let@ scope = Option.iter @~ fm.iri in
+    Graphs.register_iri scope;
+    analyse_content scope fm.title;
+    analyse_taxon scope fm.taxon;
+    analyse_attributions scope fm.attributions;
+    analyse_tags scope fm.tags;
+    analyse_metas scope fm.metas;
+    analyse_sets scope fm.sets
 
-  and analyse_metas (scope : addr) (metas : (string * T.content) list) : unit =
+  and analyse_metas (scope : Iri.t) (metas : (string * T.content) list) : unit =
     metas |> List.iter @@ analyse_meta scope
 
-  and analyse_meta (scope : addr) (key, value) =
-    analyse_content scope value
+  and analyse_meta (scope : Iri.t) (_, content) : unit =
+    analyse_content scope content
 
-  and analyse_section (scope : addr) (section : T.content T.section) : unit =
-    Graphs.add_edge Q.Rel.transclusion ~source: scope ~target: section.frontmatter.addr;
+  and analyse_sets (scope : Iri.t) (sets : string list) : unit =
+    sets |> List.iter @@ analyse_set scope
+
+  and analyse_set (scope : Iri.t) (set : string) : unit =
+    Graphs.add_vertex set (Iri_vertex scope)
+
+  and analyse_section (scope : Iri.t) (section : T.content T.section) : unit =
+    begin
+      let@ target = Option.iter @~ section.frontmatter.iri in
+      Graphs.add_edge Q.Rel.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex target)
+    end;
     analyse_frontmatter section.frontmatter;
-    analyse_content section.frontmatter.addr section.mainmatter
+    analyse_content (Option.value ~default: scope section.frontmatter.iri) section.mainmatter
 
   let analyse_article (article : article) : unit =
     analyse_frontmatter article.frontmatter;
-    analyse_content article.frontmatter.addr article.mainmatter;
-    analyse_content article.frontmatter.addr article.backmatter
+    let@ scope = Option.iter @~ article.frontmatter.iri in
+    analyse_content scope article.mainmatter;
+    analyse_content scope article.backmatter
 
   let plant_article (article : article) : unit =
     analyse_article article;
-    Hashtbl.add articles article.frontmatter.addr article
+    let@ iri = Option.iter @~ article.frontmatter.iri in
+    match Hashtbl.mem articles iri with
+    | false ->
+      Hashtbl.add articles iri article
+    | true ->
+      Reporter.emitf Duplicate_tree "Already planted tree at address %a" pp_iri iri
 
   let get_article addr =
     Hashtbl.find_opt articles addr
@@ -104,7 +130,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     match get_article addr with
     | Some article -> article
     | None ->
-      Reporter.fatalf Tree_not_found "Could not find tree %a" Addr.pp addr
+      Reporter.fatalf Tree_not_found "Could not find tree %a" pp_iri addr
 
   module Query_engine = Query_engine.Make(Graphs)
   include Query_engine
@@ -112,39 +138,58 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   let section_symbol = "§"
 
   let rec get_expanded_title ?scope (frontmatter : _ T.frontmatter) =
-    let (T.Content short_title) = frontmatter.title in
-    match frontmatter.designated_parent with
-    | Some (User_addr parent_addr) when not (scope = frontmatter.designated_parent) ->
-      begin
-        match get_article @@ User_addr parent_addr with
-        | None -> T.Content short_title
-        | Some parent ->
-          let parent_title = get_expanded_title parent.frontmatter in
-          let parent_link = T.Link { href = parent_addr; content = parent_title } in
-          let chevron = T.Text " › " in
-          T.Content (parent_link :: chevron :: short_title)
-      end
-    | _ -> T.Content short_title
+    let short_title = frontmatter.title in
+    Option.value ~default: short_title @@
+      match frontmatter.designated_parent with
+      | Some parent_iri when not (scope = frontmatter.designated_parent) ->
+        let@ parent = Option.map @~ get_article parent_iri in
+        let parent_title = get_expanded_title parent.frontmatter in
+        let parent_link = T.Link { href = parent_iri; content = parent_title } in
+        let chevron = T.Text " › " in
+        T.map_content (fun xs -> parent_link :: chevron :: xs) short_title
+      | _ -> None
+
+  let get_title_or_content_of_vertex ?(not_found = fun _ -> None) ~modifier vertex =
+    let@ content =
+      Option.map @~
+        match vertex with
+        | T.Content_vertex content -> Some content
+        | T.Iri_vertex iri ->
+          begin
+            match get_article iri with
+            | Some article -> Some article.frontmatter.title
+            | None -> not_found iri
+          end
+    in
+    T.apply_modifier_to_content modifier content
 
   let get_content_of_transclusion (transclusion : T.content T.transclusion) =
     let content =
       match transclusion.target with
-      | Full (flags, overrides) ->
-        let article = get_article_exn transclusion.addr in
+      | T.Full (flags, overrides) ->
+        let article = get_article_exn transclusion.href in
         T.Content [T.Section (T.article_to_section article ~flags ~overrides)]
       | Mainmatter ->
-        let article = get_article_exn transclusion.addr in
+        let article = get_article_exn transclusion.href in
         article.mainmatter
       | Title ->
         begin
-          match get_article transclusion.addr with
-          | None -> T.Content [T.Text (Format.asprintf "%a" Addr.pp transclusion.addr)]
+          match get_article transclusion.href with
+          | None -> T.Content [T.Text (Format.asprintf "%a" pp_iri transclusion.href)]
           | Some article -> get_expanded_title article.frontmatter
         end
       | Taxon ->
-        let article = get_article_exn transclusion.addr in
-        let taxon = Option.value ~default: section_symbol article.frontmatter.taxon in
-        T.Content [T.Text taxon]
+        let article = get_article_exn transclusion.href in
+        let content_opt =
+          let@ taxon = Option.bind article.frontmatter.taxon in
+          match taxon with
+          | T.Content_vertex content -> Some content
+          | T.Iri_vertex iri ->
+            let@ taxon_article = Option.map @~ get_article iri in
+            taxon_article.frontmatter.title
+        in
+        let default = T.Content [T.Text section_symbol] in
+        Option.value ~default content_opt
     in
-    T.map_content (T.apply_modifier_to_content transclusion.modifier) content
+    T.apply_modifier_to_content transclusion.modifier content
 end

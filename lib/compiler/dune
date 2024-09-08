@@ -11,13 +11,15 @@
   (pps ppx_deriving.show ppx_repr))
  (libraries
   forester.prelude
+  forester.xml_names
   forester.core
   yuujinchou
   asai
   menhirLib
   bwd
   algaeff
-  base64)
+  base64
+  iri)
  (public_name forester.compiler))
 
 (env

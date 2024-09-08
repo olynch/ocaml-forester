@@ -1,6 +1,6 @@
 open Forester_core
 
-module G = Graph.Imperative.Digraph.ConcreteBidirectional(Addr)
+module G = Graph.Imperative.Digraph.ConcreteBidirectional(Vertex)
 include G
 include Graph.Oper.I(G)
 

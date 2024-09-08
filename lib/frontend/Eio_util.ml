@@ -11,21 +11,9 @@ let null_sink () : Flow.sink_ty Resource.t =
   let ops = Eio.Flow.Pi.sink (module NullSink) in
   Eio.Resource.T ((), ops)
 
-let ensure_dir path =
-  try
-    Eio.Path.mkdir ~perm: 0o755 path
-  with
-    | Eio.Exn.Io (Eio.Fs.E (Eio.Fs.Already_exists _), _) -> ()
-
-let ensure_dir_path path dirs =
-  let rec loop path = function
-    | [] -> ()
-    | dir :: dirs ->
-      let path' = Eio.Path.(path / dir) in
-      ensure_dir path';
-      loop path' dirs
-  in
-  loop path dirs
+let ensure_context_of_path ~perm (path : _ Path.t) =
+  let@ path', _ = Option.iter @~ Path.split path in
+  Path.mkdirs ~exists_ok: true ~perm path'
 
 let ensure_remove_file path =
   try
@@ -33,25 +21,15 @@ let ensure_remove_file path =
   with
     | Eio.Exn.Io (Eio.Fs.E (Eio.Fs.Not_found _), _) -> ()
 
-let rec rm_rec path =
-  match Eio.Path.is_file path with
-  | true ->
-    Eio.Path.unlink path
-  | false ->
-    match let@ fn = List.iter @~ Eio.Path.read_dir path in
-    rm_rec Eio.Path.(path / fn) with
-    | _ -> Eio.Path.rmdir path
-    | exception _ -> ()
-
 let with_open_tmp_dir ~env kont =
   let dir_name = string_of_int @@ Oo.id ( object end) in
   let cwd = Eio.Stdenv.cwd env in
   let tmp = "_tmp" in
-  let () = ensure_dir_path cwd [tmp; dir_name] in
   let tmp_path = Eio.Path.(cwd / tmp / dir_name) in
+  Path.mkdirs ~exists_ok: true ~perm: 0o644 tmp_path;
   let@ p = Eio.Path.with_open_dir tmp_path in
   let result = kont p in
-  rm_rec tmp_path;
+  Path.rmtree ~missing_ok: true tmp_path;
   result
 
 let run_process ?(quiet = false) ~env ~cwd cmd =

@@ -1,0 +1,6 @@
+(library
+ (name Forester_xml_names)
+ (libraries algaeff repr)
+ (preprocess
+  (pps ppx_deriving.show ppx_repr))
+ (public_name forester.xml_names))

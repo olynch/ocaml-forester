@@ -6,7 +6,8 @@ module Make (F: Forest.S) = struct
 
   let get_sorted_articles addrs =
     addrs
-    |> Addr_set.to_seq
+    |> Vertex_set.to_seq
+    |> Seq.filter_map Vertex.iri_of_vertex
     |> Seq.filter_map F.get_article
     |> List.of_seq
     |> List.sort C.compare_article

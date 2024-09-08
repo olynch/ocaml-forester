@@ -30,7 +30,7 @@ val mainmatter : std_tag
 val backmatter : std_tag
 
 val anchor : _ text_tag
-val taxon : _ text_tag
+val taxon : std_tag
 val addr : _ text_tag
 val route : _ text_tag
 val source_path : _ text_tag
@@ -62,7 +62,6 @@ val tex : _ text_tag
 val display : _ string_attr
 
 val ref : void_tag
-val taxon_ : _ string_attr
 val number_ : _ string_attr
 
 val img : void_tag

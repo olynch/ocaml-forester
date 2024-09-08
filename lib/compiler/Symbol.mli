@@ -1,7 +1,11 @@
 open Forester_core
 
 type t
-[@@deriving show, repr]
+
+val pp : Format.formatter -> t -> unit
+val show : t -> string
+
+val t : t Repr.t
 
 val named : Trie.path -> t
 val fresh : unit -> t

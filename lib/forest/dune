@@ -5,11 +5,13 @@
   (pps ppx_deriving.show))
  (libraries
   forester.prelude
+  forester.xml_names
   forester.core
   ocamlgraph
   yojson
   algaeff
-  pure-html))
+  pure-html
+  iri))
 
 (env
  (dev

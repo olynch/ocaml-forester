@@ -1,3 +1,16 @@
+open Base
+
+module Pred = struct
+  type t = string
+  [@@deriving repr]
+
+  let pp = Format.pp_print_string
+
+  let make_builtin name = "org.forester.pred." ^ name
+
+  let references = make_builtin "references"
+end
+
 module Rel = struct
   type t = string
   [@@deriving repr]
@@ -14,6 +27,7 @@ module Rel = struct
   let tags = make_builtin "tags"
 end
 
+type pred = Pred.t
 type rel = Rel.t
 
 type mode =
@@ -29,32 +43,34 @@ type polarity =
 type dbix = int
 [@@deriving show, repr]
 
-type 'var addr_expr =
-  | Addr of Addr.t
+type ('vertex, 'var) vertex_expr =
+  | Vertex of 'vertex
   | Var of 'var
 [@@deriving show, repr]
 
 type 'a binder = { body: 'a }
 [@@deriving show, repr]
 
-type 'var expr =
-  | Rel of mode * polarity * Rel.t * 'var addr_expr
-  | Isect of 'var expr list
-  | Union of 'var expr list
-  | Complement of 'var expr
-  | Union_fam of 'var expr * 'var expr binder
-  | Isect_fam of 'var expr * 'var expr binder
+type ('vertex, 'var) expr =
+  | Pred of Pred.t
+  | Rel of mode * polarity * Rel.t * ('vertex, 'var) vertex_expr
+  | Isect of ('vertex, 'var) expr list
+  | Union of ('vertex, 'var) expr list
+  | Complement of ('vertex, 'var) expr
+  | Union_fam of ('vertex, 'var) expr * ('vertex, 'var) expr binder
+  | Isect_fam of ('vertex, 'var) expr * ('vertex, 'var) expr binder
 [@@deriving show]
 
-let expr_t var_t =
+let expr_t vertex_t var_t =
   let open Repr in
   mu @@
     fun expr_t ->
       variant
         "expr"
         begin
-          fun rel isect union complement union_fam isect_fam ->
+          fun pred rel isect union complement union_fam isect_fam ->
             function
+            | Pred x -> pred x
             | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
             | Isect x -> isect x
             | Union x -> union x
@@ -62,9 +78,10 @@ let expr_t var_t =
             | Union_fam (x, y) -> union_fam (x, y)
             | Isect_fam (x, y) -> isect_fam (x, y)
         end
+      |~ case1 "Pred" Pred.t (fun p -> Pred p)
       |~ case1
         "Rel"
-        (quad mode_t polarity_t Rel.t (addr_expr_t var_t))
+        (quad mode_t polarity_t Rel.t (vertex_expr_t vertex_t var_t))
         (fun (x1, x2, x3, x4) -> Rel (x1, x2, x3, x4))
       |~ case1 "Isect" (list expr_t) (fun x -> Isect x)
       |~ case1 "Union" (list expr_t) (fun x -> Union x)
@@ -82,6 +99,7 @@ let expr_t var_t =
 (** A heuristic for computing an intersection of queries. *)
 let rec query_cost q =
   match q with
+  | Pred _ -> 1
   | Rel _ -> 1
   | Isect qs ->
     List.fold_left (fun i q -> min (query_cost q) i) 1000 qs
@@ -105,6 +123,8 @@ let sort_by_descending_cost qs =
     fun q0 q1 ->
       compare (query_cost q1) (query_cost q0)
 
+let pred pred = Pred pred
+
 let rel mode pol rel a =
   Rel (mode, pol, rel, a)
 
@@ -123,16 +143,14 @@ let rec complement = function
   | Complement q -> q
   | q -> Complement q
 
-let tree_under x =
-  rel Paths Outgoing Rel.transclusion x
-
 type 'name lnvar =
   | F of 'name
   | B of dbix
 [@@deriving show]
 
 let rec close_expr k x = function
-  | Rel (mode, pol, rel, a) -> Rel (mode, pol, rel, close_addr_expr k x a)
+  | Pred p -> Pred p
+  | Rel (mode, pol, rel, a) -> Rel (mode, pol, rel, close_vertex_expr k x a)
   | Isect qs -> Isect (List.map (close_expr k x) qs)
   | Union qs -> Union (List.map (close_expr k x) qs)
   | Complement q -> Complement (close_expr k x q)
@@ -142,11 +160,11 @@ let rec close_expr k x = function
 and close_scope k x scope =
   { body = close_expr (k + 1) x scope.body }
 
-and close_addr_expr k x = function
-  | Addr addr -> Addr addr
-  | Var var -> Var (close_addr_var k x var)
+and close_vertex_expr k x = function
+  | Vertex vertex -> Vertex vertex
+  | Var var -> Var (close_vertex_var k x var)
 
-and close_addr_var k x = function
+and close_vertex_var k x = function
   | F name when x = name -> B k
   | F name -> F name
   | B i when i < k -> B i
@@ -163,12 +181,13 @@ module Global_name: Name = struct
 end
 
 module Locally_nameless (N: Name) = struct
-  type lnexpr = N.t lnvar expr
+  type 'vertex lnexpr = ('vertex, N.t lnvar) expr
 
   exception Distill of N.t
 
-  let rec distill : _ expr -> dbix expr = function
-    | Rel (mode, pol, rel, a) -> Rel (mode, pol, rel, distill_addr_expr a)
+  let rec distill : _ expr -> ('vertex, dbix) expr = function
+    | Pred p -> Pred p
+    | Rel (mode, pol, rel, a) -> Rel (mode, pol, rel, distill_vertex_expr a)
     | Isect qs -> Isect (List.map distill qs)
     | Union qs -> Union (List.map distill qs)
     | Complement q -> Complement (distill q)
@@ -178,15 +197,15 @@ module Locally_nameless (N: Name) = struct
   and distill_scope scope =
     { body = distill scope.body }
 
-  and distill_addr_expr = function
-    | Addr addr -> Addr addr
+  and distill_vertex_expr = function
+    | Vertex vertex -> Vertex vertex
     | Var var -> Var (distill_lnvar var)
 
   and distill_lnvar = function
     | F name -> raise @@ Distill name
     | B ix -> ix
 
-  let bind x qx : _ lnvar expr binder =
+  let bind x qx : (_, _ lnvar) expr binder =
     { body = close_expr 0 x qx }
 
   let isect_fam q x qx =
@@ -195,59 +214,11 @@ module Locally_nameless (N: Name) = struct
   let union_fam q x qx =
     Union_fam (q, bind x qx)
 
-  let has_taxon taxon =
-    rel Edges Incoming Rel.taxa (Addr (Addr.user_addr taxon))
-
-  let context addr =
-    rel Edges Incoming Rel.transclusion addr
-
-  let backlinks addr =
-    rel Edges Incoming Rel.links addr
-
-  let related addr =
-    isect
-      [
-        rel Edges Outgoing Rel.links addr;
-        complement @@ has_taxon "reference"
-      ]
-
-  let contributions addr =
-    union
-      [
-        rel Edges Incoming Rel.authors addr;
-        rel Edges Incoming Rel.contributors addr
-      ]
-
   let isect_fam_rel q mode pol r =
     let name = N.fresh () in
     isect_fam q name @@ rel mode pol r (Var (F name))
 
-  let union_fam_rel q mode pol r : _ lnvar expr =
+  let union_fam_rel q mode pol r : (_, _ lnvar) expr =
     let name = N.fresh () in
     union_fam q name @@ rel mode pol r (Var (F name))
-
-  let hereditary_contributors addr =
-    let q_non_ref_under =
-      isect
-        [
-          tree_under addr;
-          complement @@ has_taxon "reference"
-        ]
-    in
-    let q_all_contributors =
-      union_fam_rel
-        q_non_ref_under
-        Edges
-        Outgoing
-        Rel.contributors
-    in
-    let q_authors = rel Edges Outgoing Rel.authors addr in
-    isect [q_all_contributors; complement q_authors]
-
-  let references addr =
-    isect
-      [
-        union_fam_rel (tree_under addr) Edges Outgoing Rel.links;
-        has_taxon "reference"
-      ]
 end

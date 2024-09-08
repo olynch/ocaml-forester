@@ -20,8 +20,8 @@ let version =
 
 let build ~env config_filename dev render_only no_assets no_theme =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  Forester.plant_forest_from_dirs ~env ~dev @@ paths_of_dirs ~env config.trees;
-  Forester.render_forest ~env ~dev ~root: config.root ~stylesheet: config.stylesheet;
+  Forester.plant_forest_from_dirs ~env ~host: config.host ~dev @@ paths_of_dirs ~env config.trees;
+  Forester.render_forest ~env ~dev ~host: config.host ~root: config.root ~stylesheet: config.stylesheet;
   let dirs_to_copy =
     (if not no_theme then [config.theme] else []) @
       (if not no_assets then config.assets else [])
@@ -32,7 +32,7 @@ let build ~env config_filename dev render_only no_assets no_theme =
 let new_tree ~env config_filename dest_dir prefix template random =
   let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  Forester.plant_forest_from_dirs ~env ~dev: true @@ paths_of_dirs ~env config.trees;
+  Forester.plant_forest_from_dirs ~env ~host: config.host ~dev: true @@ paths_of_dirs ~env config.trees;
   let mode = if random then `Random else `Sequential in
   let dest = path_of_dir ~env dest_dir in
   let addr = Forester.create_tree ~env ~dest ~prefix ~template ~mode in
@@ -41,24 +41,23 @@ let new_tree ~env config_filename dest_dir prefix template random =
 let complete ~env config_filename title =
   let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  Forester.plant_forest_from_dirs ~env ~dev: true @@ paths_of_dirs ~env config.trees;
-  let@ addr, title = Seq.iter @~ Forester.complete title in
-  Format.printf "%a, %s\n" pp_addr addr title
+  Forester.plant_forest_from_dirs ~env ~host: config.host ~dev: true @@ paths_of_dirs ~env config.trees;
+  let@ iri, title = Seq.iter @~ Forester.complete ~host: config.host title in
+  Format.printf "%a, %s\n" pp_iri iri title
 
 let query_all ~env config_filename =
   let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  Forester.plant_forest_from_dirs ~env ~dev: true @@ paths_of_dirs ~env config.trees;
-  Forester.json_manifest ~root: config.root ~dev: true |> Format.printf "%s"
+  Forester.plant_forest_from_dirs ~env ~host: config.host ~dev: true @@ paths_of_dirs ~env config.trees;
+  Forester.json_manifest ~host: config.host ~root: config.root ~dev: true |> Format.printf "%s"
 
 let init ~env () =
   let default_theme_url = "https://git.sr.ht/~jonsterling/forester-base-theme" in
   let theme_version = "4.3.0" in
-  let ( / ) = EP.( / ) in
   let fs = Eio.Stdenv.fs env in
   let try_create_dir name =
     try
-      EP.mkdir ~perm: 0o700 (fs / name)
+      EP.mkdir ~perm: 0o700 EP.(fs / name)
     with
       | _ ->
         Reporter.emitf Initialization_warning "Directory `%s` already exists" name
@@ -86,7 +85,7 @@ theme = "theme"                      # The directory in which your theme is stor
 |}
   in
   begin
-    if EP.is_file (Eio.Stdenv.fs env / "forest.toml") then
+    if EP.is_file EP.(Eio.Stdenv.fs env / "forest.toml") then
       Reporter.emitf Initialization_warning "forest.toml already exists"
     else
       EP.(save ~create: (`Exclusive 0o600) (fs / "forest.toml") default_config_str)
@@ -154,7 +153,7 @@ let build_cmd ~env =
   let man =
     [
       `S Manpage.s_description;
-      `P "The $(tname) command builds a hypertext $(b,forest) from trees stored in each $(i,INPUT_DIR) or any of its subdirectories; tree files are expected to be of the form $(i,addr.tree) where $(i,addr) is the global address of the tree. Note that the physical location of a tree is not taken into account, and two trees with the same address are not permitted.";
+      `P "The $(tname) command builds a hypertext $(b,forest) from trees stored in each $(i,INPUT_DIR) or any of its subdirectories; tree files are expected to be of the form $(i,addr.tree) where $(i,addr) is the address of the tree. Note that the physical location of a tree is not taken into account, and two trees with the same address are not permitted.";
     ]
   in
   let info = Cmd.info "build" ~version ~doc ~man in

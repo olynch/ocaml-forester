@@ -21,7 +21,7 @@ module V = struct
     | Clo of t Env.t * Symbol.t binding list * Syn.t
     | Query_polarity of Query.polarity
     | Query_mode of Query.mode
-    | Query_expr of Symbol.t Query.lnvar Query.expr
+    | Query_expr of (T.content T.vertex, Symbol.t Query.lnvar) Query.expr
     | Sym of Symbol.t
     | Obj of Symbol.t
     | Bool of bool
@@ -73,12 +73,6 @@ module V = struct
     | Query_mode mode -> mode
     | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected query mode"
 
-  let extract_query_addr_expr (x : located) =
-    match x.value with
-    | Sym sym -> Query.Var (Query.F sym)
-    | Content (T.Content [Text txt]) -> Query.Addr (Addr.user_addr txt)
-    | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected addr expression in query"
-
   let extract_query_expr (x : located) =
     match x.value with
     | Query_expr q -> q
@@ -103,13 +97,13 @@ module V = struct
     | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected boolean"
 end
 
-let default_backmatter ~addr : T.content =
-  let a = Query.Addr addr in
+let default_backmatter ~(iri : iri) : T.content =
+  let a = Query.Vertex (T.Iri_vertex iri) in
   let module QLN = Query.Locally_nameless(Query.Global_name) in
   let make_section title query =
     let query = QLN.distill query in
     let section =
-      let frontmatter = { T.empty_frontmatter with title = T.Content [T.Text title] } in
+      let frontmatter = T.default_frontmatter ~title: (T.Content [T.Text title]) () in
       let mainmatter = T.Content [T.Results_of_query query] in
       let flags = { T.default_section_flags with hidden_when_empty = Some true } in
       T.{ frontmatter; mainmatter; flags }
@@ -118,11 +112,11 @@ let default_backmatter ~addr : T.content =
   in
   T.Content
     [
-      make_section "references" @@ QLN.references a;
-      make_section "context" @@ QLN.context a;
-      make_section "backlinks" @@ QLN.backlinks a;
-      make_section "related" @@ QLN.related a;
-      make_section "contributions" @@ QLN.contributions a
+      make_section "references" @@ Builtin_queries.references a;
+      make_section "context" @@ Builtin_queries.context a;
+      make_section "backlinks" @@ Builtin_queries.backlinks a;
+      make_section "related" @@ Builtin_queries.related a;
+      make_section "contributions" @@ Builtin_queries.contributions a
     ]
 
 type job = LaTeX_to_svg of { hash: string; source: string; content: svg: string -> T.content }
@@ -131,6 +125,7 @@ type result = { main: T.content T.article; side: T.content T.article list; jobs:
 module Tape = Tape_effect.Make ()
 module Lex_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
 module Dyn_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
+module Host_env = Algaeff.Reader.Make(struct type t = string option end)
 module Heap = Algaeff.State.Make(struct type t = V.obj Env.t end)
 module Emitted_trees = Algaeff.State.Make(struct type t = T.content T.article list end)
 module Jobs = Algaeff.State.Make(struct type t = job list end)
@@ -146,7 +141,7 @@ let get_frontmatter_overrides ~loc =
     let@ value = Option.map @~ Env.find_opt Expand.Builtins.Transclude.taxon_sym dynenv in
     match V.extract_text @@ Range.locate_opt loc value with
     | "" -> None
-    | txt -> Some txt
+    | txt -> Some (T.Content_vertex (T.Content [T.Text txt]))
   in
   T.{ title; taxon }
 
@@ -167,6 +162,32 @@ let get_transclusion_flags ~loc =
     numbered = override flags.numbered @@ get_bool S.numbered_sym;
     metadata_shown = override flags.metadata_shown @@ get_bool S.show_metadata_sym;
   }
+
+let resolve_iri ~loc str =
+  let base = let host = Host_env.read () in Iri_scheme.base_iri ~host in
+  match Iri.of_string str with
+  | iri -> Ok (Iri.resolve ~base iri)
+  | exception (Iri.Error err) -> Error err
+
+let extract_iri (node : V.located) =
+  let text = V.extract_text node in
+  resolve_iri ~loc: node.loc text
+
+let extract_vertex ~type_ (node : V.located) =
+  match type_ with
+  | `Content ->
+    Ok (T.Content_vertex (V.extract_content node))
+  | `Iri ->
+    let@ iri = Result.map @~ extract_iri node in
+    T.Iri_vertex iri
+
+let extract_query_vertex_expr ~host ~type_ (node : V.located) =
+  match node.value with
+  | Sym sym -> Query.Var (Query.F sym)
+  | _ ->
+    match extract_vertex ~type_ node with
+    | Ok vtx -> Query.Vertex vtx
+    | Error _ -> Reporter.fatalf ?loc: node.loc Type_error "Expected valid RFC 3987 IRI in query expression"
 
 let rec process_tape () =
   match Tape.pop_node_opt () with
@@ -204,22 +225,34 @@ and eval_node node : V.t =
     let env = Lex_env.read () in
     focus_clo env xs body
   | Ref ->
-    let href = pop_text_arg ~loc in
-    let addr = Addr.user_addr href in
-    let content =
-      T.Content
-        [
-          T.Transclude { addr; target = T.Taxon; modifier = Sentence_case };
-          T.Text " ";
-          T.Contextual_number addr
-        ]
-    in
-    emit_content_node ~loc @@ Link { href; content }
+    begin
+      match eval_pop_arg ~loc |> extract_iri with
+      | Ok href when Iri.scheme href = Iri_scheme.scheme ->
+        let content =
+          T.Content
+            [
+              T.Transclude { href; target = T.Taxon; modifier = Sentence_case };
+              T.Text " ";
+              T.Contextual_number href
+            ]
+        in
+        emit_content_node ~loc @@ Link { href; content }
+      | Ok iri ->
+        Reporter.fatalf ?loc Type_error "Cannot refer to content with non-forester IRI %a" pp_iri iri
+      | Error _ ->
+        Reporter.fatalf ?loc Type_error "Expected valid RFC 3987 IRI in ref"
+    end
   | Link { title; dest } ->
-    let href = { node with value = dest } |> Range.map eval_tape |> V.extract_text in
+    let host = Host_env.read () in
+    let dest = { node with value = dest } |> Range.map eval_tape in
+    let href =
+      match extract_iri dest with
+      | Ok iri -> iri
+      | Error _ -> Reporter.fatalf ?loc Type_error "Expected valid RFC 3987 IRI in link"
+    in
     let content =
       match title with
-      | None -> T.Content [T.Transclude { addr = Addr.user_addr href; target = T.Title; modifier = Identity }]
+      | None -> T.Content [T.Transclude { href; target = T.Title; modifier = Identity }]
       | Some title -> { node with value = eval_tape title } |> V.extract_content
     in
     emit_content_node ~loc @@ Link { href; content }
@@ -234,19 +267,23 @@ and eval_node node : V.t =
       | (key, v) :: attrs ->
         T.{ key; value = V.extract_text { node with value = eval_tape v } } :: process attrs
     in
-    let name = { prefix = name.prefix; uname = name.uname; xmlns = name.xmlns } in
+    let name = T.{ prefix = name.prefix; uname = name.uname; xmlns = name.xmlns } in
     let content = { node with value = eval_tape body } |> V.extract_content in
     emit_content_node ~loc @@ T.Xml_elt { name; attrs = process attrs; content }
   | Query_polarity pol ->
     focus ?loc @@ V.Query_polarity pol
   | Query_mode mode ->
     focus ?loc @@ V.Query_mode mode
-  | Query_rel ->
+  | Query_set ->
+    let set = eval_pop_arg ~loc |> V.extract_text in
+    focus ?loc @@ V.Query_expr (Query.pred set)
+  | Query_rel type_ ->
+    let host = Host_env.read () in
     let mode = eval_pop_arg ~loc |> V.extract_query_mode in
     let pol = eval_pop_arg ~loc |> V.extract_query_polarity in
     let rel = eval_pop_arg ~loc |> V.extract_text in
-    let addr = eval_pop_arg ~loc |> V.extract_query_addr_expr in
-    focus ?loc @@ V.Query_expr (Query.rel mode pol rel addr)
+    let vtx = eval_pop_arg ~loc |> extract_query_vertex_expr ~host ~type_ in
+    focus ?loc @@ V.Query_expr (Query.rel mode pol rel vtx)
   | Query_isect ->
     let queries =
       let@ arg = List.map @~ Tape.pop_args () in
@@ -292,36 +329,46 @@ and eval_node node : V.t =
     let pol = eval_pop_arg ~loc |> V.extract_query_polarity in
     let rel = pop_text_arg ~loc in
     focus ?loc @@ V.Query_expr (QLN.union_fam_rel q mode pol rel)
-  | Query_builtin builtin ->
-    let addr = eval_pop_arg ~loc |> V.extract_query_addr_expr in
+  | Query_builtin (builtin, type_) ->
+    let host = Host_env.read () in
+    let vtx = eval_pop_arg ~loc |> extract_query_vertex_expr ~host ~type_ in
     let r =
       match builtin with
       | `Taxon -> Query.Rel.taxa
       | `Author -> Query.Rel.authors
       | `Tag -> Query.Rel.tags
     in
-    let q = Query.rel Edges Incoming r addr in
+    let q = Query.rel Edges Incoming r vtx in
     focus ?loc: node.loc @@ V.Query_expr q
   | TeX_cs cs ->
     emit_content_node ~loc @@ TeX_cs cs
   | Transclude ->
     let flags = get_transclusion_flags ~loc in
     let overrides = get_frontmatter_overrides ~loc in
-    let addr = Addr.user_addr (pop_text_arg ~loc) in
-    emit_content_node ~loc @@ T.Transclude { addr; target = Full (flags, overrides); modifier = Identity }
+    let href_arg = eval_pop_arg ~loc in
+    let href =
+      match extract_iri href_arg with
+      | Ok iri when Iri.scheme iri = Iri_scheme.scheme -> iri
+      | Ok iri ->
+        Reporter.fatalf ?loc Type_error "Cannot transclude content with non-forester IRI %a" pp_iri iri
+      | Error _ ->
+        Reporter.fatalf ?loc Type_error "Expected valid RFC 3987 IRI in transclusion"
+    in
+    emit_content_node ~loc @@ T.Transclude { href; target = Full (flags, overrides); modifier = Identity }
   | Subtree (addr_opt, nodes) ->
     let flags = get_transclusion_flags ~loc in
     let overrides = get_frontmatter_overrides ~loc in
-    let addr =
+    let host = Host_env.read () in
+    let iri =
       match addr_opt with
-      | Some addr -> Addr.user_addr addr
-      | None -> Addr.fresh ()
+      | Some addr -> Iri_scheme.user_iri ~host addr
+      | None -> Iri_scheme.fresh ~host
     in
-    let subtree = eval_tree_inner ~addr nodes in
+    let subtree = eval_tree_inner ~iri nodes in
     let frontmatter = Frontmatter.get () in
-    let subtree = { subtree with frontmatter = { subtree.frontmatter with addr; designated_parent = Some frontmatter.addr } } in
+    let subtree = { subtree with frontmatter = { subtree.frontmatter with iri = Some iri; designated_parent = frontmatter.iri } } in
     Emitted_trees.modify @@ List.cons subtree;
-    let transclusion = T.{ addr; target = Full (flags, overrides); modifier = Identity } in
+    let transclusion = T.{ href = iri; target = Full (flags, overrides); modifier = Identity } in
     emit_content_node ~loc @@ Transclude transclusion
   | Results_of_query ->
     let query =
@@ -351,9 +398,10 @@ and eval_node node : V.t =
     let job = LaTeX_to_svg { hash; source; content } in
     Jobs.modify (List.cons job);
     let transclusion =
-      let addr = Addr.hash_addr hash in
+      let host = Host_env.read () in
+      let href = Iri_scheme.hash_iri ~host hash in
       let target = T.Mainmatter in
-      T.{ addr; target; modifier = Identity }
+      T.{ href; target; modifier = Identity }
     in
     emit_content_node ~loc @@ T.Transclude transclusion
   | Object { self; methods } ->
@@ -385,22 +433,14 @@ and eval_node node : V.t =
   | Group (d, body) ->
     let l, r = delim_to_strings d in
     let content =
-      T.Content
-        (
-          T.Text l :: (T.extract_content @@ V.extract_content { node with value = eval_tape body }) @
-            [T.Text r]
-        )
+      let body = V.extract_content { node with value = eval_tape body } in
+      T.Content (T.Text l :: T.extract_content body @ [T.Text r])
     in
     focus ?loc: node.loc @@ V.Content content
   | Call (obj, method_name) ->
     let sym = { node with value = obj } |> Range.map eval_tape |> V.extract_obj_ptr in
     let rec call_method (obj : V.obj) =
-      let proto_val =
-        obj.prototype
-        |> Option.map @@
-          fun ptr ->
-            V.Obj ptr
-      in
+      let proto_val = obj.prototype |> Option.map @@ fun ptr -> V.Obj ptr in
       match V.Method_table.find_opt method_name obj.methods with
       | Some mthd ->
         let env =
@@ -458,30 +498,57 @@ and eval_node node : V.t =
     end
   | Verbatim str ->
     emit_content_node ~loc @@ CDATA str
+  | Add_to_set ->
+    let set = eval_pop_arg ~loc |> V.extract_text in
+    Frontmatter.modify (fun fm -> { fm with sets = set :: fm.sets });
+    process_tape ()
   | Title ->
     let title = pop_content_arg ~loc in
     Frontmatter.modify (fun fm -> { fm with title = title });
     process_tape ()
   | Parent ->
-    let addr = pop_text_arg ~loc in
-    Frontmatter.modify (fun fm -> { fm with designated_parent = Some (Addr.user_addr addr) });
+    let host = Host_env.read () in
+    let parent_arg = eval_pop_arg ~loc in
+    let parent =
+      match extract_iri parent_arg with
+      | Ok iri -> iri
+      | Error _ -> Reporter.fatalf ?loc Type_error "Expected valid RFC 3987 IRI in parent declaration"
+    in
+    Frontmatter.modify (fun fm -> { fm with designated_parent = Some parent });
     process_tape ()
   | Meta ->
     let k = pop_text_arg ~loc in
     let v = pop_content_arg ~loc in
     Frontmatter.modify (fun fm -> { fm with metas = fm.metas @ [k, v] });
     process_tape ()
-  | Author ->
-    let author = pop_text_arg ~loc in
-    Frontmatter.modify (fun fm -> { fm with attributions = fm.attributions @ [T.Author author] });
+  | Attribution (role, type_) ->
+    let arg = eval_pop_arg ~loc in
+    let vertex =
+      match extract_vertex ~type_ arg with
+      | Ok vtx -> vtx
+      | Error _ ->
+        let corrected_attribution_code =
+          match role with
+          | Author -> "\\author/content"
+          | Contributor -> "\\contributor/content"
+        in
+        Reporter.emitf ?loc Type_warning "Expected valid RFC 3987 IRI in attribution. Use `%s` instead if you intend an unlinked attribution." corrected_attribution_code;
+        T.Content_vertex (V.extract_content arg)
+    in
+    let attribution = T.{ role; vertex } in
+    Frontmatter.modify (fun fm -> { fm with attributions = fm.attributions @ [attribution] });
     process_tape ()
-  | Contributor ->
-    let author = pop_text_arg ~loc in
-    Frontmatter.modify (fun fm -> { fm with attributions = fm.attributions @ [T.Contributor author] });
-    process_tape ()
-  | Tag ->
-    let tag = pop_text_arg ~loc in
-    Frontmatter.modify (fun fm -> { fm with tags = fm.tags @ [tag] });
+  | Tag type_ ->
+    let arg = eval_pop_arg ~loc in
+    let vertex =
+      match extract_vertex ~type_ arg with
+      | Ok vtx -> vtx
+      | Error _ ->
+        let corrected = "\\tag/content" in
+        Reporter.emitf ?loc Type_warning "Expected valid RFC 3987 IRI in tag. Use `%s` instead if you intend an unlinked attribution." corrected;
+        T.Content_vertex (V.extract_content arg)
+    in
+    Frontmatter.modify (fun fm -> { fm with tags = fm.tags @ [vertex] });
     process_tape ()
   | Date ->
     let date_str = pop_text_arg ~loc in
@@ -497,9 +564,17 @@ and eval_node node : V.t =
     let num = pop_text_arg ~loc in
     Frontmatter.modify (fun fm -> { fm with number = Some num });
     process_tape ()
-  | Taxon ->
-    let taxon = pop_text_arg ~loc in
-    Frontmatter.modify (fun fm -> { fm with taxon = Some taxon });
+  | Taxon type_ ->
+    let arg = eval_pop_arg ~loc in
+    let vertex =
+      match extract_vertex ~type_ arg with
+      | Ok vtx -> vtx
+      | Error _ ->
+        let corrected_code = "\\taxon/content" in
+        Reporter.emitf ?loc Type_warning "Expected valid RFC 3987 IRI in taxon. Use `%s` instead if you intend an unlinked taxon." corrected_code;
+        T.Content_vertex (V.extract_content arg)
+    in
+    Frontmatter.modify (fun fm -> { fm with taxon = Some vertex });
     process_tape ()
   | Sym sym ->
     focus ?loc: node.loc @@ V.Sym sym
@@ -550,45 +625,45 @@ and focus_clo ?loc rho xs body =
     | None ->
       begin
         match process_tape () with
-        | Content nodes when T.strip_whitespace nodes = T.Content [] ->
-          Clo (rho, xs, body)
-        | _ ->
-          Reporter.fatalf ?loc Type_error "Expected %i additional arguments" (List.length xs)
+        | Content nodes when T.strip_whitespace nodes = T.Content [] -> Clo (rho, xs, body)
+        | _ -> Reporter.fatalf ?loc Type_error "Expected %i additional arguments" (List.length xs)
       end
 
 and emit_content_node ~loc content =
   focus ?loc @@ Content (T.Content [content])
 
-and eval_tree_inner ~addr (tree : Syn.tree) : T.content T.article =
-  let attribution_is_author = function
-    | T.Author _ -> true
+and eval_tree_inner ~(iri : iri) (tree : Syn.tree) : T.content T.article =
+  let attribution_is_author attr =
+    match T.(attr.role) with
+    | T.Author -> true
     | _ -> false
   in
   let outer_frontmatter = Frontmatter.get () in
+  let attributions = List.filter attribution_is_author outer_frontmatter.attributions in
   let frontmatter =
-    {
-      T.empty_frontmatter with
-      addr;
-      source_path = outer_frontmatter.source_path;
-      attributions = List.filter attribution_is_author outer_frontmatter.attributions;
-      dates = outer_frontmatter.dates
-    }
+    T.default_frontmatter
+      ~iri
+      ~attributions
+      ?source_path: outer_frontmatter.source_path
+      ~dates: outer_frontmatter.dates
+      ()
   in
   let@ () = Frontmatter.run ~init: frontmatter in
   let mainmatter = { value = eval_tape tree; loc = None } |> V.extract_content in
   let frontmatter = Frontmatter.get () in
-  let backmatter = default_backmatter ~addr in
+  let backmatter = default_backmatter ~iri in
   T.{ frontmatter; mainmatter; backmatter }
 
-let eval_tree ~addr ~source_path (tree : Syn.tree) : result =
-  let fm = { T.empty_frontmatter with addr; source_path } in
+let eval_tree ~host ~iri ~source_path (tree : Syn.tree) : result =
+  let fm = T.default_frontmatter ~iri ?source_path () in
   let@ () = Frontmatter.run ~init: fm in
   let@ () = Emitted_trees.run ~init: [] in
   let@ () = Jobs.run ~init: [] in
   let@ () = Heap.run ~init: Env.empty in
   let@ () = Lex_env.run ~env: Env.empty in
   let@ () = Dyn_env.run ~env: Env.empty in
-  let main = eval_tree_inner ~addr tree in
+  let@ () = Host_env.run ~env: host in
+  let main = eval_tree_inner ~iri tree in
   let side = Emitted_trees.get () in
   let jobs = Jobs.get () in
   { main; side; jobs }

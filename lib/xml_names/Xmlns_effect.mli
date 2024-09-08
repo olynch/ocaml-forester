@@ -1,4 +1,4 @@
-open Forester_core
+open Types
 
 module Make () : sig
   type xmlns_attr = { prefix: string; xmlns: string }

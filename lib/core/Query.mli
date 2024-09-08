@@ -1,9 +1,16 @@
 open Base
 
-(** {1 Relation symbols}*)
+(** {1 Unary relation symbols} *)
 
-module Rel:
-sig
+module Pred: sig
+  type t = string
+  val t : t Repr.ty
+  val references : t
+end
+
+(** {1 Binary relation symbols} *)
+
+module Rel: sig
   type t = string
 
   val t : t Repr.ty
@@ -15,6 +22,7 @@ sig
   val taxa : t
 end
 
+type pred = Pred.t
 type rel = Rel.t
 
 (** {1 Query modifiers} *)
@@ -23,51 +31,77 @@ type rel = Rel.t
 type polarity =
   | Incoming
   | Outgoing
-[@@deriving show, repr]
+
+val pp_polarity : Format.formatter -> polarity -> unit
+val polarity_t : polarity Repr.t
 
 (** Determines whether we are querying a relation or its reflexive-transitive closure. *)
 type mode =
   | Edges
   | Paths
-[@@deriving show, repr]
+
+val pp_mode : Format.formatter -> mode -> unit
+val mode_t : mode Repr.t
 
 (** {1 Query expression} *)
 
 (** De Bruijn indices for bound variables, counting outward from the innermost binder. *)
 type dbix = int
-[@@deriving show, repr]
+
+val pp_dbix : Format.formatter -> dbix -> unit
+val dbix_t : dbix Repr.t
 
 (** An address expression can be concrete, or it can be a variable. *)
-type 'var addr_expr =
-  | Addr of addr
+type ('vertex, 'var) vertex_expr =
+  | Vertex of 'vertex
   | Var of 'var
-[@@deriving show, repr]
+
+val pp_vertex_expr :
+  (Format.formatter -> 'vertex -> unit) ->
+  (Format.formatter -> 'var -> unit) ->
+  Format.formatter ->
+  ('vertex, 'var) vertex_expr ->
+  unit
+
+val vertex_expr_t :
+  'vertex Repr.t ->
+  'var Repr.t ->
+  ('vertex, 'var) vertex_expr Repr.t
 
 (** Don't use the constructor/destructor unless you know what you are doing! *)
 type 'a binder = { body: 'a }
-[@@deriving repr]
+val binder_t : 'a Repr.t -> 'a binder Repr.t
 
-type 'var expr =
-  | Rel of mode * polarity * Rel.t * 'var addr_expr
-  | Isect of 'var expr list
-  | Union of 'var expr list
-  | Complement of 'var expr
-  | Union_fam of 'var expr * 'var expr binder
-  | Isect_fam of 'var expr * 'var expr binder
-[@@deriving show]
+type ('vertex, 'var) expr =
+  | Pred of Pred.t
+  | Rel of mode * polarity * Rel.t * ('vertex, 'var) vertex_expr
+  | Isect of ('vertex, 'var) expr list
+  | Union of ('vertex, 'var) expr list
+  | Complement of ('vertex, 'var) expr
+  | Union_fam of ('vertex, 'var) expr * ('vertex, 'var) expr binder
+  | Isect_fam of ('vertex, 'var) expr * ('vertex, 'var) expr binder
 
-val expr_t : 'var Repr.t -> 'var expr Repr.t
+val pp_expr :
+  (Format.formatter -> 'vertex -> unit) ->
+  (Format.formatter -> 'var -> unit) ->
+  Format.formatter ->
+  ('vertex, 'var) expr ->
+  unit
 
-val rel : mode -> polarity -> rel -> 'var addr_expr -> 'var expr
-val isect : 'var expr list -> 'var expr
-val union : 'var expr list -> 'var expr
-val complement : 'var expr -> 'var expr
+val expr_t : 'vertex Repr.t -> 'var Repr.t -> ('vertex, 'var) expr Repr.t
+
+val pred : pred -> ('vertex, 'var) expr
+val rel : mode -> polarity -> rel -> ('vertex, 'var) vertex_expr -> ('vertex, 'var) expr
+val isect : ('vertex, 'var) expr list -> ('vertex, 'var) expr
+val union : ('vertex, 'var) expr list -> ('vertex, 'var) expr
+val complement : ('vertex, 'var) expr -> ('vertex, 'var) expr
 
 (** A variable in 'locally nameless' representation is either free or bound. *)
 type 'name lnvar =
   | F of 'name
   | B of dbix
-[@@deriving show]
+
+val pp_lnvar : (Format.formatter -> 'name -> unit) -> Format.formatter -> 'name lnvar -> unit
 
 module type Name = sig
   type t
@@ -77,24 +111,15 @@ end
 module Global_name: Name
 
 module Locally_nameless (N: Name) : sig
-  type lnexpr = N.t lnvar expr
+  type 'vertex lnexpr = ('vertex, N.t lnvar) expr
 
-  val distill : lnexpr -> dbix expr
+  val distill : 'vertex lnexpr -> ('vertex, dbix) expr
   exception Distill of N.t
 
-  val bind : N.t -> lnexpr -> lnexpr binder
-  val union_fam : lnexpr -> N.t -> lnexpr -> lnexpr
-  val isect_fam : lnexpr -> N.t -> lnexpr -> lnexpr
+  val bind : N.t -> 'vertex lnexpr -> 'vertex lnexpr binder
+  val union_fam : 'vertex lnexpr -> N.t -> 'vertex lnexpr -> 'vertex lnexpr
+  val isect_fam : 'vertex lnexpr -> N.t -> 'vertex lnexpr -> 'vertex lnexpr
 
-  val has_taxon : string -> 'a expr
-  val context : N.t lnvar addr_expr -> lnexpr
-  val backlinks : N.t lnvar addr_expr -> lnexpr
-  val related : N.t lnvar addr_expr -> lnexpr
-  val contributions : N.t lnvar addr_expr -> lnexpr
-
-  val isect_fam_rel : lnexpr -> mode -> polarity -> rel -> lnexpr
-  val union_fam_rel : lnexpr -> mode -> polarity -> rel -> lnexpr
-
-  val references : N.t lnvar addr_expr -> lnexpr
-  val hereditary_contributors : N.t lnvar addr_expr -> lnexpr
+  val isect_fam_rel : 'vertex lnexpr -> mode -> polarity -> rel -> 'vertex lnexpr
+  val union_fam_rel : 'vertex lnexpr -> mode -> polarity -> rel -> 'vertex lnexpr
 end

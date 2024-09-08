@@ -3,21 +3,32 @@ open Forester_core
 
 module T = Xml_tree
 
-module Make (R: sig val route : addr -> string option end) (F: Forest.S) = struct
+module Make (R: sig val route : Iri.t -> string end) (F: Forest.S) = struct
 
   module PT = Plain_text_client.Make(F)
 
-  let render_tree ~dev (doc : T.content T.article) =
-    let addr = doc.frontmatter.addr in
-    let@ route = Option.bind @@ R.route addr in
+  let render_tree ~dev ~host (doc : T.content T.article) =
+    let@ iri = Option.bind doc.frontmatter.iri in
+    let route = R.route iri in
     let title_string = String_util.sentence_case @@ PT.string_of_content @@ F.get_expanded_title doc.frontmatter in
     let title = `String title_string in
     let taxon =
       match doc.frontmatter.taxon with
       | None -> `Null
-      | Some taxon -> `String (String_util.sentence_case taxon)
+      | Some vertex ->
+        match F.get_title_or_content_of_vertex ~modifier: Sentence_case vertex with
+        | None -> `Null
+        | Some content ->
+          `String (PT.string_of_content content)
     in
-    let tags = `List (List.map (fun t -> `String t) doc.frontmatter.tags) in
+    let tags =
+      `List
+        begin
+          let@ tag = List.filter_map @~ doc.frontmatter.tags in
+          let@ content = Option.map @~ F.get_title_or_content_of_vertex ~modifier: Identity tag in
+          `String (PT.string_of_content content)
+        end
+    in
     let route = `String route in
     let metas =
       let meta_string meta = String.trim @@ PT.string_of_content meta in
@@ -31,8 +42,8 @@ module Make (R: sig val route : addr -> string option end) (F: Forest.S) = struc
         | None -> []
       else []
     in
-    match addr with
-    | User_addr addr ->
+    (* TODO: filter out anonymous stuff *)
+    Option.some @@
       let fm =
         path @
           [
@@ -43,9 +54,8 @@ module Make (R: sig val route : addr -> string option end) (F: Forest.S) = struc
             ("metas", metas)
           ]
       in
-      Some (addr, `Assoc fm)
-    | _ -> None
+      (Iri.to_string ~pctencode: false (Iri_scheme.relativise_iri ~host iri), `Assoc fm)
 
-  let render_trees ~(dev : bool) (trees : T.content T.article list) : Yojson.Basic.t =
-    `Assoc (List.filter_map (render_tree ~dev) trees)
+  let render_trees ~(dev : bool) ~host (trees : T.content T.article list) : Yojson.Basic.t =
+    `Assoc (List.filter_map (render_tree ~host ~dev) trees)
 end

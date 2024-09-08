@@ -5,6 +5,7 @@ type dir = Eio.Fs.dir_ty Eio.Path.t
 
 val plant_forest_from_dirs :
   env: env ->
+  host: string option ->
   dev: bool ->
   dir list ->
   unit
@@ -12,6 +13,7 @@ val plant_forest_from_dirs :
 val render_forest :
   env: env ->
   dev: bool ->
+  host: string option ->
   root: string option ->
   stylesheet: string ->
   unit
@@ -30,10 +32,12 @@ val create_tree :
   string
 
 val json_manifest :
+  host: string option ->
   root: string option ->
   dev: bool ->
   string
 
 val complete :
+  host: string option ->
   string ->
-  (addr * string) Seq.t
+  (iri * string) Seq.t

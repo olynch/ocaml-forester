@@ -1,8 +1,23 @@
-type addr = Addr.t
-let pp_addr = Addr.pp
+type iri = Iri.t
 
-module Addr_map = Map.Make(Addr)
-module Addr_set = Set.Make(Addr)
+let iri_t = Repr.map Repr.string Iri.of_string (Iri.to_string ~pctencode: false)
+
+let pp_iri (fmt : Format.formatter) (iri : Iri.t) =
+  Format.fprintf fmt "%s" @@
+    Iri.to_string ~pctencode: false iri
+
+module Iri_ord = struct
+  type t = Iri.t
+  let compare = Iri.compare ~normalize: true
+end
+
+module Iri_hash = struct
+  include Iri_ord
+  let equal = Iri.equal ~normalize: true
+  let hash = Hashtbl.hash
+end
+
+module Iri_map = Map.Make(Iri_ord)
 module String_map = Map.Make(String)
 
 type delim =
@@ -27,7 +42,4 @@ type math_mode =
 
 type visibility =
   Private | Public
-[@@deriving show, repr]
-
-type xml_qname = { prefix: string; uname: string; xmlns: string option }
 [@@deriving show, repr]

@@ -10,7 +10,7 @@ end
 module Make (F: Forest.S) : S = struct
 
   let rec pp_content fmt = function
-    | (T.Content c) -> (List.iter @@ pp_content_node fmt) c
+    | T.Content c -> c |> List.iter @@ pp_content_node fmt
 
   and pp_content_node fmt : 'a T.content_node -> unit = function
     | Text txt | CDATA txt -> Format.pp_print_string fmt txt
@@ -18,7 +18,7 @@ module Make (F: Forest.S) : S = struct
     | TeX_cs cs -> Format.fprintf fmt "\\%a" TeX_cs.pp cs
     | Xml_elt elt -> pp_content fmt elt.content
     | Transclude trn -> pp_transclusion fmt trn
-    | Contextual_number addr -> Format.fprintf fmt "[%a]" pp_addr addr
+    | Contextual_number addr -> Format.fprintf fmt "[%a]" pp_iri addr
     | Section section -> pp_section fmt section
     | Prim (_, content) -> pp_content fmt content
     | Link link -> pp_link fmt link

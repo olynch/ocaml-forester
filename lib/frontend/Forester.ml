@@ -3,7 +3,7 @@ open Forester_core
 open Forester_forest
 open Forester_compiler
 
-module M = Addr_map
+module M = Iri_map
 module T = Xml_tree
 module F = Forest.Make(Forest_graphs.Make ())
 module FU = Forest_util.Make(F)
@@ -18,7 +18,8 @@ let output_dir_name = "output"
 
 let get_sorted_articles addrs =
   addrs
-  |> Addr_set.to_seq
+  |> Vertex_set.to_seq
+  |> Seq.filter_map Vertex.iri_of_vertex
   |> Seq.filter_map F.get_article
   |> List.of_seq
   |> List.sort C.compare_article
@@ -67,8 +68,10 @@ let next_addr ~prefix ~mode (addrs : string list) =
 let create_tree ~env ~dest ~prefix ~template ~mode =
   let addrs =
     let@ article = List.filter_map @~ get_all_articles () in
-    match article.frontmatter.addr with
-    | Addr.User_addr x -> Some x
+    let@ iri = Option.bind article.frontmatter.iri in
+    let (Absolute path | Relative path) = Iri.path iri in
+    match List.rev path with
+    | name :: _ -> Some name
     | _ -> None
   in
   let next = next_addr addrs ~prefix ~mode in
@@ -85,17 +88,19 @@ let create_tree ~env ~dest ~prefix ~template ~mode =
   EP.save ~create path @@ body ^ template_content;
   next
 
-let complete prefix =
+let complete ~host prefix =
   let@ article = Seq.filter_map @~ List.to_seq @@ get_all_articles () in
-  let addr = article.frontmatter.addr in
+  let@ iri = Option.bind article.frontmatter.iri in
+  let@ iri = Option.bind @@ Option_util.guard Iri_scheme.is_stable_iri iri in
+  let iri = Iri_scheme.relativise_iri ~host iri in
   let title =
     Format.asprintf
       "%a"
       PT.pp_content
       article.frontmatter.title
   in
-  if Addr.is_user_addr addr && String.starts_with ~prefix title then
-    Some (addr, title)
+  if String.starts_with ~prefix title then
+    Some (iri, title)
   else
     None
 
@@ -123,35 +128,40 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
   | exception exn ->
     if ignore_malformed then None else raise exn
 
-let plant_forest_from_dirs ~env ~dev tree_dirs : unit =
+let plant_forest_from_dirs ~env ~host ~dev tree_dirs : unit =
   let parsed_trees = parse_trees_in_dirs ~dev tree_dirs in
   let@ () = Reporter.profile "Expand, evaluate, and analyse forest" in
-  let@ _, article = Seq.iter @~ Addr_map.to_seq @@ Forest_reader.read_trees ~env parsed_trees in
+  let@ _, article = Seq.iter @~ Iri_map.to_seq @@ Forest_reader.read_trees ~host ~env parsed_trees in
   F.plant_article article
 
-let json_manifest ~root ~dev : string =
+let json_manifest ~host ~root ~dev : string =
   let all_articles = FU.get_all_articles () in
-  let module P = struct let root = root end in
+  let module P = struct let host = host let root = root end in
   let module Client = Legacy_xml_client.Make(P)(F)() in
   let module R = Render_json.Make(Client)(F) in
-  Yojson.Basic.to_string @@ R.render_trees ~dev all_articles
+  Yojson.Basic.to_string @@ R.render_trees ~dev ~host all_articles
 
-let render_forest ~env ~dev ~root ~stylesheet : unit =
+let render_forest ~env ~dev ~host ~root ~stylesheet : unit =
+  let module P = struct let host = host let root = root end in
+  let module Client = Legacy_xml_client.Make(P)(F)() in
+  let module R = Render_json.Make(Client)(F) in
   let@ () = Reporter.profile "Render forest" in
   let cwd = Eio.Stdenv.cwd env in
-  Eio_util.ensure_dir_path cwd [output_dir_name];
-  let module P = struct let root = root end in
-  let module Client = Legacy_xml_client.Make(P)(F)() in
-  let module R = Render_json.Make(Client)(F) in
   let all_articles = FU.get_all_articles () in
+  let perm = 0o755 in
   begin
-    let json_string = Yojson.Basic.to_string @@ R.render_trees ~dev all_articles in
-    EP.save ~create: (`Or_truncate 0o644) EP.(cwd / output_dir_name / "forest.json") json_string
+    let json_string = Yojson.Basic.to_string @@ R.render_trees ~dev ~host all_articles in
+    let json_path = EP.(cwd / output_dir_name / "forest.json") in
+    Eio_util.ensure_context_of_path ~perm json_path;
+    EP.save ~create: (`Or_truncate perm) json_path json_string
   end;
   begin
-    let@ article = List.iter @~ all_articles in
-    let@ route = Option.iter @~ Client.route article.frontmatter.addr in
-    let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) EP.(cwd / output_dir_name / route) in
+    let@ article = Eio.Fiber.List.iter ~max_fibers: 20 @~ all_articles in
+    let@ () = Reporter.easy_run in
+    let@ route = Option.iter @~ Option.map Client.route article.frontmatter.iri in
+    let path = EP.(cwd / output_dir_name / route) in
+    Eio_util.ensure_context_of_path ~perm path;
+    let@ flow = EP.with_open_out ~create: (`Or_truncate perm) path in
     let@ writer = Eio.Buf_write.with_flow flow in
     Client.pp_xml ~stylesheet (Eio.Buf_write.make_formatter writer) article
   end

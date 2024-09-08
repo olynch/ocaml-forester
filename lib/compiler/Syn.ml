@@ -1,4 +1,5 @@
 open Forester_core
+open Forester_xml_names
 
 type node =
   | Text of string
@@ -23,7 +24,8 @@ type node =
   | Query_mode of Query.mode
   | Bool of bool
   | Results_of_query
-  | Query_rel
+  | Query_set
+  | Query_rel of [`Content | `Iri]
   | Query_isect
   | Query_union
   | Query_compl
@@ -31,17 +33,17 @@ type node =
   | Query_union_fam
   | Query_isect_fam_rel
   | Query_union_fam_rel
-  | Query_builtin of [`Taxon | `Author | `Tag]
+  | Query_builtin of [`Taxon | `Author | `Tag] * [`Content | `Iri]
   | Transclude
   | Embed_tex
   | Ref
   | Title
   | Parent
-  | Taxon
+  | Taxon of [`Content | `Iri]
+  | Add_to_set
   | Meta
-  | Author
-  | Contributor
-  | Tag
+  | Attribution of Xml_tree.attribution_role * [`Content | `Iri]
+  | Tag of [`Content | `Iri]
   | Date
   | Number
 [@@deriving show]

@@ -1,4 +1,5 @@
 open Forester_prelude
+open Forester_xml_names
 open Forester_core
 
 module T = Xml_tree
@@ -6,13 +7,14 @@ module P = Pure_html
 module X = Xml_forester
 
 module type S = sig
-  val route : addr -> string option
+  val route : Iri.t -> string
   val render_article : T.content T.article -> P.node
 
   val pp_xml : ?stylesheet: string -> Format.formatter -> T.content T.article -> unit
 end
 
 module type Params = sig
+  val host : string option
   val root : string option
 end
 
@@ -34,35 +36,85 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       run ~reserved: [xmlns_prefix]
   end
 
-  module Scope = Algaeff.Reader.Make(struct type t = addr end)
+  module Scope = Algaeff.Reader.Make(struct type t = iri option end)
 
   let transclusion_cache = Hashtbl.create 1000
 
-  let addr_to_string addr =
-    Format.asprintf "%a" Addr.pp addr
+  let forester_iri_to_string ~host ~path =
+    if host = Params.host then
+      String.concat "/" @@
+        match path with
+        | Iri.Absolute xs -> xs
+        | Iri.Relative xs -> xs
+    else
+      Iri.to_string ~pctencode: false @@
+        Iri.iri ?host ~path ()
 
-  let addr_type : addr -> string = function
-    | User_addr _ -> "user"
-    | Machine_addr _ -> "machine"
-    | Anon -> "anon"
-    | Hash_addr _ -> "content"
+  let iri_to_string iri =
+    if Iri.scheme iri = Iri_scheme.scheme then
+      let host = Iri.host iri in
+      let path = Iri.path iri in
+      forester_iri_to_string ~host ~path
+    else
+      Iri.to_string ~pctencode: false iri
+
+  let iri_type iri =
+    match Iri.path iri with
+    | Absolute ["unstable"; _] -> "machine"
+    | Absolute ["hash"; _] -> "hash"
+    | Absolute [_] -> "user"
+    | _ -> failwith "addr_type"
 
   let addr_is_root addr =
-    Some addr = Option.map Addr.user_addr Params.root
+    Some addr = Option.map (Iri_scheme.user_iri ~host: Params.host) Params.root
 
-  let route addr =
-    if addr_is_root addr then
-      Some "index.xml"
+  let route_bare_forester_iri ~path =
+    let bare_route =
+      String.concat "-" @@
+        match path with
+        | Iri.Absolute xs -> xs
+        | Iri.Relative xs -> xs (* impossible? *)
+    in
+    bare_route ^ ".xml"
+
+  let route_foreign_forester_iri ~host ~path =
+    "foreign/" ^
+      match host with
+      | None -> route_bare_forester_iri ~path
+      | Some host ->
+        host ^ "/" ^ route_bare_forester_iri ~path
+
+  let route_forester_iri ~host ~path =
+    if host = Params.host then
+      route_bare_forester_iri ~path
     else
-      match addr with
-      | User_addr x -> Some (Format.sprintf "%s.xml" x)
-      | Machine_addr i -> Some (Format.sprintf "unstable-%i.xml" i)
+      route_foreign_forester_iri ~host ~path
+
+  let home_iri =
+    let@ root = Option.bind Params.root in
+    let base = Iri_scheme.base_iri ~host: Params.host in
+    try
+      Option.some @@ Iri.resolve ~base @@ Iri.of_string root
+    with
       | _ -> None
+
+  let route iri =
+    if Iri.scheme iri = Iri_scheme.scheme then
+      begin
+        match home_iri with
+        | Some home_iri when Iri.equal ~normalize: true home_iri iri -> "index.xml"
+        | _ ->
+          let host = Iri.host iri in
+          let path = Iri.path iri in
+          route_forester_iri ~host ~path
+      end
+    else
+      Iri.to_uri iri
 
   let get_expanded_title frontmatter =
     let scope = Scope.read () in
-    let title = F.get_expanded_title ~scope frontmatter in
-    T.map_content (T.apply_modifier_to_content Sentence_case) title
+    let title = F.get_expanded_title ?scope frontmatter in
+    T.apply_modifier_to_content Sentence_case title
 
   let render_xml_qname qname =
     let qname = Xmlns.normalise_qname qname in
@@ -101,7 +153,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       (render_section_flags section.flags)
       [
         render_frontmatter section.frontmatter;
-        let@ () = Scope.run ~env: section.frontmatter.addr in
+        let@ () = Scope.run ~env: section.frontmatter.iri in
         X.mainmatter [] @@ render_content section.mainmatter
       ]
 
@@ -109,18 +161,28 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     X.frontmatter
       []
       [
-        render_attributions frontmatter.addr frontmatter.attributions;
+        render_attributions frontmatter.iri frontmatter.attributions;
         render_dates frontmatter.dates;
         X.optional (X.source_path [] "%s") frontmatter.source_path;
         X.anchor [] "%i" @@ Oo.id ( object end);
-        X.addr [X.type_ "%s" @@ addr_type frontmatter.addr] "%s" @@ addr_to_string frontmatter.addr;
-        X.optional (X.route [] "%s") @@ route frontmatter.addr;
+        X.optional (fun iri -> X.addr [X.type_ "%s" @@ iri_type iri] "%s" @@ iri_to_string iri) frontmatter.iri;
+        X.optional (X.route [] "%s") @@ Option.map route frontmatter.iri;
         begin
           let title = get_expanded_title frontmatter in
           X.title [X.text_ "%s" @@ PT.string_of_content title] @@
             render_content title
         end;
-        X.optional (fun s -> X.taxon [] "%s" @@ String_util.sentence_case s) frontmatter.taxon;
+        begin
+          match frontmatter.taxon with
+          | None -> X.null []
+          | Some vertex ->
+            let not_found iri =
+              let iri_str = iri_to_string @@ Iri_scheme.relativise_iri ~host: Params.host iri in
+              Option.some @@ T.Content [T.Text iri_str]
+            in
+            X.optional (fun content -> X.taxon [] @@ render_content content) @@
+              F.get_title_or_content_of_vertex ~not_found ~modifier: T.Sentence_case vertex
+        end;
         X.null (List.map render_meta frontmatter.metas)
       ]
 
@@ -166,7 +228,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       in
       begin
         match custom_number with
-        | None -> [X.contextual_number [X.addr_ "%s" @@ addr_to_string addr]]
+        | None -> [X.contextual_number [X.addr_ "%s" @@ iri_to_string addr]]
         | Some num -> [P.txt "%s" num]
       end
     | Link link ->
@@ -227,56 +289,67 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       nodes
 
   and render_link (link : T.content T.link) : P.node list =
-    let article_opt = F.get_article @@ Addr.user_addr link.href in
+    let article_opt = F.get_article link.href in
     let attrs =
       match article_opt with
       | None ->
         [
-          X.href "%s" link.href;
+          X.href "%s" @@ route link.href;
           X.type_ "external"
         ]
       | Some article ->
         [
-          X.optional_ (X.href "%s") @@ route article.frontmatter.addr;
+          X.optional_ (X.href "%s") @@ Option.map route article.frontmatter.iri;
           X.title_ "%s" @@ PT.string_of_content @@ get_expanded_title article.frontmatter;
-          X.addr_ "%s" @@ addr_to_string article.frontmatter.addr;
+          X.optional_ (X.addr_ "%s") @@ Option.map iri_to_string article.frontmatter.iri;
           X.type_ "local"
         ]
     in
     [X.link attrs @@ render_content link.content]
 
   and render_attributions scope attributions =
-    let hered_contrs =
-      let attribution_name = function
-        | T.Contributor name -> name
-        | T.Author name -> name
-      in
-      let article_as_contributor (article : _ T.article) =
-        match article.frontmatter.addr with
-        | User_addr addr when List.for_all (fun z -> not (addr = attribution_name z)) attributions -> Some (T.Contributor addr)
-        | _ -> None
-      in
+    match scope with
+    | None -> X.null []
+    | Some scope ->
       let module QLN = Query.Locally_nameless(Query.Global_name) in
-      QLN.hereditary_contributors (Addr scope)
-      |> QLN.distill
-      |> F.run_query
-      |> Util.get_sorted_articles
-      |> List.filter_map article_as_contributor
+      let articles_below =
+        let query =
+          Query.isect
+            [
+              Query.rel Query.Paths Query.Outgoing Query.Rel.transclusion (Query.Vertex (T.Iri_vertex scope));
+              Query.complement (Query.pred Query.Pred.references)
+            ]
+        in
+        query
+        |> QLN.distill
+        |> F.run_query
+        |> Util.get_sorted_articles
+      in
+      let all_attributions =
+        List_util.nub @@
+        attributions @
+        let@ article = List.concat_map @~ articles_below in
+        let@ attribution = List.filter_map @~ article.frontmatter.attributions in
+        if List.exists (fun (existing : _ T.attribution) -> attribution.vertex = existing.vertex) attributions then None
+        else
+          Some T.{ attribution with role = Contributor }
+      in
+      X.authors [] @@ List.map render_attribution all_attributions
+
+  and render_attribution attrib =
+    let tag =
+      match attrib.role with
+      | Author -> X.author
+      | Contributor -> X.contributor
     in
-    let all_attributions = List_util.nub (attributions @ hered_contrs) in
-    X.authors [] @@ List.map render_attribution all_attributions
+    tag [] @@ render_attribution_vertex attrib.vertex
 
-  and render_attribution = function
-    | T.Author x ->
-      X.author [] @@ render_bio_link x
-    | T.Contributor x ->
-      X.contributor [] @@ render_bio_link x
-
-  and render_bio_link ident =
-    match F.get_article (Addr.user_addr ident) with
-    | Some article ->
-      render_link { href = ident; content = article.frontmatter.title }
-    | None -> [P.txt "%s" ident]
+  and render_attribution_vertex = function
+    | T.Iri_vertex href ->
+      let content = T.Content [T.Transclude { href; target = Title; modifier = Identity }] in
+      render_link T.{ href; content }
+    | T.Content_vertex content ->
+      render_content content
 
   and render_dates dates =
     X.null @@ List.map render_date dates
@@ -284,14 +357,13 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
   and render_date (date : Date.t) =
     let href_attr =
       let str = Format.asprintf "%a" Date.pp date in
-      match F.get_article (Addr.user_addr str) with
+      let base = Iri_scheme.base_iri ~host: Params.host in
+      match F.get_article (Iri.resolve ~base (Iri.of_string str)) with
       | None -> X.null_
       | Some _ -> X.href "%s" str
     in
     X.date
-      [
-        href_attr
-      ]
+      [href_attr]
       [
         X.year [] "%i" date.yyyy;
         date.mm |> X.optional @@ X.month [] "%i";
@@ -300,12 +372,12 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
 
   let render_article (article : T.content T.article) : P.node =
     let xmlns_prefix = Xmlns.{ prefix = X.reserved_prefix; xmlns = X.forester_xmlns } in
-    let@ () = Scope.run ~env: article.frontmatter.addr in
+    let@ () = Scope.run ~env: article.frontmatter.iri in
     let@ () = Xmlns.run in
     X.tree
       [
         render_xmlns_prefix xmlns_prefix;
-        X.root @@ addr_is_root article.frontmatter.addr
+        X.optional_ X.root @@ Option.map addr_is_root article.frontmatter.iri
       ]
       [
         render_frontmatter article.frontmatter;

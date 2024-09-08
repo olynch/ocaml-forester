@@ -1,5 +1,13 @@
 open Forester_prelude
+open Forester_xml_names
 open Base
+
+type xml_qname = Forester_xml_names.xml_qname = { prefix: string; uname: string; xmlns: string option }
+
+type 'content vertex =
+  | Iri_vertex of iri
+  | Content_vertex of 'content
+[@@deriving show, repr]
 
 type section_flags = {
   hidden_when_empty: bool option;
@@ -23,11 +31,11 @@ let default_section_flags =
 
 type 'content frontmatter_overrides = {
   title: 'content option;
-  taxon: string option option
+  taxon: 'content vertex option option
 }
 [@@deriving show, repr]
 
-let empty_frontmatter_overrides =
+let default_frontmatter_overrides =
   {
     title = None;
     taxon = None
@@ -43,22 +51,29 @@ type 'content xml_elt = {
 }
 [@@deriving show, repr]
 
-type attribution =
-  | Author of string
-  | Contributor of string
+type attribution_role =
+  | Author
+  | Contributor
+[@@deriving show, repr]
+
+type 'content attribution = {
+  role: attribution_role;
+  vertex: 'content vertex
+}
 [@@deriving show, repr]
 
 type 'content frontmatter = {
-  addr: Addr.t;
+  iri: iri option;
   title: 'content;
   dates: Date.t list;
-  attributions: attribution list;
-  taxon: string option;
+  attributions: 'content attribution list;
+  taxon: 'content vertex option;
   number: string option;
-  designated_parent: Addr.t option;
+  designated_parent: iri option;
   source_path: string option;
-  tags: string list;
-  metas: (string * 'content) list
+  tags: 'content vertex list;
+  metas: (string * 'content) list;
+  sets: string list
 }
 [@@deriving show, repr]
 
@@ -88,14 +103,14 @@ type modifier =
 [@@deriving show, repr]
 
 type 'content transclusion = {
-  addr: Addr.t;
+  href: iri;
   target: 'content content_target;
   modifier: modifier
 }
 [@@deriving show, repr]
 
 type 'content link = {
-  href: string;
+  href: iri;
   content: 'content
 }
 [@@deriving show, repr]
@@ -130,8 +145,8 @@ type 'content content_node =
   | CDATA of string
   | Xml_elt of 'content xml_elt
   | Transclude of 'content transclusion
-  | Contextual_number of Addr.t
-  | Results_of_query of Query.dbix Query.expr
+  | Contextual_number of iri
+  | Results_of_query of ('content vertex, Query.dbix) Query.expr
   | Section of 'content section
   | Prim of Prim.t * 'content
   | KaTeX of math_mode * 'content
@@ -148,6 +163,8 @@ type content =
 let map_content f = function Content nodes -> Content (f nodes)
 let extract_content = function Content nodes -> nodes
 
+type query = (content vertex, Query.dbix) Query.expr
+
 let is_whitespace node =
   match node with
   | Text txt -> String.trim txt = ""
@@ -159,29 +176,15 @@ let strip_whitespace =
   Fun.compose not is_whitespace
 
 let trim_whitespace xs =
-  let rec trim_front xs =
-    match xs with
-    | x :: xs when is_whitespace x ->
-      trim_front xs
+  let rec trim_front = function
+    | x :: xs when is_whitespace x -> trim_front xs
     | xs -> xs
-  and trim_back xs =
-    List.rev @@ trim_front @@ List.rev xs
+  and trim_back xs = List.rev @@ trim_front @@ List.rev xs
   in
   trim_back @@ trim_front xs
 
-let empty_frontmatter =
-  {
-    addr = Addr.anon;
-    source_path = None;
-    designated_parent = None;
-    dates = [];
-    attributions = [];
-    taxon = None;
-    number = None;
-    metas = [];
-    tags = [];
-    title = Content []
-  }
+let default_frontmatter ?iri ?source_path ?designated_parent ?(dates = []) ?(attributions = []) ?taxon ?number ?(metas = []) ?(tags = []) ?(title = Content []) ?(sets = []) () =
+  { iri; source_path; designated_parent; dates; attributions; taxon; number; metas; tags; title; sets }
 
 let apply_overrides (overrides : _ frontmatter_overrides) frontmatter =
   {
@@ -192,7 +195,7 @@ let apply_overrides (overrides : _ frontmatter_overrides) frontmatter =
 
 let article_to_section
     ?(flags = default_section_flags)
-    ?(overrides = empty_frontmatter_overrides)
+    ?(overrides = default_frontmatter_overrides)
     ({ frontmatter; mainmatter; _ }: 'a article)
   =
   {
@@ -210,24 +213,11 @@ module Comparators (I: sig val string_of_content : content -> string end) = stru
       let sorted_dates = fm.dates |> List.sort @@ Compare.invert Date.compare in
       List.nth_opt sorted_dates 0
     in
-    let by_date =
-      Fun.flip @@
-      Compare.under latest_date @@
-      Compare.option Date.compare
-    in
-    let by_title =
-      compare_content
-      |> Compare.under @@
-        fun fm ->
-          fm.title
-    in
+    let by_date = Fun.flip @@ Compare.under latest_date @@ Compare.option Date.compare in
+    let by_title = compare_content |> Compare.under @@ fun fm -> fm.title in
     Compare.cascade by_date by_title
 
-  let compare_article =
-    compare_frontmatter
-    |> Compare.under @@
-      fun x ->
-        x.frontmatter
+  let compare_article = compare_frontmatter |> Compare.under @@ fun x -> x.frontmatter
 end
 
 let compose_modifier mod0 mod1 =
@@ -240,19 +230,22 @@ let apply_modifier_to_string = function
   | Sentence_case -> String_util.sentence_case
   | Identity -> Fun.id
 
-let rec apply_modifier_to_content modifier = function
+let rec apply_modifier_to_content_nodes modifier = function
   | [] -> []
   | Text txt1 :: Text txt2 :: content ->
-    apply_modifier_to_content modifier @@ Text (txt1 ^ txt2) :: content
+    apply_modifier_to_content_nodes modifier @@ Text (txt1 ^ txt2) :: content
   | node :: content ->
     apply_modifier_to_content_node modifier node :: content
+
+and apply_modifier_to_content modifier =
+  map_content (apply_modifier_to_content_nodes modifier)
 
 and apply_modifier_to_content_node modifier = function
   | Text str -> Text (apply_modifier_to_string modifier str)
   | Transclude transclusion ->
     Transclude { transclusion with modifier = compose_modifier modifier transclusion.modifier }
-  | Link link -> Link { link with content = map_content (apply_modifier_to_content modifier) link.content }
-  | Prim (p, content) -> Prim (p, map_content (apply_modifier_to_content modifier) content)
+  | Link link -> Link { link with content = apply_modifier_to_content modifier link.content }
+  | Prim (p, content) -> Prim (p, apply_modifier_to_content modifier content)
   | node -> node
 
 module TeX_like: sig

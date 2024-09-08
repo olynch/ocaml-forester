@@ -11,6 +11,7 @@
 (version 4.4)
 
 (generate_opam_files true)
+
 (implicit_transitive_deps false)
 
 (source
@@ -37,6 +38,8 @@
   (cmdliner
    (>= 1.2.0))
   dune-build-info
+  (iri
+   (>= 1.0.0))
   (uucp
    (>= 15.1.0))
   (eio_main

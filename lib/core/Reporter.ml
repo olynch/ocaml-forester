@@ -4,6 +4,7 @@ module Message = struct
     | Duplicate_tree
     | Parse_error
     | Type_error
+    | Type_warning
     | Resolution_error
     | Resolution_warning
     | Expansion_error
@@ -25,6 +26,7 @@ module Message = struct
     | Tree_not_found -> Error
     | Parse_error -> Error
     | Type_error -> Error
+    | Type_warning -> Warning
     | Resolution_error -> Error
     | Resolution_warning -> Warning
     | Expansion_error -> Error

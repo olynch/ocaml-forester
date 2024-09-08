@@ -43,7 +43,7 @@ let mainmatter = f_std_tag "mainmatter"
 let backmatter = f_std_tag "backmatter"
 
 let anchor attrs = f_text_tag "anchor" attrs
-let taxon attrs = f_text_tag "taxon" attrs
+let taxon attrs = f_std_tag "taxon" attrs
 let addr attrs = f_text_tag "addr" attrs
 let route attrs = f_text_tag "route" attrs
 let source_path attrs = f_text_tag "source-path" attrs
@@ -92,7 +92,6 @@ let prim p =
 
 let ref = f_void_tag "ref"
 
-let taxon_ fmt = string_attr "taxon" fmt
 let number_ fmt = string_attr "number" fmt
 
 let img = f_void_tag "img"

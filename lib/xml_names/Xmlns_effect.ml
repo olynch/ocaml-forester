@@ -1,5 +1,5 @@
-open Forester_prelude
-open Forester_core
+open Types
+module String_map = Map.Make(String)
 
 module Xmlns_map = struct
   type t = {
@@ -90,10 +90,7 @@ module Make () = struct
 
   let within_scope kont =
     let old_scope = E.get () in
-    let added, r =
-      let@ () = Decls.run in
-      kont ()
-    in
+    let added, r = Decls.run kont in
     E.set old_scope;
     added, r
 

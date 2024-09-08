@@ -3,10 +3,11 @@ open Forester_core
 
 module Forest_config = struct
   type t = {
+    host: string option;
+    root: string option;
     trees: string list;
     assets: string list;
     theme: string;
-    root: string option;
     stylesheet: string
   }
   [@@deriving show, repr]
@@ -14,6 +15,7 @@ end
 
 let default_forest_config : Forest_config.t =
   {
+    host = None;
     trees = ["trees"];
     assets = [];
     theme = "theme";
@@ -33,6 +35,8 @@ let parse_forest_config_file filename =
   | `Ok tbl ->
     let open Toml.Lenses in
     let forest = key "forest" |-- table in
+    let host = get tbl (forest |-- key "host" |-- string) in
+    let root = get tbl (forest |-- key "root" |-- string) in
     let trees =
       Option.value ~default: default_forest_config.trees @@
         get tbl (forest |-- key "trees" |-- array |-- strings)
@@ -49,5 +53,4 @@ let parse_forest_config_file filename =
       Option.value ~default: default_forest_config.stylesheet @@
         get tbl (forest |-- key "stylesheet" |-- string)
     in
-    let root = get tbl (forest |-- key "root" |-- string) in
-    Forest_config.{ assets; trees; theme; root; stylesheet }
+    Forest_config.{ host; assets; trees; theme; root; stylesheet }

@@ -18,7 +18,8 @@
   asai
   algaeff
   str
-  unix))
+  unix
+  iri))
 
 (env
  (dev
