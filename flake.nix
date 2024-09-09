@@ -32,7 +32,7 @@
         packages.default = main;
         devShells.default = pkgs.mkShell {
           inputsFrom = [ main ];
-          buildInputs = devPackages;
+          buildInputs = devPackages ++ [ pkgs.topiary ];
         };
       });
 }
