@@ -9,6 +9,7 @@
   forester.core
   forester.compiler
   forester.forest
+  forester.xml_names
   ocamlgraph
   toml
   eio

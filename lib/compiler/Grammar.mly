@@ -1,12 +1,6 @@
 %{
   open Forester_prelude
   open Forester_core
-
-  let split_xml_qname str =
-    match String.split_on_char ':' str with
-    | [prefix; uname] -> Some prefix, uname
-    | [uname] -> None, uname
-    | _ -> failwith "split_xml_qname"
 %}
 
 %token <string> XML_ELT_IDENT
@@ -73,7 +67,7 @@ let head_node :=
 | GET; ~ = ident; <Code.Get>
 | OPEN; ~ = ident; <Code.Open>
 | name = XML_ELT_IDENT; attrs = list(xml_attr); body = arg; {
-  let name = split_xml_qname name in
+  let name = Forester_xml_names.split_xml_qname name in
   Code.Xml_tag (name, attrs, body)
 }
 | ~ = DECL_XMLNS; ~ = txt_arg; <Code.Decl_xmlns>
@@ -92,7 +86,7 @@ let method_decl :=
 | k = squares(TEXT); list(WHITESPACE); v = arg; { k, v }
 
 let xml_attr :=
-| k = squares(TEXT); v = arg; { (split_xml_qname k, v) }
+| k = squares(TEXT); v = arg; { (Forester_xml_names.split_xml_qname k, v) }
 
 let ident :=
 | ident = IDENT;
