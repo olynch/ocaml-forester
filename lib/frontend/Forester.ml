@@ -148,20 +148,19 @@ let render_forest ~env ~dev ~host ~root ~stylesheet : unit =
   let@ () = Reporter.profile "Render forest" in
   let cwd = Eio.Stdenv.cwd env in
   let all_articles = FU.get_all_articles () in
-  let perm = 0o755 in
   begin
     let json_string = Yojson.Basic.to_string @@ R.render_trees ~dev ~host all_articles in
     let json_path = EP.(cwd / output_dir_name / "forest.json") in
-    Eio_util.ensure_context_of_path ~perm json_path;
-    EP.save ~create: (`Or_truncate perm) json_path json_string
+    Eio_util.ensure_context_of_path ~perm: 0o755 json_path;
+    EP.save ~create: (`Or_truncate 0o644) json_path json_string
   end;
   begin
     let@ article = Eio.Fiber.List.iter ~max_fibers: 20 @~ all_articles in
     let@ () = Reporter.easy_run in
     let@ route = Option.iter @~ Option.map Client.route article.frontmatter.iri in
     let path = EP.(cwd / output_dir_name / route) in
-    Eio_util.ensure_context_of_path ~perm path;
-    let@ flow = EP.with_open_out ~create: (`Or_truncate perm) path in
+    Eio_util.ensure_context_of_path ~perm: 0o755 path;
+    let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) path in
     let@ writer = Eio.Buf_write.with_flow flow in
     Client.pp_xml ~stylesheet (Eio.Buf_write.make_formatter writer) article
   end

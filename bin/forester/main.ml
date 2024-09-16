@@ -57,7 +57,7 @@ let init ~env () =
   let fs = Eio.Stdenv.fs env in
   let try_create_dir name =
     try
-      EP.mkdir ~perm: 0o700 EP.(fs / name)
+      EP.mkdir ~perm: 0o755 EP.(fs / name)
     with
       | _ ->
         Reporter.emitf Initialization_warning "Directory `%s` already exists" name
@@ -88,9 +88,9 @@ theme = "theme"                      # The directory in which your theme is stor
     if EP.is_file EP.(Eio.Stdenv.fs env / "forest.toml") then
       Reporter.emitf Initialization_warning "forest.toml already exists"
     else
-      EP.(save ~create: (`Exclusive 0o600) (fs / "forest.toml") default_config_str)
+      EP.(save ~create: (`Exclusive 0o644) (fs / "forest.toml") default_config_str)
   end;
-  EP.(save ~create: (`Exclusive 0o600) (fs / ".gitignore") {|output/|});
+  EP.(save ~create: (`Exclusive 0o644) (fs / ".gitignore") {|output/|});
   begin
     try
       let shut_up = Eio_util.null_sink () in
@@ -119,7 +119,7 @@ theme = "theme"                      # The directory in which your theme is stor
   ["trees"; "assets"] |> List.iter try_create_dir;
   begin
     try
-      EP.(save ~create: (`Exclusive 0o600) (fs / "trees" / "index.tree") index_tree_str)
+      EP.(save ~create: (`Exclusive 0o644) (fs / "trees" / "index.tree") index_tree_str)
     with
       | _ ->
         let@ () = Reporter.with_backtrace Emp in

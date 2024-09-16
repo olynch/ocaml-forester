@@ -10,7 +10,7 @@ let latex_to_svg ~env source =
   let hash = Digest.to_hex @@ Digest.string source in
   let name = hash ^ ".svg" in
   let svg_path = Eio.Path.(resources_dir cwd / name) in
-  let perm = 0o644 in
+  let perm = 0o755 in
   Eio_util.ensure_context_of_path ~perm svg_path;
   try
     Eio.Path.load svg_path

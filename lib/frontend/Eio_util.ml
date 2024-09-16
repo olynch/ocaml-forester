@@ -26,7 +26,7 @@ let with_open_tmp_dir ~env kont =
   let cwd = Eio.Stdenv.cwd env in
   let tmp = "_tmp" in
   let tmp_path = Eio.Path.(cwd / tmp / dir_name) in
-  Path.mkdirs ~exists_ok: true ~perm: 0o644 tmp_path;
+  Path.mkdirs ~exists_ok: true ~perm: 0o755 tmp_path;
   let@ p = Eio.Path.with_open_dir tmp_path in
   let result = kont p in
   Path.rmtree ~missing_ok: true tmp_path;
