@@ -175,13 +175,8 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
         begin
           match frontmatter.taxon with
           | None -> X.null []
-          | Some vertex ->
-            let not_found iri =
-              let iri_str = iri_to_string @@ Iri_scheme.relativise_iri ~host: Params.host iri in
-              Option.some @@ T.Content [T.Text iri_str]
-            in
-            X.optional (fun content -> X.taxon [] @@ render_content content) @@
-              F.get_title_or_content_of_vertex ~not_found ~modifier: T.Sentence_case vertex
+          | Some taxon ->
+            X.taxon [] @@ render_content @@ T.apply_modifier_to_content T.Sentence_case taxon
         end;
         X.null (List.map render_meta frontmatter.metas)
       ]

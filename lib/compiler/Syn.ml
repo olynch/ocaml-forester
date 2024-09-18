@@ -39,7 +39,7 @@ type node =
   | Ref
   | Title
   | Parent
-  | Taxon of [`Content | `Iri]
+  | Taxon
   | Add_to_set
   | Meta
   | Attribution of Xml_tree.attribution_role * [`Content | `Iri]

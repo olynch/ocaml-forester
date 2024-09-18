@@ -141,7 +141,7 @@ let get_frontmatter_overrides ~loc =
     let@ value = Option.map @~ Env.find_opt Expand.Builtins.Transclude.taxon_sym dynenv in
     match V.extract_text @@ Range.locate_opt loc value with
     | "" -> None
-    | txt -> Some (T.Content_vertex (T.Content [T.Text txt]))
+    | txt -> Some (T.Content [T.Text txt])
   in
   T.{ title; taxon }
 
@@ -564,17 +564,9 @@ and eval_node node : V.t =
     let num = pop_text_arg ~loc in
     Frontmatter.modify (fun fm -> { fm with number = Some num });
     process_tape ()
-  | Taxon type_ ->
-    let arg = eval_pop_arg ~loc in
-    let vertex =
-      match extract_vertex ~type_ arg with
-      | Ok vtx -> vtx
-      | Error _ ->
-        let corrected_code = "\\taxon/content" in
-        Reporter.emitf ?loc Type_warning "Expected valid RFC 3987 IRI in taxon. Use `%s` instead if you intend an unlinked taxon." corrected_code;
-        T.Content_vertex (V.extract_content arg)
-    in
-    Frontmatter.modify (fun fm -> { fm with taxon = Some vertex });
+  | Taxon ->
+    let taxon = Some (pop_content_arg ~loc) in
+    Frontmatter.modify (fun fm -> { fm with taxon });
     process_tape ()
   | Sym sym ->
     focus ?loc: node.loc @@ V.Sym sym

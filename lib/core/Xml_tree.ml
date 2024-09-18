@@ -31,7 +31,7 @@ let default_section_flags =
 
 type 'content frontmatter_overrides = {
   title: 'content option;
-  taxon: 'content vertex option option
+  taxon: 'content option option
 }
 [@@deriving show, repr]
 
@@ -67,7 +67,7 @@ type 'content frontmatter = {
   title: 'content;
   dates: Date.t list;
   attributions: 'content attribution list;
-  taxon: 'content vertex option;
+  taxon: 'content option;
   number: string option;
   designated_parent: iri option;
   source_path: string option;

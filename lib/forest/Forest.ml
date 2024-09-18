@@ -82,7 +82,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     let@ scope = Option.iter @~ fm.iri in
     Graphs.register_iri scope;
     analyse_content scope fm.title;
-    analyse_taxon scope fm.taxon;
+    Option.iter (analyse_content scope) fm.taxon;
     analyse_attributions scope fm.attributions;
     analyse_tags scope fm.tags;
     analyse_metas scope fm.metas;
@@ -180,16 +180,8 @@ module Make (Graphs: Forest_graphs.S) : S = struct
         end
       | Taxon ->
         let article = get_article_exn transclusion.href in
-        let content_opt =
-          let@ taxon = Option.bind article.frontmatter.taxon in
-          match taxon with
-          | T.Content_vertex content -> Some content
-          | T.Iri_vertex iri ->
-            let@ taxon_article = Option.map @~ get_article iri in
-            taxon_article.frontmatter.title
-        in
         let default = T.Content [T.Text section_symbol] in
-        Option.value ~default content_opt
+        Option.value ~default article.frontmatter.taxon
     in
     T.apply_modifier_to_content transclusion.modifier content
 end

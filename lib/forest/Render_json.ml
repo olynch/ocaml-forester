@@ -16,10 +16,8 @@ module Make (R: sig val route : Iri.t -> string end) (F: Forest.S) = struct
       match doc.frontmatter.taxon with
       | None -> `Null
       | Some vertex ->
-        match F.get_title_or_content_of_vertex ~modifier: Sentence_case vertex with
-        | None -> `Null
-        | Some content ->
-          `String (PT.string_of_content content)
+        let content = T.apply_modifier_to_content Sentence_case vertex in
+        `String (PT.string_of_content content)
     in
     let tags =
       `List

@@ -275,8 +275,7 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["tex"], Syn.Embed_tex;
       ["ref"], Syn.Ref;
       ["title"], Syn.Title;
-      ["taxon"], Syn.Taxon `Iri;
-      ["taxon"; "content"], Syn.Taxon `Content;
+      ["taxon"], Syn.Taxon;
       ["date"], Syn.Date;
       ["meta"], Syn.Meta;
       ["author"], Syn.Attribution (Author, `Iri);
