@@ -5,7 +5,7 @@ module P := Pure_html
 
 module type Params = sig
   val host : string option
-  val root : string option
+  val home : string option
 end
 
 module type S = sig

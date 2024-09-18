@@ -21,7 +21,7 @@ let version =
 let build ~env config_filename dev render_only no_assets no_theme =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   Forester.plant_forest_from_dirs ~env ~host: config.host ~dev @@ paths_of_dirs ~env config.trees;
-  Forester.render_forest ~env ~dev ~host: config.host ~root: config.root ~stylesheet: config.stylesheet;
+  Forester.render_forest ~env ~dev ~host: config.host ~home: config.home ~stylesheet: config.stylesheet;
   let dirs_to_copy =
     (if not no_theme then [config.theme] else []) @
       (if not no_assets then config.assets else [])
@@ -49,7 +49,7 @@ let query_all ~env config_filename =
   let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   Forester.plant_forest_from_dirs ~env ~host: config.host ~dev: true @@ paths_of_dirs ~env config.trees;
-  Forester.json_manifest ~host: config.host ~root: config.root ~dev: true |> Format.printf "%s"
+  Forester.json_manifest ~host: config.host ~home: config.home ~dev: true |> Format.printf "%s"
 
 let init ~env () =
   let default_theme_url = "https://git.sr.ht/~jonsterling/forester-base-theme" in

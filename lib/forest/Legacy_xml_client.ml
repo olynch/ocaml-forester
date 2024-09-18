@@ -15,7 +15,7 @@ end
 
 module type Params = sig
   val host : string option
-  val root : string option
+  val home : string option
 end
 
 module Make (Params: Params) (F: Forest.S) () : S = struct
@@ -65,9 +65,6 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     | Absolute [_] -> "user"
     | _ -> failwith "addr_type"
 
-  let addr_is_root addr =
-    Some addr = Option.map (Iri_scheme.user_iri ~host: Params.host) Params.root
-
   let route_bare_forester_iri ~path =
     let bare_route =
       String.concat "-" @@
@@ -91,23 +88,26 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       route_foreign_forester_iri ~host ~path
 
   let home_iri =
-    let@ root = Option.bind Params.root in
+    let@ root = Option.bind Params.home in
     let base = Iri_scheme.base_iri ~host: Params.host in
     try
       Option.some @@ Iri.resolve ~base @@ Iri.of_string root
     with
       | _ -> None
 
+  let iri_is_home iri =
+    match home_iri with
+    | Some home_iri ->
+      Iri.equal ~normalize: true home_iri iri
+    | None -> false
+
   let route iri =
     if Iri.scheme iri = Iri_scheme.scheme then
-      begin
-        match home_iri with
-        | Some home_iri when Iri.equal ~normalize: true home_iri iri -> "index.xml"
-        | _ ->
-          let host = Iri.host iri in
-          let path = Iri.path iri in
-          route_forester_iri ~host ~path
-      end
+      if iri_is_home iri then "index.xml"
+      else
+        let host = Iri.host iri in
+        let path = Iri.path iri in
+        route_forester_iri ~host ~path
     else
       Iri.to_uri iri
 
@@ -377,7 +377,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     X.tree
       [
         render_xmlns_prefix xmlns_prefix;
-        X.optional_ X.root @@ Option.map addr_is_root article.frontmatter.iri
+        X.optional_ X.root @@ Option.map iri_is_home article.frontmatter.iri
       ]
       [
         render_frontmatter article.frontmatter;

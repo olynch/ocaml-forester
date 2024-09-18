@@ -4,7 +4,7 @@ open Forester_core
 module Forest_config = struct
   type t = {
     host: string option;
-    root: string option;
+    home: string option;
     trees: string list;
     assets: string list;
     theme: string;
@@ -19,7 +19,7 @@ let default_forest_config : Forest_config.t =
     trees = ["trees"];
     assets = [];
     theme = "theme";
-    root = None;
+    home = None;
     stylesheet = "default.xsl"
   }
 
@@ -36,7 +36,13 @@ let parse_forest_config_file filename =
     let open Toml.Lenses in
     let forest = key "forest" |-- table in
     let host = get tbl (forest |-- key "host" |-- string) in
-    let root = get tbl (forest |-- key "root" |-- string) in
+    let home = get tbl (forest |-- key "home" |-- string) in
+    let _ =
+      match get tbl (forest |-- key "root" |-- string) with
+      | None -> ()
+      | Some _ ->
+        Reporter.emitf Configuration_error "In your configuration file, change `root' key to `home' in the [forest] group."
+    in
     let trees =
       Option.value ~default: default_forest_config.trees @@
         get tbl (forest |-- key "trees" |-- array |-- strings)
@@ -53,4 +59,4 @@ let parse_forest_config_file filename =
       Option.value ~default: default_forest_config.stylesheet @@
         get tbl (forest |-- key "stylesheet" |-- string)
     in
-    Forest_config.{ host; assets; trees; theme; root; stylesheet }
+    Forest_config.{ host; assets; trees; theme; home; stylesheet }

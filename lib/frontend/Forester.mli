@@ -14,7 +14,7 @@ val render_forest :
   env: env ->
   dev: bool ->
   host: string option ->
-  root: string option ->
+  home: string option ->
   stylesheet: string ->
   unit
 
@@ -33,7 +33,7 @@ val create_tree :
 
 val json_manifest :
   host: string option ->
-  root: string option ->
+  home: string option ->
   dev: bool ->
   string
 

@@ -134,15 +134,15 @@ let plant_forest_from_dirs ~env ~host ~dev tree_dirs : unit =
   let@ _, article = Seq.iter @~ Iri_map.to_seq @@ Forest_reader.read_trees ~host ~env parsed_trees in
   F.plant_article article
 
-let json_manifest ~host ~root ~dev : string =
+let json_manifest ~host ~home ~dev : string =
   let all_articles = FU.get_all_articles () in
-  let module P = struct let host = host let root = root end in
+  let module P = struct let host = host let home = home end in
   let module Client = Legacy_xml_client.Make(P)(F)() in
   let module R = Render_json.Make(Client)(F) in
   Yojson.Basic.to_string @@ R.render_trees ~dev ~host all_articles
 
-let render_forest ~env ~dev ~host ~root ~stylesheet : unit =
-  let module P = struct let host = host let root = root end in
+let render_forest ~env ~dev ~host ~home ~stylesheet : unit =
+  let module P = struct let host = host let home = home end in
   let module Client = Legacy_xml_client.Make(P)(F)() in
   let module R = Render_json.Make(Client)(F) in
   let@ () = Reporter.profile "Render forest" in

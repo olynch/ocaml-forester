@@ -1,7 +1,7 @@
 module Forest_config: sig
   type t = {
     host: string option;
-    root: string option;
+    home: string option;
     trees: string list;
     assets: string list;
     theme: string;
