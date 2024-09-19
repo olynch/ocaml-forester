@@ -30,8 +30,6 @@ module Builtins = struct
     path, (R.P.Term [Range.locate_opt None node], ())
 
   module Transclude = struct
-    let title_sym, alloc_title = create_sym ["transclude"; "title"]
-    let taxon_sym, alloc_taxon = create_sym ["transclude"; "taxon"]
     let expanded_sym, alloc_expanded = create_sym ["transclude"; "expanded"]
     let show_heading_sym, alloc_show_heading = create_sym ["transclude"; "heading"]
     let toc_sym, alloc_toc = create_sym ["transclude"; "toc"]
@@ -318,8 +316,6 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["true"], Syn.Bool true;
       ["false"], Syn.Bool false;
     ];
-  Builtins.Transclude.alloc_title ();
-  Builtins.Transclude.alloc_taxon ();
   Builtins.Transclude.alloc_expanded ();
   Builtins.Transclude.alloc_show_heading ();
   Builtins.Transclude.alloc_toc ();

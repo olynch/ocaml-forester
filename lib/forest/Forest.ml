@@ -166,9 +166,9 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   let get_content_of_transclusion (transclusion : T.content T.transclusion) =
     let content =
       match transclusion.target with
-      | T.Full (flags, overrides) ->
+      | T.Full flags ->
         let article = get_article_exn transclusion.href in
-        T.Content [T.Section (T.article_to_section article ~flags ~overrides)]
+        T.Content [T.Section (T.article_to_section article ~flags)]
       | Mainmatter ->
         let article = get_article_exn transclusion.href in
         article.mainmatter

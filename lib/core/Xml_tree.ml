@@ -29,18 +29,6 @@ let default_section_flags =
     expanded = None
   }
 
-type 'content frontmatter_overrides = {
-  title: 'content option;
-  taxon: 'content option option
-}
-[@@deriving show, repr]
-
-let default_frontmatter_overrides =
-  {
-    title = None;
-    taxon = None
-  }
-
 type xml_attr = { key: xml_qname; value: string }
 [@@deriving show, repr]
 
@@ -92,7 +80,7 @@ type 'content article = {
 [@@deriving show, repr]
 
 type 'content content_target =
-  | Full of section_flags * 'content frontmatter_overrides
+  | Full of section_flags
   | Mainmatter
   | Title
   | Taxon
@@ -186,20 +174,12 @@ let trim_whitespace xs =
 let default_frontmatter ?iri ?source_path ?designated_parent ?(dates = []) ?(attributions = []) ?taxon ?number ?(metas = []) ?(tags = []) ?(title = Content []) ?(sets = []) () =
   { iri; source_path; designated_parent; dates; attributions; taxon; number; metas; tags; title; sets }
 
-let apply_overrides (overrides : _ frontmatter_overrides) frontmatter =
-  {
-    frontmatter with
-    title = Option.value ~default: frontmatter.title overrides.title;
-    taxon = Option.value ~default: frontmatter.taxon overrides.taxon
-  }
-
 let article_to_section
     ?(flags = default_section_flags)
-    ?(overrides = default_frontmatter_overrides)
     ({ frontmatter; mainmatter; _ }: 'a article)
   =
   {
-    frontmatter = apply_overrides overrides frontmatter;
+    frontmatter;
     mainmatter;
     flags
   }

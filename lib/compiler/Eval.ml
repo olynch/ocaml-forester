@@ -131,20 +131,6 @@ module Emitted_trees = Algaeff.State.Make(struct type t = T.content T.article li
 module Jobs = Algaeff.State.Make(struct type t = job list end)
 module Frontmatter = Algaeff.State.Make(struct type t = T.content T.frontmatter end)
 
-let get_frontmatter_overrides ~loc =
-  let dynenv = Dyn_env.read () in
-  let title =
-    let@ value = Option.map @~ Env.find_opt Expand.Builtins.Transclude.title_sym dynenv in
-    V.extract_content @@ Range.locate_opt loc value
-  in
-  let taxon =
-    let@ value = Option.map @~ Env.find_opt Expand.Builtins.Transclude.taxon_sym dynenv in
-    match V.extract_text @@ Range.locate_opt loc value with
-    | "" -> None
-    | txt -> Some (T.Content [T.Text txt])
-  in
-  T.{ title; taxon }
-
 let get_transclusion_flags ~loc =
   let dynenv = Dyn_env.read () in
   let get_bool key =
@@ -344,7 +330,6 @@ and eval_node node : V.t =
     emit_content_node ~loc @@ TeX_cs cs
   | Transclude ->
     let flags = get_transclusion_flags ~loc in
-    let overrides = get_frontmatter_overrides ~loc in
     let href_arg = eval_pop_arg ~loc in
     let href =
       match extract_iri href_arg with
@@ -354,10 +339,9 @@ and eval_node node : V.t =
       | Error _ ->
         Reporter.fatalf ?loc Type_error "Expected valid RFC 3987 IRI in transclusion"
     in
-    emit_content_node ~loc @@ T.Transclude { href; target = Full (flags, overrides); modifier = Identity }
+    emit_content_node ~loc @@ T.Transclude { href; target = Full flags; modifier = Identity }
   | Subtree (addr_opt, nodes) ->
     let flags = get_transclusion_flags ~loc in
-    let overrides = get_frontmatter_overrides ~loc in
     let host = Host_env.read () in
     let iri =
       match addr_opt with
@@ -368,7 +352,7 @@ and eval_node node : V.t =
     let frontmatter = Frontmatter.get () in
     let subtree = { subtree with frontmatter = { subtree.frontmatter with iri = Some iri; designated_parent = frontmatter.iri } } in
     Emitted_trees.modify @@ List.cons subtree;
-    let transclusion = T.{ href = iri; target = Full (flags, overrides); modifier = Identity } in
+    let transclusion = T.{ href = iri; target = Full flags; modifier = Identity } in
     emit_content_node ~loc @@ Transclude transclusion
   | Results_of_query ->
     let query =
