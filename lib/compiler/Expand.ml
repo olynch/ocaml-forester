@@ -300,7 +300,6 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["query"; "taxon"], Syn.Query_builtin (`Taxon, `Content);
       ["query"; "author"], Syn.Query_builtin (`Author, `Iri);
       ["query"; "tag"; "literal"], Syn.Query_builtin (`Tag, `Content);
-      ["query"; "taxon"], Syn.Query_builtin (`Taxon, `Content);
       ["query"; "author"; "literal"], Syn.Query_builtin (`Author, `Content);
       ["query"; "incoming"], Syn.Query_polarity Incoming;
       ["query"; "outgoing"], Syn.Query_polarity Outgoing;
