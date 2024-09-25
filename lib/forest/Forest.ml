@@ -67,10 +67,10 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     analyse_vertex scope tag;
     Graphs.add_edge Q.Rel.tags ~source: (Iri_vertex scope) ~target: tag
 
-  and analyse_taxon (scope : Iri.t) (taxon_opt : _ T.vertex option) =
+  and analyse_taxon (scope : Iri.t) (taxon_opt : T.content option) =
     let@ taxon = Option.iter @~ taxon_opt in
-    analyse_vertex scope taxon;
-    Graphs.add_edge Q.Rel.taxa ~source: (Iri_vertex scope) ~target: taxon
+    analyse_content scope taxon;
+    Graphs.add_edge Q.Rel.taxa ~source: (Iri_vertex scope) ~target: (Content_vertex taxon)
 
   and analyse_attributions (scope : Iri.t) (attrs : _ T.attribution list) =
     attrs |> List.iter @@ analyse_attribution scope
@@ -82,7 +82,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     let@ scope = Option.iter @~ fm.iri in
     Graphs.register_iri scope;
     analyse_content scope fm.title;
-    Option.iter (analyse_content scope) fm.taxon;
+    analyse_taxon scope fm.taxon;
     analyse_attributions scope fm.attributions;
     analyse_tags scope fm.tags;
     analyse_metas scope fm.metas;
