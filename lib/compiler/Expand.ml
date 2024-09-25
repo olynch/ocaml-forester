@@ -139,11 +139,12 @@ let rec expand : Code.t -> Syn.t = function
     let body = expand body in
     { value = Syn.Xml_tag (title, attrs, body); loc } :: expand rest
   | { value = Import (vis, dep); loc } :: rest ->
-    let import = Unit_map.find_opt dep @@ U.get () in
+    let units = U.get () in
+    let import = Unit_map.find_opt dep units in
     begin
       match import with
       | None ->
-        Reporter.emitf ?loc: loc Tree_not_found "Could not find tree %s" dep
+        Reporter.emitf ?loc: loc Tree_not_found "Could not find tree named `%s'" dep
       | Some tree ->
         begin
           match vis with

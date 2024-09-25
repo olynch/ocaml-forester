@@ -6,35 +6,36 @@ module T = Xml_tree
 
 type env = Eio_unix.Stdenv.base
 
-let organise_trees ~host (trees : Code.tree list) : Code.tree Iri_map.t =
+let organise_trees ~host (trees : Code.tree list) : Code.tree String_map.t =
   let base = Iri_scheme.base_iri ~host in
   let alg acc (tree : Code.tree) =
     match tree.addr with
-    | Some addr -> Iri_map.add (Iri_scheme.user_iri ~host addr) tree acc
+    | Some addr -> String_map.add addr tree acc
     | None -> acc
   in
-  List.fold_left alg Iri_map.empty trees
+  List.fold_left alg String_map.empty trees
 
 let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article Iri_map.t =
   let unexpanded_trees = organise_trees ~host trees in
-  let add_tree (tree : _ T.article) trees =
-    match tree.frontmatter.iri with
-    | Some iri -> Iri_map.add iri tree trees
-    | None -> trees
+  let add_article (article : _ T.article) articles =
+    match article.frontmatter.iri with
+    | Some iri -> Iri_map.add iri article articles
+    | None -> articles
   in
-  let (_, trees, jobs) =
-    let task iri (units, trees, jobs) =
-      let tree = Iri_map.find_opt iri unexpanded_trees in
+  let (_, articles, jobs) =
+    let task addr (units, trees, jobs) =
+      let tree = String_map.find_opt addr unexpanded_trees in
       match tree with
       | None -> units, trees, jobs
       | Some tree ->
         let units, syn = Expand.expand_tree units tree in
+        let iri = Iri_scheme.user_iri ~host addr in
         let result = Eval.eval_tree ~host ~iri ~source_path: tree.source_path syn in
-        units, List.fold_right add_tree (result.main :: result.side) trees, result.jobs @ jobs
+        units, List.fold_right add_article (result.main :: result.side) trees, result.jobs @ jobs
     in
     Import_graph.topo_fold
       task
-      (Import_graph.build ~host trees)
+      (Import_graph.build trees)
       (Expand.Env.empty, Iri_map.empty, [])
   in
   let run_job ~env job : _ T.article =
@@ -48,4 +49,4 @@ let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article
       T.{ frontmatter; mainmatter; backmatter }
   in
   let job_results = Eio.Fiber.List.map ~max_fibers: 20 (run_job ~env) jobs in
-  List.fold_right add_tree job_results trees
+  List.fold_right add_article job_results articles
