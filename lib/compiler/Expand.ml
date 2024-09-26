@@ -307,9 +307,7 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["rel"; "authors"], Syn.Text Query.Rel.authors;
       ["rel"; "contributors"], Syn.Text Query.Rel.authors;
       ["rel"; "transclusion"], Syn.Text Query.Rel.transclusion;
-      ["rel"; "links"], Syn.Text Query.Rel.links;
-      ["true"], Syn.Bool true;
-      ["false"], Syn.Bool false;
+      ["rel"; "links"], Syn.Text Query.Rel.links
     ];
   Builtins.Transclude.alloc_expanded ();
   Builtins.Transclude.alloc_show_heading ();

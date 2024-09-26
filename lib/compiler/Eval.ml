@@ -24,7 +24,6 @@ module V = struct
     | Query_expr of (T.content T.vertex, Symbol.t Query.lnvar) Query.expr
     | Sym of Symbol.t
     | Obj of Symbol.t
-    | Bool of bool
   [@@deriving show]
 
   type obj_method = {
@@ -90,11 +89,9 @@ module V = struct
 
   let extract_bool (x : located) =
     match x.value with
-    | Bool bool -> bool
-    (* TODO: deprecate the following two cases *)
     | Content (T.Content [Text "true"]) -> true
     | Content (T.Content [Text "false"]) -> false
-    | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected boolean"
+    | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected boolean but got %a" pp x.value
 end
 
 let default_backmatter ~(iri : iri) : T.content =
@@ -200,8 +197,6 @@ and eval_node node : V.t =
   match node.value with
   | Var x ->
     eval_var ~loc x
-  | Bool bool ->
-    focus ?loc @@ V.Bool bool
   | Text str ->
     emit_content_node ~loc @@ T.Text str
   | Prim p ->
@@ -568,7 +563,7 @@ and focus ?loc = function
       | V.Content (T.Content content') -> V.Content (T.Content (content @ content'))
       | value -> value
     end
-  | V.Query_expr _ | V.Query_mode _ | V.Query_polarity _ | V.Sym _ | V.Obj _ | V.Bool _ as v ->
+  | V.Query_expr _ | V.Query_mode _ | V.Query_polarity _ | V.Sym _ | V.Obj _ as v ->
     begin
       match process_tape () with
       | V.Content content when T.strip_whitespace content = T.Content [] -> v

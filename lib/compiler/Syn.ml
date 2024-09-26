@@ -22,7 +22,6 @@ type node =
   | Call of t * string
   | Query_polarity of Query.polarity
   | Query_mode of Query.mode
-  | Bool of bool
   | Results_of_query
   | Query_rel of [`Content | `Iri]
   | Query_isect
