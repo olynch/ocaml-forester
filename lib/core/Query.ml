@@ -1,14 +1,15 @@
 open Base
 
-module Pred = struct
+module Set = struct
   type t = string
   [@@deriving repr]
 
   let pp = Format.pp_print_string
 
-  let make_builtin name = "org.forester.pred." ^ name
+  let make_builtin name = "org.forester.set." ^ name
 
   let references = make_builtin "references"
+  let people = make_builtin "people"
 end
 
 module Rel = struct
@@ -27,7 +28,6 @@ module Rel = struct
   let tags = make_builtin "tags"
 end
 
-type pred = Pred.t
 type rel = Rel.t
 
 type mode =
@@ -52,7 +52,6 @@ type 'a binder = { body: 'a }
 [@@deriving show, repr]
 
 type ('vertex, 'var) expr =
-  | Pred of Pred.t
   | Rel of mode * polarity * Rel.t * ('vertex, 'var) vertex_expr
   | Isect of ('vertex, 'var) expr list
   | Union of ('vertex, 'var) expr list
@@ -68,9 +67,8 @@ let expr_t vertex_t var_t =
       variant
         "expr"
         begin
-          fun pred rel isect union complement union_fam isect_fam ->
+          fun rel isect union complement union_fam isect_fam ->
             function
-            | Pred x -> pred x
             | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
             | Isect x -> isect x
             | Union x -> union x
@@ -78,7 +76,6 @@ let expr_t vertex_t var_t =
             | Union_fam (x, y) -> union_fam (x, y)
             | Isect_fam (x, y) -> isect_fam (x, y)
         end
-      |~ case1 "Pred" Pred.t (fun p -> Pred p)
       |~ case1
         "Rel"
         (quad mode_t polarity_t Rel.t (vertex_expr_t vertex_t var_t))
@@ -99,7 +96,6 @@ let expr_t vertex_t var_t =
 (** A heuristic for computing an intersection of queries. *)
 let rec query_cost q =
   match q with
-  | Pred _ -> 1
   | Rel _ -> 1
   | Isect qs ->
     List.fold_left (fun i q -> min (query_cost q) i) 1000 qs
@@ -122,8 +118,6 @@ let sort_by_descending_cost qs =
   |> List.sort @@
     fun q0 q1 ->
       compare (query_cost q1) (query_cost q0)
-
-let pred pred = Pred pred
 
 let rel mode pol rel a =
   Rel (mode, pol, rel, a)
@@ -149,7 +143,6 @@ type 'name lnvar =
 [@@deriving show]
 
 let rec close_expr k x = function
-  | Pred p -> Pred p
   | Rel (mode, pol, rel, a) -> Rel (mode, pol, rel, close_vertex_expr k x a)
   | Isect qs -> Isect (List.map (close_expr k x) qs)
   | Union qs -> Union (List.map (close_expr k x) qs)
@@ -186,7 +179,6 @@ module Locally_nameless (N: Name) = struct
   exception Distill of N.t
 
   let rec distill : _ expr -> ('vertex, dbix) expr = function
-    | Pred p -> Pred p
     | Rel (mode, pol, rel, a) -> Rel (mode, pol, rel, distill_vertex_expr a)
     | Isect qs -> Isect (List.map distill qs)
     | Union qs -> Union (List.map distill qs)

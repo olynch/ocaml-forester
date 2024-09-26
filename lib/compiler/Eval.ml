@@ -260,9 +260,6 @@ and eval_node node : V.t =
     focus ?loc @@ V.Query_polarity pol
   | Query_mode mode ->
     focus ?loc @@ V.Query_mode mode
-  | Query_set ->
-    let set = eval_pop_arg ~loc |> V.extract_text in
-    focus ?loc @@ V.Query_expr (Query.pred set)
   | Query_rel type_ ->
     let host = Host_env.read () in
     let mode = eval_pop_arg ~loc |> V.extract_query_mode in
@@ -482,10 +479,6 @@ and eval_node node : V.t =
     end
   | Verbatim str ->
     emit_content_node ~loc @@ CDATA str
-  | Add_to_set ->
-    let set = eval_pop_arg ~loc |> V.extract_text in
-    Frontmatter.modify (fun fm -> { fm with sets = set :: fm.sets });
-    process_tape ()
   | Title ->
     let title = pop_content_arg ~loc in
     Frontmatter.modify (fun fm -> { fm with title = title });

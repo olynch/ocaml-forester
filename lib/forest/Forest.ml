@@ -85,20 +85,13 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     analyse_taxon scope fm.taxon;
     analyse_attributions scope fm.attributions;
     analyse_tags scope fm.tags;
-    analyse_metas scope fm.metas;
-    analyse_sets scope fm.sets
+    analyse_metas scope fm.metas
 
   and analyse_metas (scope : Iri.t) (metas : (string * T.content) list) : unit =
     metas |> List.iter @@ analyse_meta scope
 
   and analyse_meta (scope : Iri.t) (_, content) : unit =
     analyse_content scope content
-
-  and analyse_sets (scope : Iri.t) (sets : string list) : unit =
-    sets |> List.iter @@ analyse_set scope
-
-  and analyse_set (scope : Iri.t) (set : string) : unit =
-    Graphs.add_vertex set (Iri_vertex scope)
 
   and analyse_section (scope : Iri.t) (section : T.content T.section) : unit =
     begin

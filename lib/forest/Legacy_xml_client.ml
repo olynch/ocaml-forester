@@ -312,7 +312,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
           Query.isect
             [
               Query.rel Query.Paths Query.Outgoing Query.Rel.transclusion (Query.Vertex (T.Iri_vertex scope));
-              Query.complement (Query.pred Query.Pred.references)
+              Query.complement (Builtin_queries.has_taxon "reference")
             ]
         in
         query

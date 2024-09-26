@@ -17,12 +17,6 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     let gph = Graphs.get_rel mode rel in
     Vertex_set.of_list @@ fn gph vtx
 
-  let query_pred pred =
-    Graphs.get_pred pred
-
-  let check_pred pred vtx =
-    Vertex_set.mem vtx @@ query_pred pred
-
   let check_rel mode pol rel vtx vtx' =
     let gph = Graphs.get_rel mode rel in
     match pol with
@@ -31,8 +25,6 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   let rec check_query ~env (q : Xml_tree.query) vtx =
     match q with
-    | Pred pred ->
-      check_pred pred vtx
     | Rel (mode, pol, rel, vtx_val') ->
       let vtx' = eval_vertex ~env vtx_val' in
       check_rel mode pol rel vtx' vtx
@@ -72,8 +64,6 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   and run_query ~env (q : Xml_tree.query) : Vertex_set.t =
     match q with
-    | Pred pred ->
-      query_pred pred
     | Rel (mode, pol, rel, vtx_val) ->
       let vtx = eval_vertex ~env vtx_val in
       query_rel mode pol rel vtx

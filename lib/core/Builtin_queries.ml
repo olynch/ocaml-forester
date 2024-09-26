@@ -8,11 +8,14 @@ let context vtx =
 let backlinks vtx =
   rel Edges Incoming Rel.links vtx
 
+let has_taxon taxon =
+  rel Edges Incoming Rel.taxa (Vertex (Xml_tree.Content_vertex (Xml_tree.Content [Xml_tree.Text taxon])))
+
 let related vtx =
   isect
     [
       rel Edges Outgoing Rel.links vtx;
-      complement @@ pred Pred.references
+      complement @@ has_taxon "reference"
     ]
 
 let contributions vtx =
@@ -29,5 +32,5 @@ let references vtx =
   isect
     [
       union_fam_rel (tree_under vtx) Edges Outgoing Rel.links;
-      pred Pred.references
+      has_taxon "reference"
     ]

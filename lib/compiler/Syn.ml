@@ -24,7 +24,6 @@ type node =
   | Query_mode of Query.mode
   | Bool of bool
   | Results_of_query
-  | Query_set
   | Query_rel of [`Content | `Iri]
   | Query_isect
   | Query_union
@@ -40,7 +39,6 @@ type node =
   | Title
   | Parent
   | Taxon
-  | Add_to_set
   | Meta
   | Attribution of Xml_tree.attribution_role * [`Content | `Iri]
   | Tag of [`Content | `Iri]

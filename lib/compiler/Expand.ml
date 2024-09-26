@@ -284,11 +284,9 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["parent"], Syn.Parent;
       ["number"], Syn.Number;
       ["tag"], Syn.Tag `Content;
-      ["add-to-set"], Syn.Add_to_set;
       ["query"], Syn.Results_of_query;
       ["query"; "rel"], Syn.Query_rel `Iri;
       ["query"; "rel"; "literal"], Syn.Query_rel `Content;
-      ["query"; "set"], Syn.Query_set;
       ["query"; "union"], Syn.Query_union;
       ["query"; "isect"], Syn.Query_isect;
       ["query"; "isect-fam"], Syn.Query_isect_fam;
@@ -310,7 +308,6 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["rel"; "contributors"], Syn.Text Query.Rel.authors;
       ["rel"; "transclusion"], Syn.Text Query.Rel.transclusion;
       ["rel"; "links"], Syn.Text Query.Rel.links;
-      ["set"; "references"], Syn.Text Query.Pred.references;
       ["true"], Syn.Bool true;
       ["false"], Syn.Bool false;
     ];

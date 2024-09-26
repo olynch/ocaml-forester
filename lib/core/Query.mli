@@ -1,13 +1,5 @@
 open Base
 
-(** {1 Unary relation symbols} *)
-
-module Pred: sig
-  type t = string
-  val t : t Repr.ty
-  val references : t
-end
-
 (** {1 Binary relation symbols} *)
 
 module Rel: sig
@@ -22,7 +14,6 @@ module Rel: sig
   val taxa : t
 end
 
-type pred = Pred.t
 type rel = Rel.t
 
 (** {1 Query modifiers} *)
@@ -73,7 +64,6 @@ type 'a binder = { body: 'a }
 val binder_t : 'a Repr.t -> 'a binder Repr.t
 
 type ('vertex, 'var) expr =
-  | Pred of Pred.t
   | Rel of mode * polarity * Rel.t * ('vertex, 'var) vertex_expr
   | Isect of ('vertex, 'var) expr list
   | Union of ('vertex, 'var) expr list
@@ -90,7 +80,6 @@ val pp_expr :
 
 val expr_t : 'vertex Repr.t -> 'var Repr.t -> ('vertex, 'var) expr Repr.t
 
-val pred : pred -> ('vertex, 'var) expr
 val rel : mode -> polarity -> rel -> ('vertex, 'var) vertex_expr -> ('vertex, 'var) expr
 val isect : ('vertex, 'var) expr list -> ('vertex, 'var) expr
 val union : ('vertex, 'var) expr list -> ('vertex, 'var) expr
