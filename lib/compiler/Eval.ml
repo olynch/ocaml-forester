@@ -142,11 +142,11 @@ let get_transclusion_flags ~loc =
   let flags = T.default_section_flags in
   {
     flags with
-    expanded = override flags.expanded @@ get_bool S.expanded_sym;
-    header_shown = override flags.header_shown @@ get_bool S.show_heading_sym;
-    included_in_toc = override flags.included_in_toc @@ get_bool S.toc_sym;
-    numbered = override flags.numbered @@ get_bool S.numbered_sym;
-    metadata_shown = override flags.metadata_shown @@ get_bool S.show_metadata_sym;
+    expanded = override (get_bool S.expanded_sym) flags.expanded;
+    header_shown = override (get_bool S.show_heading_sym) flags.header_shown;
+    included_in_toc = override (get_bool S.toc_sym) flags.included_in_toc;
+    numbered = override (get_bool S.numbered_sym) flags.numbered;
+    metadata_shown = override (get_bool S.show_metadata_sym) flags.metadata_shown;
   }
 
 let resolve_iri ~loc str =
