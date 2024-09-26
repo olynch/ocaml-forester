@@ -283,8 +283,7 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["contributor"; "literal"], Syn.Attribution (Contributor, `Content);
       ["parent"], Syn.Parent;
       ["number"], Syn.Number;
-      ["tag"], Syn.Tag `Iri;
-      ["tag"; "literal"], Syn.Tag `Content;
+      ["tag"], Syn.Tag `Content;
       ["add-to-set"], Syn.Add_to_set;
       ["query"], Syn.Results_of_query;
       ["query"; "rel"], Syn.Query_rel `Iri;
@@ -297,10 +296,9 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["query"; "isect-fam-rel"], Syn.Query_isect_fam_rel;
       ["query"; "union-fam-rel"], Syn.Query_union_fam_rel;
       ["query"; "compl"], Syn.Query_compl;
-      ["query"; "tag"], Syn.Query_builtin (`Tag, `Iri);
+      ["query"; "tag"], Syn.Query_builtin (`Tag, `Content);
       ["query"; "taxon"], Syn.Query_builtin (`Taxon, `Content);
       ["query"; "author"], Syn.Query_builtin (`Author, `Iri);
-      ["query"; "tag"; "literal"], Syn.Query_builtin (`Tag, `Content);
       ["query"; "author"; "literal"], Syn.Query_builtin (`Author, `Content);
       ["query"; "incoming"], Syn.Query_polarity Incoming;
       ["query"; "outgoing"], Syn.Query_polarity Outgoing;
