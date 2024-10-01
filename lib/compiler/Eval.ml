@@ -501,8 +501,8 @@ and eval_node node : V.t =
       | Error _ ->
         let corrected_attribution_code =
           match role with
-          | Author -> "\\author/content"
-          | Contributor -> "\\contributor/content"
+          | Author -> "\\author/literal"
+          | Contributor -> "\\contributor/literal"
         in
         Reporter.emitf ?loc Type_warning "Expected valid RFC 3987 IRI in attribution. Use `%s` instead if you intend an unlinked attribution." corrected_attribution_code;
         T.Content_vertex (V.extract_content arg)
