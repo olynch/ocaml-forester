@@ -353,9 +353,10 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     let href_attr =
       let str = Format.asprintf "%a" Date.pp date in
       let base = Iri_scheme.base_iri ~host: Params.host in
-      match F.get_article (Iri.resolve ~base (Iri.of_string str)) with
+      let iri = Iri.resolve ~base (Iri.of_string str) in
+      match F.get_article iri with
       | None -> X.null_
-      | Some _ -> X.href "%s" str
+      | Some _ -> X.href "%s" @@ route iri
     in
     X.date
       [href_attr]
