@@ -15,6 +15,7 @@
   eio
   eio.core
   eio.unix
+  fmt
   yojson
   asai
   algaeff

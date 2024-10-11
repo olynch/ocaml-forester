@@ -51,27 +51,16 @@ let query_all ~env config_filename =
   Forester.plant_forest_from_dirs ~env ~host: config.host ~dev: true @@ paths_of_dirs ~env config.trees;
   Forester.json_manifest ~host: config.host ~home: config.home ~dev: true |> Format.printf "%s"
 
-let init ~env () =
-  let default_theme_url = "https://git.sr.ht/~jonsterling/forester-base-theme" in
-  let theme_version = "4.3.0" in
-  let fs = Eio.Stdenv.fs env in
-  let try_create_dir name =
-    try
-      EP.mkdir ~perm: 0o755 EP.(fs / name)
-    with
-      | _ ->
-        Reporter.emitf Initialization_warning "Directory `%s` already exists" name
-  in
-  let default_config_str =
-    (* More convenient to just write this string instead of constructing it with the toml library*)
-    {|[forest]
-trees = ["trees" ]                   # The directories in which your trees are stored
-assets = ["assets"]                  # The directories in which your assets are stored
-theme = "theme"                      # The directory in which your theme is stored
+let default_config_str =
+  {|
+[forest]
+trees = ["trees" ]  # The directories in which your trees are stored
+assets = ["assets"] # The directories in which your assets are stored
+theme = "theme"     # The directory in which your theme is stored
 |}
-  in
-  let index_tree_str =
-    {|
+
+let index_tree_str =
+  {|
 \title{Hello, World!}
 \p{
   Welcome to your first tree! This tree is the root of your forest.
@@ -83,17 +72,26 @@ theme = "theme"                      # The directory in which your theme is stor
   }
 }
 |}
+
+let init ~env dir =
+  let default_theme_url = "https://git.sr.ht/~jonsterling/forester-base-theme" in
+  let theme_version = "4.3.0" in
+  let cwd =
+    match dir with
+    | None -> Eio.Stdenv.cwd env
+    | Some d ->
+      begin
+        try
+          EP.mkdir ~perm: 0o755 EP.(Eio.Stdenv.cwd env / d)
+        with
+          | _ ->
+            Reporter.emitf Initialization_warning "Directory `%s` already exists" d
+      end;
+      EP.((Eio.Stdenv.cwd env) / d)
   in
   begin
-    if EP.is_file EP.(Eio.Stdenv.fs env / "forest.toml") then
-      Reporter.emitf Initialization_warning "forest.toml already exists"
-    else
-      EP.(save ~create: (`Exclusive 0o644) (fs / "forest.toml") default_config_str)
-  end;
-  EP.(save ~create: (`Exclusive 0o644) (fs / ".gitignore") {|output/|});
-  begin
     try
-      let shut_up = Eio_util.null_sink () in
+      let proc_mgr = Eio.Stdenv.process_mgr env in
       let@ cmd =
         List.iter @~
           [
@@ -103,30 +101,28 @@ theme = "theme"                      # The directory in which your theme is stor
             ["git"; "-C"; "theme"; "checkout"; theme_version];
           ]
       in
-      Eio.Process.run (Eio.Stdenv.process_mgr env) ~stdout: shut_up ~stderr: shut_up cmd
+      Eio.Process.run ~cwd proc_mgr cmd
     with
-      | _ ->
+      | exn ->
         Reporter.fatalf
           Configuration_error
-          {|Failed to set up theme. To perform this step manually, run the commands
+          {|
+Failed to set up theme: %a. To perform this step manually, run the commands
 
-   git init
-   git submodule add %s
-   git -C theme checkout %s|}
+git init
+git submodule add %s
+git -C theme checkout %s
+        |}
+          Eio.Exn.pp
+          exn
           default_theme_url
           theme_version
   end;
-  ["trees"; "assets"] |> List.iter try_create_dir;
-  begin
-    try
-      EP.(save ~create: (`Exclusive 0o644) (fs / "trees" / "index.tree") index_tree_str)
-    with
-      | _ ->
-        let@ () = Reporter.with_backtrace Emp in
-        Reporter.emitf Initialization_warning "`index.tree` already exists"
-  end;
-  build ~env "forest.toml" true None false false;
-  Format.printf "%s" "Initialized forest, try editing `trees/index.tree` and running `forester build`. Afterwards, you can open `output/index.xml` in your browser to view your forest.\n"
+  ["trees"; "assets"] |> List.iter (Eio_util.try_create_dir ~cwd);
+  Eio_util.try_create_file ~cwd ~content: default_config_str "forest.toml";
+  Eio_util.try_create_file ~cwd ~content: "output/" ".gitignore";
+  Eio_util.try_create_file ~cwd ~content: index_tree_str "trees/index.tree";
+  Reporter.emitf Log "%s" "Initialized forest, try editing `trees/index.tree` and running `forester build`. Afterwards, you can open `output/index.xml` in your browser to view your forest."
 
 let arg_config =
   let doc = "A TOML file like $(i,forest.toml)" in
@@ -226,6 +222,10 @@ let query_cmd ~env =
   Cmd.group info [query_all_cmd ~env]
 
 let init_cmd ~env =
+  let arg_dir =
+    let doc = "The directory in which to initialize the forest" in
+    Arg.value @@ Arg.opt (Arg.some Arg.string) None @@ Arg.info ["dir"] ~docv: "DIR" ~doc
+  in
   let doc = "Initialize a new forest" in
   let man =
     [
@@ -234,7 +234,7 @@ let init_cmd ~env =
     ]
   in
   let info = Cmd.info "init" ~version ~doc ~man in
-  Cmd.v info Term.(const (init ~env) $ const ())
+  Cmd.v info Term.(const (init ~env) $ arg_dir)
 
 let cmd ~env =
   let doc = "a tool for tending mathematical forests" in

@@ -1,5 +1,6 @@
 open Forester_prelude
 open Eio
+let ( / ) = Eio.Path.( / )
 
 module NullSink: Flow.Pi.SINK with type t = unit = struct
   type t = unit
@@ -54,6 +55,26 @@ let file_exists path =
     true
   with
     | Eio.Io (Eio.Fs.E (Eio.Fs.Not_found _), _) -> false
+
+let try_create_dir ~cwd dname =
+  if Eio.Path.is_directory (cwd / dname) then
+    Forester_core.Reporter.emitf Initialization_warning "`%s` already exists" dname
+  else
+    try
+      Eio.Path.mkdir ~perm: 0o755 (cwd / dname)
+    with
+      | exn ->
+        Forester_core.Reporter.emitf Initialization_warning "Failed to create directory `%s`: %a" dname Eio.Exn.pp exn
+
+let try_create_file ~cwd ?(content = "") fname =
+  if Eio.Path.is_file (cwd / fname) then
+    Forester_core.Reporter.emitf Initialization_warning "`%s` already exists" fname
+  else
+    try
+      Eio.Path.save ~create: (`Exclusive 0o644) (cwd / fname) content
+    with
+      | exn ->
+        Forester_core.Reporter.emitf Initialization_warning "Failed to create file `%s`: %a" fname Eio.Exn.pp exn
 
 (* TODO: make this portable *)
 let copy_to_dir ~env ~cwd ~source ~dest_dir =
