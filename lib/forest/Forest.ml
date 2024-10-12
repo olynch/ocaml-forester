@@ -5,7 +5,13 @@ module T = Xml_tree
 module Q = Query
 
 module type S = sig
-  val plant_article : T.content T.article -> unit
+  type resource =
+    | Article of T.content T.article
+    | Asset of iri
+
+  val plant_resource : resource -> unit
+
+  val get_resource : Iri.t -> resource option
   val get_article : Iri.t -> T.content T.article option
 
   val get_expanded_title : ?scope: iri -> T.content T.frontmatter -> T.content
@@ -16,7 +22,12 @@ end
 
 module Make (Graphs: Forest_graphs.S) : S = struct
   type article = T.content T.article
-  let articles : (Iri.t, article) Hashtbl.t =
+
+  type resource =
+    | Article of article
+    | Asset of iri 
+
+  let resources : (Iri.t, resource) Hashtbl.t =
     Hashtbl.create 1000
 
   let rec analyse_content_node (scope : Iri.t) (node : 'a T.content_node) : unit =
@@ -107,17 +118,31 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     analyse_content scope article.mainmatter;
     analyse_content scope article.backmatter
 
-  let plant_article (article : article) : unit =
-    analyse_article article;
-    let@ iri = Option.iter @~ article.frontmatter.iri in
-    match Hashtbl.mem articles iri with
-    | false ->
-      Hashtbl.add articles iri article
-    | true ->
-      Reporter.emitf Duplicate_tree "Already planted tree at address %a" pp_iri iri
+  let analyse_resource = function
+    | Article article -> analyse_article article
+    | Asset _ -> ()
 
-  let get_article addr =
-    Hashtbl.find_opt articles addr
+  let iri_for_resource = function
+    | Article article -> article.frontmatter.iri
+    | Asset iri -> Some iri
+
+  let plant_resource resource =
+    analyse_resource resource;
+    let@ iri = Option.iter @~ iri_for_resource resource in
+    match Hashtbl.mem resources iri with
+    | false ->
+      Hashtbl.add resources iri resource
+    | true ->
+      Reporter.emitf Duplicate_tree "Already planted resource at address %a" pp_iri iri
+
+  let get_resource iri =
+    Hashtbl.find_opt resources iri
+
+  let get_article iri =
+    let@ resource = Option.bind @@ get_resource iri in
+    match resource with
+    | Article article -> Some article
+    | _ -> None
 
   let get_article_exn addr =
     match get_article addr with

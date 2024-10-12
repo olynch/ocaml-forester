@@ -128,11 +128,18 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
   | exception exn ->
     if ignore_malformed then None else raise exn
 
-let plant_forest_from_dirs ~env ~host ~dev tree_dirs : unit =
+let plant_forest_from_dirs ~env ~host ~dev ~tree_dirs ~asset_dirs : unit =
   let parsed_trees = parse_trees_in_dirs ~dev tree_dirs in
   let@ () = Reporter.profile "Expand, evaluate, and analyse forest" in
-  let@ _, article = Seq.iter @~ Iri_map.to_seq @@ Forest_reader.read_trees ~host ~env parsed_trees in
-  F.plant_article article
+  begin
+    let@ _, article = Seq.iter @~ Iri_map.to_seq @@ Forest_reader.read_trees ~host ~env parsed_trees in
+    F.plant_resource @@ F.Article article
+  end;
+  begin
+    let@ asset_path = Seq.iter @~ Dir_scanner.scan_directories asset_dirs in
+    let asset_iri = Iri.iri ~scheme: Iri_scheme.scheme ?host ~path: (Absolute asset_path) () in
+    F.plant_resource @@ F.Asset asset_iri
+  end
 
 let json_manifest ~host ~home ~dev : string =
   let all_articles = FU.get_all_articles () in

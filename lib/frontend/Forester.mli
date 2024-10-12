@@ -7,7 +7,8 @@ val plant_forest_from_dirs :
   env: env ->
   host: string option ->
   dev: bool ->
-  dir list ->
+  tree_dirs: dir list ->
+  asset_dirs: dir list ->
   unit
 
 val render_forest :

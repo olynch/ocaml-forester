@@ -3,7 +3,12 @@ open Forester_core
 module T = Xml_tree
 
 module type S = sig
-  val plant_article : T.content T.article -> unit
+  type resource =
+    | Article of T.content T.article
+    | Asset of iri
+
+  val plant_resource : resource -> unit
+  val get_resource : iri -> resource option
   val get_article : iri -> T.content T.article option
   val get_expanded_title : ?scope: iri -> T.content T.frontmatter -> T.content
   val get_content_of_transclusion : T.content T.transclusion -> T.content

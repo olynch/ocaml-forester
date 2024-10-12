@@ -65,27 +65,29 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     | Absolute [_] -> "user"
     | _ -> failwith "addr_type"
 
-  let route_bare_forester_iri ~path =
+  let route_bare_forester_iri ~path ~is_asset =
     let bare_route =
-      String.concat "-" @@
+      String.concat (if is_asset then "/" else "-") @@
         match path with
         | Iri.Absolute xs -> xs
         | Iri.Relative xs -> xs (* impossible? *)
     in
-    bare_route ^ ".xml"
+    match is_asset with
+    | true -> bare_route
+    | false -> bare_route ^ ".xml"
 
-  let route_foreign_forester_iri ~host ~path =
+  let route_foreign_forester_iri ~host ~path ~is_asset =
     "foreign/" ^
       match host with
-      | None -> route_bare_forester_iri ~path
+      | None -> route_bare_forester_iri ~path ~is_asset
       | Some host ->
-        host ^ "/" ^ route_bare_forester_iri ~path
+        host ^ "/" ^ route_bare_forester_iri ~path ~is_asset
 
-  let route_forester_iri ~host ~path =
+  let route_forester_iri ~host ~path ~is_asset =
     if host = Params.host then
-      route_bare_forester_iri ~path
+      route_bare_forester_iri ~path ~is_asset
     else
-      route_foreign_forester_iri ~host ~path
+      route_foreign_forester_iri ~host ~path ~is_asset
 
   let home_iri =
     let@ root = Option.bind Params.home in
@@ -101,15 +103,21 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       Iri.equal ~normalize: true home_iri iri
     | None -> false
 
+  let iri_is_asset iri =
+    match F.get_resource iri with
+    | Some (F.Asset _) -> true
+    | _ -> false
+
   let route iri =
-    if Iri.scheme iri = Iri_scheme.scheme then
+    match Iri.scheme iri with
+    | scheme when scheme = Iri_scheme.scheme ->
       if iri_is_home iri then "index.xml"
       else
         let host = Iri.host iri in
         let path = Iri.path iri in
-        route_forester_iri ~host ~path
-    else
-      Iri.to_uri iri
+        let is_asset = iri_is_asset iri in
+        route_forester_iri ~host ~path ~is_asset
+    | _ -> Iri.to_uri iri
 
   let get_expanded_title frontmatter =
     let scope = Scope.read () in
