@@ -85,6 +85,12 @@ let rec expand : Code.t -> Syn.t = function
   | { value = Ident path; loc } :: rest ->
     let out, rest = expand_method_calls (expand_ident loc path) rest in
     out @ expand rest
+  | { value = Angle_ident name; loc } :: rest ->
+    let qname = expand_xml_ident loc @@ Forester_xml_names.split_xml_qname name in
+    let attrs, rest = get_xml_attrs [] rest in
+    let arg_opt, rest = get_arg_opt rest in
+    let tag = Syn.Xml_tag (qname, attrs, Option.value ~default:[] arg_opt) in
+    { value = tag; loc } :: expand rest
   | { value = Scope body; _ } :: rest ->
     let body =
       let@ () = Sc.section [] in
@@ -134,14 +140,6 @@ let rec expand : Code.t -> Syn.t = function
     { value = patched; loc } :: expand rest
   | { value = Call (obj, method_name); loc } :: rest ->
     { value = Syn.Call (expand obj, method_name); loc } :: expand rest
-  | { value = Xml_tag (title, attrs, body); loc } :: rest ->
-    let title = expand_xml_ident loc title in
-    let attrs =
-      let@ k, v = List.map @~ attrs in
-      expand_xml_ident loc k, expand v
-    in
-    let body = expand body in
-    { value = Syn.Xml_tag (title, attrs, body); loc } :: expand rest
   | { value = Import (vis, dep); loc } :: rest ->
     let units = U.get () in
     let import = Unit_map.find_opt dep units in
@@ -188,6 +186,18 @@ and expand_lambda loc (xs, body) =
     strategy, sym
   in
   Range.{ value = Syn.Fun (syms, expand body); loc }
+
+and get_xml_attrs acc = function
+  | { value = Group (Squares, [{ value = Text key; loc = loc1 }]); _ } :: { value = Group (Braces, value); loc = loc2 } :: rest ->
+    let qname = expand_xml_ident loc1 @@ Forester_xml_names.split_xml_qname key in
+    let value = expand value in
+    get_xml_attrs (acc @ [qname, value]) rest
+  | rest -> acc, rest
+
+and get_arg_opt : Code.t -> _ = function
+  | { value = Group (Braces, arg); loc } :: rest ->
+    Some (expand arg), rest
+  | rest -> None, rest
 
 and expand_ident loc path =
   match Sc.resolve path, path with

@@ -1,22 +1,13 @@
 parse_good_result:
-[(Code.Ident (title, [])); (Code.Group (Base.Braces, [(Code.Text "Good")]));
-  (Code.Ident (taxon, [])); (Code.Group (Base.Braces, [(Code.Text "Test")]));
-  (Code.Ident (author, []));
-  (Code.Group (Base.Braces, [(Code.Text "Testy")])); (Code.Ident (p, []));
+[(Code.Ident title); (Code.Group (Base.Braces, [(Code.Text "Good")]));
+  (Code.Ident taxon); (Code.Group (Base.Braces, [(Code.Text "Test")]));
+  (Code.Ident author); (Code.Group (Base.Braces, [(Code.Text "Testy")]));
+  (Code.Ident p);
   (Code.Group (Base.Braces,
      [(Code.Text "\n"); (Code.Text "      "); (Code.Text "This");
        (Code.Text " "); (Code.Text "should"); (Code.Text " ");
        (Code.Text "parse"); (Code.Text " "); (Code.Text "correctly.");
        (Code.Text "\n"); (Code.Text "    ")]
      ))
-  ]
-
-error: syntax error, unexpected ` ` 
-error: syntax error, unexpected `    ` 
-error: syntax error, unexpected `` 
-parse_bad_result:
-[(Code.Ident (p, []));
-  (Code.Group (Base.Braces,
-     [(Code.Text "Keep"); (Code.Text " "); (Code.Text "me")]))
   ]
 

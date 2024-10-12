@@ -29,12 +29,12 @@ let build (trees : Code.tree list) =
       Gph.add_edge import_graph dep addr
     | Subtree (addr, code) ->
       analyse_tree roots addr code
-    | Scope code | Namespace (_, code) | Group (_, code) | Math (_, code) | Xml_tag (_, _, code) | Let (_, _, code) | Fun (_, code) | Def (_, _, code) ->
+    | Scope code | Namespace (_, code) | Group (_, code) | Math (_, code) | Let (_, _, code) | Fun (_, code) | Def (_, _, code) ->
       analyse_code roots code
     | Object { methods; _ } | Patch { methods; _ } ->
       let@ _, code = List.iter @~ methods in
       analyse_code roots code
-    | Text _ | Hash_ident _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ -> ()
+    | Text _ | Hash_ident _ | Angle_ident _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ -> ()
   in
   begin
     let@ tree = List.iter @~ trees in

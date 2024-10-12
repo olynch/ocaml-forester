@@ -68,10 +68,7 @@ let head_node :=
 | DEFAULT; ~ = ident; ~ = arg; <Code.Default>
 | GET; ~ = ident; <Code.Get>
 | OPEN; ~ = ident; <Code.Open>
-| name = XML_ELT_IDENT; attrs = list(xml_attr); body = arg; {
-  let name = Forester_xml_names.split_xml_qname name in
-  Code.Xml_tag (name, attrs, body)
-}
+| ~ = XML_ELT_IDENT; <Code.Angle_ident>
 | ~ = DECL_XMLNS; ~ = txt_arg; <Code.Decl_xmlns>
 | OBJECT; self = option(squares(bvar)); methods = braces(ws_list(method_decl)); { Code.Object {self;  methods } }
 | PATCH; obj = braces(code_expr); self = option(squares(bvar)); methods = braces(ws_list(method_decl)); { Code.Patch {obj; self; methods} }
@@ -86,9 +83,6 @@ let head_node :=
 
 let method_decl :=
 | k = squares(TEXT); list(WHITESPACE); v = arg; { k, v }
-
-let xml_attr :=
-| k = squares(TEXT); v = arg; { (Forester_xml_names.split_xml_qname k, v) }
 
 let ident :=
 | ident = IDENT;

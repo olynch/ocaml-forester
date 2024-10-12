@@ -1,4 +1,3 @@
-open Forester_prelude
 open Forester_core
 open Forester_compiler
 
@@ -24,22 +23,3 @@ let _ =
       in
       Format.printf "parse_good_result:\n%s\n\n" (Code.show good)
 
-let _ =
-  Reporter.run ~emit ~fatal @@
-    fun () ->
-      (* Incomplete XML literal should error *)
-      let bad, errors =
-        Result.get_error @@
-          Parse.parse_string
-            {|
-    \p{Keep me}
-    \<foo>[bar]{
-      Incomplete fragment, needs another {} at the end.
-    }
-    |}
-      in
-      begin
-        let@ e = List.iter @~ errors in
-        Format.printf "error: %s\n" @@ Asai.Diagnostic.string_of_text e.explanation.value
-      end;
-      Format.printf "parse_bad_result:\n%s\n\n" (Code.show bad)

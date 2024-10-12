@@ -20,7 +20,7 @@ type node =
   | Math of math_mode * t
   | Ident of Trie.path
   | Hash_ident of string
-  | Xml_tag of (string option * string) * ((string option * string) * t) list * t
+  | Angle_ident of string
   | Subtree of string option * t
   | Let of Trie.path * Trie.path binding list * t
   | Open of Trie.path
