@@ -14,6 +14,7 @@ module Make (F: Forest.S) : S = struct
 
   and pp_content_node fmt : 'a T.content_node -> unit = function
     | Text txt | CDATA txt -> Format.pp_print_string fmt txt
+    | Iri iri -> pp_iri fmt iri
     | KaTeX (_, content) -> pp_content fmt content
     | TeX_cs cs -> Format.fprintf fmt "\\%a" TeX_cs.pp cs
     | Xml_elt elt -> pp_content fmt elt.content
@@ -31,7 +32,9 @@ module Make (F: Forest.S) : S = struct
     pp_content fmt link.content
 
   and pp_section fmt (section : T.content T.section) =
-    Format.fprintf fmt "<omitted content: %a>" pp_content section.frontmatter.title
+    match section.frontmatter.title with
+    | None -> Format.fprintf fmt "<omitted content>"
+    | Some title -> Format.fprintf fmt "<omitted content: %a>" pp_content title
 
   let string_of_content =
     Format.asprintf "%a" pp_content

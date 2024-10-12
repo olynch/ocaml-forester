@@ -121,7 +121,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
 
   let get_expanded_title frontmatter =
     let scope = Scope.read () in
-    let title = F.get_expanded_title ?scope frontmatter in
+    let title = F.get_expanded_title ?scope ~flags:T.{empty_when_untitled = true} frontmatter in
     T.apply_modifier_to_content Sentence_case title
 
   let render_xml_qname qname =
@@ -208,6 +208,10 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       [P.txt "%s" str]
     | CDATA str ->
       [P.txt ~raw: true "<![CDATA[%s]]>" str]
+    | Iri iri ->
+      let relativised = Iri_scheme.relativise_iri ~host: Params.host iri in
+      let str = Format.asprintf "%a" pp_iri relativised in
+      [P.txt "%s" str]
     | Xml_elt elt ->
       let prefixes_to_add, (name, attrs, content) =
         let@ () = Xmlns.within_scope in
@@ -349,7 +353,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
 
   and render_attribution_vertex = function
     | T.Iri_vertex href ->
-      let content = T.Content [T.Transclude { href; target = Title; modifier = Identity }] in
+      let content = T.Content [T.Transclude { href; target = Title { empty_when_untitled = false }; modifier = Identity }] in
       render_link T.{ href; content }
     | T.Content_vertex content ->
       render_content content

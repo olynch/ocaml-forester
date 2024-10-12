@@ -19,6 +19,11 @@ type section_flags = {
 }
 [@@deriving show, repr]
 
+type title_flags = {
+  empty_when_untitled: bool
+}
+[@@deriving show, repr]
+
 let default_section_flags =
   {
     hidden_when_empty = None;
@@ -52,7 +57,7 @@ type 'content attribution = {
 
 type 'content frontmatter = {
   iri: iri option;
-  title: 'content;
+  title: 'content option;
   dates: Date.t list;
   attributions: 'content attribution list;
   taxon: 'content option;
@@ -81,7 +86,7 @@ type 'content article = {
 type 'content content_target =
   | Full of section_flags
   | Mainmatter
-  | Title
+  | Title of title_flags
   | Taxon
 [@@deriving show, repr]
 
@@ -141,6 +146,7 @@ type 'content content_node =
   | Link of 'content link
   | Img of img
   | Resource of 'content resource
+  | Iri of iri
 [@@deriving show, repr]
 
 type content =
@@ -170,7 +176,7 @@ let trim_whitespace xs =
   in
   trim_back @@ trim_front xs
 
-let default_frontmatter ?iri ?source_path ?designated_parent ?(dates = []) ?(attributions = []) ?taxon ?number ?(metas = []) ?(tags = []) ?(title = Content []) () =
+let default_frontmatter ?iri ?source_path ?designated_parent ?(dates = []) ?(attributions = []) ?taxon ?number ?(metas = []) ?(tags = []) ?title () =
   { iri; source_path; designated_parent; dates; attributions; taxon; number; metas; tags; title }
 
 let article_to_section
@@ -193,7 +199,7 @@ module Comparators (I: sig val string_of_content : content -> string end) = stru
       List.nth_opt sorted_dates 0
     in
     let by_date = Fun.flip @@ Compare.under latest_date @@ Compare.option Date.compare in
-    let by_title = compare_content |> Compare.under @@ fun fm -> fm.title in
+    let by_title = Compare.option compare_content |> Compare.under @@ fun fm -> fm.title in
     Compare.cascade by_date by_title
 
   let compare_article = compare_frontmatter |> Compare.under @@ fun x -> x.frontmatter
@@ -245,7 +251,7 @@ module TeX_like: sig
     | CDATA str -> Format.fprintf fmt "%s" str
     | KaTeX (_, xs) -> pp_content fmt xs
     | TeX_cs cs -> pp_tex_cs fmt cs
-    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Resource _ ->
+    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Resource _ | Iri _ ->
       Reporter.fatalf Type_error "Cannot render this kind of content as TeX-like string"
 
   let string_of_content =

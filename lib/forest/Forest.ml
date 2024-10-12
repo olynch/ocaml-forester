@@ -14,7 +14,7 @@ module type S = sig
   val get_resource : Iri.t -> resource option
   val get_article : Iri.t -> T.content T.article option
 
-  val get_expanded_title : ?scope: iri -> T.content T.frontmatter -> T.content
+  val get_expanded_title : ?scope: iri -> ?flags: T.title_flags -> T.content T.frontmatter -> T.content
   val get_content_of_transclusion : T.content T.transclusion -> T.content
   val get_title_or_content_of_vertex : ?not_found: (iri -> T.content option) -> modifier: T.modifier -> T.content T.vertex -> T.content option
   val run_query : T.query -> Vertex_set.t
@@ -25,14 +25,14 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   type resource =
     | Article of article
-    | Asset of iri 
+    | Asset of iri
 
   let resources : (Iri.t, resource) Hashtbl.t =
     Hashtbl.create 1000
 
   let rec analyse_content_node (scope : Iri.t) (node : 'a T.content_node) : unit =
     match node with
-    | Text _ | CDATA _ | Results_of_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
+    | Text _ | CDATA _ | Iri _ | Results_of_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
     | Transclude transclusion ->
       analyse_transclusion scope transclusion
     | Xml_elt elt ->
@@ -56,7 +56,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     match transclusion.target with
     | Full _ | Mainmatter ->
       Graphs.add_edge Q.Rel.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex transclusion.href)
-    | Title | Taxon -> ()
+    | Title _ | Taxon -> ()
 
   and analyse_content (scope : Iri.t) (content : T.content) : unit =
     T.extract_content content |> List.iter @@ analyse_content_node scope
@@ -92,7 +92,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   and analyse_frontmatter (fm : T.content T.frontmatter) : unit =
     let@ scope = Option.iter @~ fm.iri in
     Graphs.register_iri scope;
-    analyse_content scope fm.title;
+    Option.iter (analyse_content scope) fm.title;
     analyse_taxon scope fm.taxon;
     analyse_attributions scope fm.attributions;
     analyse_tags scope fm.tags;
@@ -155,8 +155,18 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   let section_symbol = "§"
 
-  let rec get_expanded_title ?scope (frontmatter : _ T.frontmatter) =
-    let short_title = frontmatter.title in
+  let rec get_expanded_title ?scope ?(flags = T.{ empty_when_untitled = false }) (frontmatter : _ T.frontmatter) =
+    let short_title =
+      match frontmatter.title with
+      | Some content -> content
+      | None when not flags.empty_when_untitled ->
+        begin
+          match frontmatter.iri with
+          | Some iri -> T.Content [T.Iri iri]
+          | _ -> T.Content [T.Text "Untitled"]
+        end
+      | _ -> T.Content []
+    in
     Option.value ~default: short_title @@
       match frontmatter.designated_parent with
       | Some parent_iri when not (scope = frontmatter.designated_parent) ->
@@ -175,7 +185,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
         | T.Iri_vertex iri ->
           begin
             match get_article iri with
-            | Some article -> Some article.frontmatter.title
+            | Some article -> article.frontmatter.title
             | None -> not_found iri
           end
     in
@@ -184,17 +194,17 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   let get_content_of_transclusion (transclusion : T.content T.transclusion) =
     let content =
       match transclusion.target with
-      | T.Full flags ->
+      | Full flags ->
         let article = get_article_exn transclusion.href in
         T.Content [T.Section (T.article_to_section article ~flags)]
       | Mainmatter ->
         let article = get_article_exn transclusion.href in
         article.mainmatter
-      | Title ->
+      | Title flags ->
         begin
           match get_article transclusion.href with
-          | None -> T.Content [T.Text (Format.asprintf "%a" pp_iri transclusion.href)]
-          | Some article -> get_expanded_title article.frontmatter
+          | None -> T.Content [T.Iri transclusion.href]
+          | Some article -> get_expanded_title ~flags article.frontmatter
         end
       | Taxon ->
         let article = get_article_exn transclusion.href in

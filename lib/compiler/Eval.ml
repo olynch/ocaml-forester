@@ -233,7 +233,7 @@ and eval_node node : V.t =
     in
     let content =
       match title with
-      | None -> T.Content [T.Transclude { href; target = T.Title; modifier = Identity }]
+      | None -> T.Content [T.Transclude { href; target = T.Title { empty_when_untitled = false }; modifier = Identity }]
       | Some title -> { node with value = eval_tape title } |> V.extract_content
     in
     emit_content_node ~loc @@ Link { href; content }
@@ -476,7 +476,7 @@ and eval_node node : V.t =
     emit_content_node ~loc @@ CDATA str
   | Title ->
     let title = pop_content_arg ~loc in
-    Frontmatter.modify (fun fm -> { fm with title = title });
+    Frontmatter.modify (fun fm -> { fm with title = Some title });
     process_tape ()
   | Parent ->
     let host = Host_env.read () in

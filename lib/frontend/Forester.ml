@@ -93,12 +93,8 @@ let complete ~host prefix =
   let@ iri = Option.bind article.frontmatter.iri in
   let@ iri = Option.bind @@ Option_util.guard Iri_scheme.is_stable_iri iri in
   let iri = Iri_scheme.relativise_iri ~host iri in
-  let title =
-    Format.asprintf
-      "%a"
-      PT.pp_content
-      article.frontmatter.title
-  in
+  let@ title = Option.bind article.frontmatter.title in
+  let title = Format.asprintf "%a" PT.pp_content title in
   if String.starts_with ~prefix title then
     Some (iri, title)
   else
