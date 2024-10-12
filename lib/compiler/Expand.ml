@@ -38,8 +38,16 @@ module Builtins = struct
   end
 end
 
+let rec expand_method_calls (base : Syn.t) : Code.t -> Syn.t * Code.t = function
+  | { value = Hash_ident x; loc } :: rest ->
+    let base = [Range.{ value = Syn.Call (base, x); loc }] in
+    expand_method_calls base rest
+  | rest -> base, rest
+
 let rec expand : Code.t -> Syn.t = function
   | [] -> []
+  | { value = Hash_ident x; loc } :: rest ->
+    { value = Syn.Text x; loc } :: expand rest
   | { value = Text x; loc } :: rest ->
     { value = Syn.Text x; loc } :: expand rest
   | { value = Verbatim x; loc } :: rest ->
@@ -74,13 +82,9 @@ let rec expand : Code.t -> Syn.t = function
     { value = Syn.Subtree (addr, subtree); loc } :: expand rest
   | { value = Math (m, xs); loc } :: rest ->
     { value = Syn.Math (m, expand xs); loc } :: expand rest
-  | { value = Ident (path, methods); loc } :: rest ->
-    let rec loop acc = function
-      | [] -> acc
-      | m :: ms ->
-        loop [Range.{ value = Syn.Call (acc, m); loc }] ms
-    in
-    loop (expand_ident loc path) methods @ expand rest
+  | { value = Ident path; loc } :: rest ->
+    let out, rest = expand_method_calls (expand_ident loc path) rest in
+    out @ expand rest
   | { value = Scope body; _ } :: rest ->
     let body =
       let@ () = Sc.section [] in

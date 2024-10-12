@@ -10,7 +10,8 @@
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let int = '-'? digit+
-let ident = '\\' (alpha) (alpha | digit | '-' | '/' | '#')*
+let ident = '\\' (alpha) (alpha | digit | '-' | '/')*
+let hash_ident = '#' (alpha | digit | '-')*
 let xml_base_ident = (alpha) (alpha | digit | '-' | '_')*
 let xml_qname = (xml_base_ident ':' xml_base_ident) | xml_base_ident
 let addr = (alpha) (alpha | digit | '_' | '-')*
@@ -57,7 +58,7 @@ rule token = parse
   | "\\object" { Grammar.OBJECT }
   | "\\patch" { Grammar.PATCH }
   | "\\call" { Grammar.CALL }
-  | "#" { Grammar.TEXT "#" }
+  | hash_ident { Grammar.HASH_IDENT (drop_sigil '#' (Lexing.lexeme lexbuf)) }
   |
   "\\<"
     {

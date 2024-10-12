@@ -34,7 +34,7 @@ let build (trees : Code.tree list) =
     | Object { methods; _ } | Patch { methods; _ } ->
       let@ _, code = List.iter @~ methods in
       analyse_code roots code
-    | Text _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ -> ()
+    | Text _ | Hash_ident _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ -> ()
   in
   begin
     let@ tree = List.iter @~ trees in

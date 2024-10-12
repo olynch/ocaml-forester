@@ -8,6 +8,7 @@
 %token <string> TEXT VERBATIM
 %token <string> WHITESPACE
 %token <string> IDENT
+%token <string> HASH_IDENT
 %token IMPORT EXPORT DEF NAMESPACE LET FUN OPEN
 %token OBJECT PATCH CALL
 %token SUBTREE SCOPE PUT GET DEFAULT ALLOC
@@ -60,7 +61,8 @@ let head_node :=
 | SUBTREE; ~ = option(squares(wstext)); ~ = braces(ws_list(locate(head_node))); <Code.Subtree>
 | FUN; ~ = binder; ~ = arg; <Code.Fun>
 | LET; (~,~,~) = fun_spec; <Code.Let>
-| (~,~) = ident_with_method_calls; <Code.Ident>
+| ~ = ident; <Code.Ident>
+| ~ = HASH_IDENT; <Code.Hash_ident>
 | SCOPE; ~ = arg; <Code.Scope>
 | PUT; ~ = ident; ~ = arg; <Code.Put>
 | DEFAULT; ~ = ident; ~ = arg; <Code.Default>
@@ -91,16 +93,6 @@ let xml_attr :=
 let ident :=
 | ident = IDENT;
  { String.split_on_char '/' ident }
-
-let ident_with_method_calls :=
-| ident = IDENT;
-  { match String.split_on_char '#' ident with
-    | [x] -> String.split_on_char '/' x, []
-    | "" :: xs -> ["#"], List.filter (fun x -> x <> "") xs
-    | x :: xs -> String.split_on_char '/' x, List.filter (fun x -> x <> "") xs
-    | [] -> [], []
-   }
-
 
 let ws_or_text :=
 | x = TEXT; { x }

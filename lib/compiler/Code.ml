@@ -18,7 +18,8 @@ type node =
   | Verbatim of string
   | Group of delim * t
   | Math of math_mode * t
-  | Ident of Trie.path * string list
+  | Ident of Trie.path
+  | Hash_ident of string
   | Xml_tag of (string option * string) * ((string option * string) * t) list * t
   | Subtree of string option * t
   | Let of Trie.path * Trie.path binding list * t
