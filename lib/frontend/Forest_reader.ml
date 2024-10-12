@@ -24,8 +24,7 @@ let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article
   in
   let (_, articles, jobs) =
     let task addr (units, trees, jobs) =
-      let tree = String_map.find_opt addr unexpanded_trees in
-      match tree with
+      match String_map.find_opt addr unexpanded_trees with
       | None -> units, trees, jobs
       | Some tree ->
         let units, syn = Expand.expand_tree units tree in
