@@ -77,11 +77,11 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     | false -> bare_route ^ ".xml"
 
   let route_foreign_forester_iri ~host ~path ~is_asset =
-    "foreign/" ^
+    "foreign-" ^
       match host with
       | None -> route_bare_forester_iri ~path ~is_asset
       | Some host ->
-        host ^ "/" ^ route_bare_forester_iri ~path ~is_asset
+        host ^ "-" ^ route_bare_forester_iri ~path ~is_asset
 
   let route_forester_iri ~host ~path ~is_asset =
     if host = Params.host then
