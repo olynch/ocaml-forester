@@ -17,6 +17,7 @@ end
 
 module Scope = struct
   include Yuujinchou.Scope.Make(P)
+  type data = P.data
 
   let import_singleton x v =
     import_singleton (x, (v, ()))

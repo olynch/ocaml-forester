@@ -9,6 +9,12 @@ open Forester_core
 type env = Eio_unix.Stdenv.base
 type dir = Eio.Fs.dir_ty Eio.Path.t
 
+val parse_trees_in_dirs :
+  dev: bool ->
+  ?ignore_malformed: bool ->
+  Eio.Fs.dir_ty Eio.Path.t list ->
+  Forester_compiler.Code.tree list
+
 val plant_raw_forest_from_dirs :
   env: env ->
   host: string ->

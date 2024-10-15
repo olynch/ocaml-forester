@@ -253,7 +253,15 @@ let cmd ~env =
     ]
   in
   let info = Cmd.info "forester" ~version ~doc ~man in
-  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; init_cmd ~env; query_cmd ~env]
+  Cmd.group
+    info
+    [
+      build_cmd ~env;
+      new_tree_cmd ~env;
+      complete_cmd ~env;
+      init_cmd ~env;
+      query_cmd ~env
+    ]
 
 let () =
   Random.self_init ();

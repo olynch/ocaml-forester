@@ -60,18 +60,19 @@ end
 module Job_map_reduce = Map_reduce.Make(Job_runner)
 module Eval_map_reduce = Map_reduce.Make(Eval_runner)
 
-let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article list * Job.publication list =
+let expand ~host trees =
   let unexpanded_trees = organise_trees ~host trees in
-  let _, expanded_trees =
-    let task addr (units, trees) =
-      match String_map.find_opt addr unexpanded_trees with
-      | None -> units, trees
-      | Some tree ->
-        let units, syn = Expand.expand_tree units tree in
-        units, (addr, tree.source_path, syn) :: trees
-    in
-    Import_graph.topo_fold task (Import_graph.build trees) (Expand.Env.empty, [])
+  let task addr (units, trees) =
+    match String_map.find_opt addr unexpanded_trees with
+    | None -> units, trees
+    | Some tree ->
+      let units, syn = Expand.expand_tree units tree in
+      units, (addr, tree.source_path, syn) :: trees
   in
+  Import_graph.topo_fold task (Import_graph.build trees) (Expand.Env.empty, [])
+
+let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article list * Job.publication list =
+  let _, expanded_trees = expand ~host trees in
   let Eval_runner.{ articles; jobs } = Eval_map_reduce.reduce ~env: { host } expanded_trees in
   let job_results =
     Job_map_reduce.reduce

@@ -13,6 +13,7 @@
    forester.prelude
    forester.core
    forester.frontend
+   forester.compiler
    cmdliner
    dune-build-info
    asai

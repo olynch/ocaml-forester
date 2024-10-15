@@ -7,6 +7,7 @@
 module Code = Code
 module Syn = Syn
 
+module Resolver = Resolver
 module Expand = Expand
 module Eval = Eval
 module Parse = Parse

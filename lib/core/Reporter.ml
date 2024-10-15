@@ -4,17 +4,18 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
+open Base
+
 module Message = struct
   type t =
-    | Duplicate_tree
+    | Tree_not_found of iri
+    | Duplicate_tree of iri
     | Parse_error
     | Type_error
     | Type_warning
     | Resolution_error
     | Resolution_warning
-    | Expansion_error
     | Duplicate_attribute
-    | Frontmatter_in_body
     | Unhandled_case
     | Transclusion_loop
     | Internal_error
@@ -29,15 +30,14 @@ module Message = struct
   [@@deriving show]
 
   let default_severity : t -> Asai.Diagnostic.severity = function
-    | Duplicate_tree -> Error
+    | Duplicate_tree _ -> Error
+    | Tree_not_found _ -> Error
     | Parse_error -> Error
     | Type_error -> Error
     | Type_warning -> Warning
     | Resolution_error -> Error
     | Resolution_warning -> Warning
-    | Expansion_error -> Error
     | Duplicate_attribute -> Error
-    | Frontmatter_in_body -> Error
     | Unhandled_case -> Bug
     | Transclusion_loop -> Error
     | Internal_error -> Bug
@@ -79,3 +79,17 @@ let silence k =
   in
   let emit _diagnostics = () in
   run ~emit ~fatal k
+
+let lsp_run ?init_loc ?init_backtrace publish path k =
+  let diagnostics = ref [] in
+  let push_diagnostic d =
+    diagnostics := d :: !diagnostics
+  in
+  run
+    ~emit: push_diagnostic
+    ~fatal: push_diagnostic
+    ?init_loc
+    ?init_backtrace @@
+    fun () ->
+      k ();
+      publish path !diagnostics

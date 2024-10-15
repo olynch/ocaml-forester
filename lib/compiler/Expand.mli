@@ -3,9 +3,15 @@
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
+open Forester_prelude
+open Forester_core
+
+module Unit_map: Map.S
+
+type exports = Resolver.P.data Trie.Untagged.t
 
 module Env: sig
-  type t
+  type t = exports Unit_map.t
   val empty : t
 end
 

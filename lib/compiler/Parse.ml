@@ -100,123 +100,8 @@ let parse
     lexbuf ->
     (Code.t, Reporter.Message.t Asai.Diagnostic.t) Result.t
   = fun ?(stop_on_err = true) lexbuf ->
-
-    (* a checkpoint is an intermediate or final state of the parser *)
     let initial_checkpoint = (Grammar.Incremental.main lexbuf.lex_curr_p) in
-
-    (* The idea is simple: push opening delimiters onto the stack, pop them
-       once they are closed. Upon encountering an error, the reported range
-       includes the last unclosed delimiter.
-     *)
     let delim_stack = Stack.create () in
-
-    (* The recursive loop.*)
-    let fail
-        : _ I.checkpoint ->
-        (Code.t, Reporter.Message.t Asai.Diagnostic.t) Result.t
-      = fun checkpoint ->
-        match checkpoint with
-        (*
-          Consider the source file
-
-          ```
-          \def\foo{
-
-          \p{
-            lorem ipsum dolor sit amet
-          }
-          ```
-
-          Before this patch, the error reported when encountering this was
-          undecipherable, since it just hit EOF and then reported unexpected ``.
-
-          The diagnostic constructed below enlarges the range of the reported
-          error to the last unclosed delimiter. This makes the error much more
-          understandable
-
-          ```
-          ￭ ./trees/comment.tree
-          1 | \def\foo{
-            ^ This delimiter is never closed
-          2 |
-          3 | \p{
-          4 |   lorem ipsum dolor sit amet
-          5 | }
-          6 |
-            ^ Did you forget to close it?
-          ```
-
-          However, for implementing an LSP this is insufficient. When
-          encountering an error, we produce no value. We need an
-          error-resilient parser. We want the parse tree to look something like
-          this:
-
-          1 TREE
-          2  FUN_SPEC
-          3    NAME "foo"
-          4    ARG_LIST []
-          5    BODY ERROR
-          6  PRIM PARAGRAPH
-          7     TEXT "lorem ipsum dolor sit amet"
-
-          The tricky bit here is that we only know that there is a parse error
-          when encountering EOF. How can we derive the fact that the erroneous
-          construct is the function definition, and that the error should be
-          localised at the unclosed brace?
-
-          We would need to inspect the parser state and recognize that we are
-          currently parsing a function whose body never gets closed, produce a
-          value like at line 5, and resume:
-          https://gallium.inria.fr/%7Efpottier/menhir/manual.html#sec%3Aincremental%3Aupdating
-
-          This illustrates the problem with having such strictly typed parse
-          tree. Code.t was not able to represent such a failed parse. (I have
-          sinced added an error node, so it is now technically possible for
-          this specific usecase, but so far it is unused. Furhtermore, the code
-          can't represent, for example, trie paths that failed to parse).
-
-            Aside: Inspired by rust-analyzer and rowan, I am playing around
-            with github.com/kentookura/orochi. In rust-analyzer, they use such
-            an untyped API and layer a typed AST over it. I haven't gotten
-            around to that part yet.
-
-          Now the use case of the incremental API becomes apparent. It allows
-          us to inspect the parser state and travel in time, look back, look
-          forward, anything we want.
-
-          Here are the action items:
-
-          - Understand what kinds of syntax errors can occur when typing. These
-          are the erroneous inputs we are most likely to encounter, as we want
-          to make an LSP server. This is stuff like unclosed delimiters, etc.
-
-          - Understand how we should best recover from erroneous input, for
-          example:
-
-          ```
-          \ul{
-            \li{
-              asdf
-            }
-            {
-          }
-          ```
-
-          Should report "unexpected {", rather than "unclosed {", and produce
-          something like:
-
-          1 TREE
-          2   PRIM OL
-          3     PRIM LI
-          4       TEXT "asdf"
-          5     ERROR "{"
-
-          - Study the menhir API so that we know how to implement this kind of
-          recovery.
-           *)
-        | I.HandlingError _ -> Reporter.fatalf Parse_error "TODO"
-        | _ -> Reporter.fatalf Parse_error "TODO"
-    in
     let rec run
         : _ I.checkpoint ->
         _ ->
@@ -226,6 +111,12 @@ let parse
         | I.InputNeeded _env ->
           (* In this phase we push and pop delimiters onto the stack.*)
           let token, start, end_ = supplier () in
+          (* NOTE: Should we be storing the checkpoints?
+             The reason would be that we might want to resume parsing from an
+             unclosed delimiter, and putting an error node where the unclosed
+             delimiter was found, and we might only find out that the delimiter
+             was not closed upon encountering EOF
+           *)
           let start_position = lexbuf.lex_start_p in
           let end_position = lexbuf.lex_curr_p in
           if is_opening_delim token then
@@ -303,8 +194,9 @@ let parse_lexbuf lexbuf =
     parse lexbuf
   with
     | Grammar.Error ->
-      Reporter.fatalf ~loc: (Range.of_lexbuf lexbuf) Parse_error "failed to parse"
-    | exn -> raise exn
+      Error (Asai.Diagnostic.of_text ~loc: (Range.of_lexbuf lexbuf) Error Forester_core.Reporter.Message.Parse_error (Asai.Diagnostic.text "failed to parse"))
+(* | exn -> *)
+(*   Error (Asai.Diagnostic.of_text ~loc: (Range.of_lexbuf lexbuf) Error Forester_core.Reporter.Message.Parse_error (Asai.Diagnostic.text "failed to parse")) *)
 
 let parse_channel filename ch =
   let lexbuf = Lexing.from_channel ch in
