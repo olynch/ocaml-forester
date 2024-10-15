@@ -242,6 +242,29 @@ let init_cmd ~env =
   let info = Cmd.info "init" ~version ~doc ~man in
   Cmd.v info Term.(const (init ~env) $ arg_dir)
 
+let lsp ~env config =
+  let config = Config.parse_forest_config_file config in
+  Forester_lsp.start
+    ~env
+    ~config
+    ~source: None
+
+let lsp_cmd ~env =
+  let man =
+    [
+      `S Manpage.s_description;
+      `P "The $(tname) command starts the forester language server.";
+    ]
+  in
+  let doc = "Start the LSP" in
+  let info = Cmd.info "lsp" ~version ~doc ~man in
+  Cmd.v
+    info
+    Term.(
+      const (lsp ~env)
+      $ arg_config
+    )
+
 let cmd ~env =
   let doc = "a tool for tending mathematical forests" in
   let man =
@@ -260,7 +283,8 @@ let cmd ~env =
       new_tree_cmd ~env;
       complete_cmd ~env;
       init_cmd ~env;
-      query_cmd ~env
+      query_cmd ~env;
+      lsp_cmd ~env;
     ]
 
 let () =

@@ -1,0 +1,35 @@
+;;; SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+;;; 
+;;; SPDX-License-Identifier: GPL-3.0-or-later OR Apache-2.0 WITH LLVM-exception
+
+(library
+ (name Forester_lsp)
+ (libraries
+   algaeff
+   repr
+   unix
+   forester.prelude
+   forester.core
+   forester.compiler
+   forester.frontend
+   forester.forest
+   lsp
+   asai
+   eio
+   eio_main
+   eio.unix
+   jsonrpc
+   yojson
+   bwd
+   iri
+   yuujinchou
+   fmt
+   )
+ (preprocess
+  (pps ppx_deriving.show ppx_repr ppx_yojson_conv))
+ (public_name forester.language_server))
+
+;(env
+; (dev
+;  (flags
+;   (:standard -w -66-32-33-27-26))))

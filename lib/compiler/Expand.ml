@@ -200,7 +200,7 @@ let rec expand : Code.t -> Syn.t = function
     { value = Syn.Dx_query (var, List.map expand positives, List.map expand negatives); loc } :: expand rest
   | { value = Fun (xs, body); loc } :: rest ->
     expand_lambda loc (xs, body) :: expand rest
-  | { value = Object { self; methods }; loc } :: rest ->
+  | { value = Object{ self; methods }; loc } :: rest ->
     let self, methods =
       let@ () = Sc.section [] in
       let sym = Symbol.fresh () in
@@ -212,7 +212,7 @@ let rec expand : Code.t -> Syn.t = function
       sym, List.map expand_method methods
     in
     { value = Syn.Object { self; methods }; loc } :: expand rest
-  | { value = Patch { obj; self; methods }; loc } :: rest ->
+  | { value = Patch{ obj; self; methods }; loc } :: rest ->
     let self, super, methods =
       let@ () = Sc.section [] in
       let self_sym = Symbol.fresh () in
@@ -331,7 +331,7 @@ and expand_ident loc path =
   | Some (Term x, ()), _ ->
     let relocate Range.{ value; _ } = Range.{ value; loc } in
     List.map relocate x
-  | Some (Xmlns { xmlns; prefix }, ()), _ ->
+  | Some (Xmlns{ xmlns; prefix }, ()), _ ->
     Reporter.emitf
       ?loc
       Resolution_error
@@ -347,7 +347,7 @@ and expand_xml_ident loc (prefix, uname) =
   | None -> { xmlns = None; prefix = ""; uname }
   | Some prefix ->
     match Sc.resolve ["xmlns"; prefix] with
-    | Some (Xmlns { xmlns; prefix }, ()) ->
+    | Some (Xmlns{ xmlns; prefix }, ()) ->
       { xmlns = Some xmlns; prefix = prefix; uname }
     | _ ->
       Reporter.emitf
@@ -376,70 +376,72 @@ and expand_tree_inner (tree : Code.tree) : Syn.tree =
   U.set units;
   syn
 
+let builtins =
+  [
+    ["p"], Syn.Prim `P;
+    ["em"], Syn.Prim `Em;
+    ["strong"], Syn.Prim `Strong;
+    ["li"], Syn.Prim `Li;
+    ["ol"], Syn.Prim `Ol;
+    ["ul"], Syn.Prim `Ul;
+    ["code"], Syn.Prim `Code;
+    ["blockquote"], Syn.Prim `Blockquote;
+    ["pre"], Syn.Prim `Pre;
+    ["figure"], Syn.Prim `Figure;
+    ["figcaption"], Syn.Prim `Figcaption;
+    ["transclude"], Syn.Transclude;
+    ["tex"], Syn.Embed_tex;
+    ["ref"], Syn.Ref;
+    ["title"], Syn.Title;
+    ["taxon"], Syn.Taxon;
+    ["date"], Syn.Date;
+    ["meta"], Syn.Meta;
+    ["author"], Syn.Attribution (Author, `Iri);
+    ["author"; "literal"], Syn.Attribution (Author, `Content);
+    ["contributor"], Syn.Attribution (Contributor, `Iri);
+    ["contributor"; "literal"], Syn.Attribution (Contributor, `Content);
+    ["parent"], Syn.Parent;
+    ["number"], Syn.Number;
+    ["tag"], Syn.Tag `Content;
+    ["query"], Syn.Results_of_query;
+    ["query"; "rel"], Syn.Query_rel `Iri;
+    ["query"; "rel"; "literal"], Syn.Query_rel `Content;
+    ["query"; "union"], Syn.Query_union;
+    ["query"; "isect"], Syn.Query_isect;
+    ["query"; "isect-fam"], Syn.Query_isect_fam;
+    ["query"; "union-fam"], Syn.Query_union_fam;
+    ["query"; "isect-fam-rel"], Syn.Query_isect_fam_rel;
+    ["query"; "union-fam-rel"], Syn.Query_union_fam_rel;
+    ["query"; "compl"], Syn.Query_compl;
+    ["query"; "tag"], Syn.Query_builtin (`Tag, `Content);
+    ["query"; "taxon"], Syn.Query_builtin (`Taxon, `Content);
+    ["query"; "author"], Syn.Query_builtin (`Author, `Iri);
+    ["query"; "author"; "literal"], Syn.Query_builtin (`Author, `Content);
+    ["query"; "incoming"], Syn.Query_polarity Incoming;
+    ["query"; "outgoing"], Syn.Query_polarity Outgoing;
+    ["query"; "edges"], Syn.Query_mode Edges;
+    ["query"; "paths"], Syn.Query_mode Paths;
+    ["rel"; "has-tag"], Syn.Text Builtin_relation.has_tag;
+    ["rel"; "has-taxon"], Syn.Text Builtin_relation.has_taxon;
+    ["rel"; "has-author"], Syn.Text Builtin_relation.has_author;
+    ["rel"; "has-direct-contributor"], Syn.Text Builtin_relation.has_direct_contributor;
+    ["rel"; "transcludes"], Syn.Text Builtin_relation.transcludes;
+    ["rel"; "transcludes"; "transitive-closure"], Syn.Text Builtin_relation.transcludes_tc;
+    ["rel"; "transcludes"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transcludes_rtc;
+    ["rel"; "links-to"], Syn.Text Builtin_relation.links_to;
+    ["rel"; "is-reference"], Syn.Text Builtin_relation.is_reference;
+    ["rel"; "is-person"], Syn.Text Builtin_relation.is_person;
+    ["rel"; "is-node"], Syn.Text Builtin_relation.is_node;
+    ["rel"; "in-bundle-closure"], Syn.Text Builtin_relation.in_bundle_closure;
+    ["execute"], Syn.Dx_execute;
+    ["route-asset"], Syn.Route_asset;
+    ["publish-query"], Syn.Publish_results_of_query
+  ]
+
 let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
   let@ () = U.run ~init: units in
   let@ () = Sc.easy_run in
-  Builtins.register_builtins
-    [
-      ["p"], Syn.Prim `P;
-      ["em"], Syn.Prim `Em;
-      ["strong"], Syn.Prim `Strong;
-      ["li"], Syn.Prim `Li;
-      ["ol"], Syn.Prim `Ol;
-      ["ul"], Syn.Prim `Ul;
-      ["code"], Syn.Prim `Code;
-      ["blockquote"], Syn.Prim `Blockquote;
-      ["pre"], Syn.Prim `Pre;
-      ["figure"], Syn.Prim `Figure;
-      ["figcaption"], Syn.Prim `Figcaption;
-      ["transclude"], Syn.Transclude;
-      ["tex"], Syn.Embed_tex;
-      ["ref"], Syn.Ref;
-      ["title"], Syn.Title;
-      ["taxon"], Syn.Taxon;
-      ["date"], Syn.Date;
-      ["meta"], Syn.Meta;
-      ["author"], Syn.Attribution (Author, `Iri);
-      ["author"; "literal"], Syn.Attribution (Author, `Content);
-      ["contributor"], Syn.Attribution (Contributor, `Iri);
-      ["contributor"; "literal"], Syn.Attribution (Contributor, `Content);
-      ["parent"], Syn.Parent;
-      ["number"], Syn.Number;
-      ["tag"], Syn.Tag `Content;
-      ["query"], Syn.Results_of_query;
-      ["query"; "rel"], Syn.Query_rel `Iri;
-      ["query"; "rel"; "literal"], Syn.Query_rel `Content;
-      ["query"; "union"], Syn.Query_union;
-      ["query"; "isect"], Syn.Query_isect;
-      ["query"; "isect-fam"], Syn.Query_isect_fam;
-      ["query"; "union-fam"], Syn.Query_union_fam;
-      ["query"; "isect-fam-rel"], Syn.Query_isect_fam_rel;
-      ["query"; "union-fam-rel"], Syn.Query_union_fam_rel;
-      ["query"; "compl"], Syn.Query_compl;
-      ["query"; "tag"], Syn.Query_builtin (`Tag, `Content);
-      ["query"; "taxon"], Syn.Query_builtin (`Taxon, `Content);
-      ["query"; "author"], Syn.Query_builtin (`Author, `Iri);
-      ["query"; "author"; "literal"], Syn.Query_builtin (`Author, `Content);
-      ["query"; "incoming"], Syn.Query_polarity Incoming;
-      ["query"; "outgoing"], Syn.Query_polarity Outgoing;
-      ["query"; "edges"], Syn.Query_mode Edges;
-      ["query"; "paths"], Syn.Query_mode Paths;
-      ["rel"; "has-tag"], Syn.Text Builtin_relation.has_tag;
-      ["rel"; "has-taxon"], Syn.Text Builtin_relation.has_taxon;
-      ["rel"; "has-author"], Syn.Text Builtin_relation.has_author;
-      ["rel"; "has-direct-contributor"], Syn.Text Builtin_relation.has_direct_contributor;
-      ["rel"; "transcludes"], Syn.Text Builtin_relation.transcludes;
-      ["rel"; "transcludes"; "transitive-closure"], Syn.Text Builtin_relation.transcludes_tc;
-      ["rel"; "transcludes"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transcludes_rtc;
-      ["rel"; "links-to"], Syn.Text Builtin_relation.links_to;
-      ["rel"; "is-reference"], Syn.Text Builtin_relation.is_reference;
-      ["rel"; "is-person"], Syn.Text Builtin_relation.is_person;
-      ["rel"; "is-node"], Syn.Text Builtin_relation.is_node;
-      ["rel"; "in-bundle-closure"], Syn.Text Builtin_relation.in_bundle_closure;
-      ["execute"], Syn.Dx_execute;
-      ["route-asset"], Syn.Route_asset;
-      ["publish-query"], Syn.Publish_results_of_query
-    ];
+  Builtins.register_builtins builtins;
   Builtins.Transclude.alloc_expanded ();
   Builtins.Transclude.alloc_show_heading ();
   Builtins.Transclude.alloc_toc ();

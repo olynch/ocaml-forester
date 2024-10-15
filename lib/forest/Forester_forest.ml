@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
+module Forest_graph = Forest_graph
 module Forest_graphs = Forest_graphs
 module Forest = Forest
 module Forest_util = Forest_util

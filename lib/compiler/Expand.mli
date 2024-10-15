@@ -15,6 +15,7 @@ module Env: sig
   val empty : t
 end
 
+val builtins : (string list * Syn.node) list
 val expand_tree : Env.t -> Code.tree -> Env.t * Syn.tree
 
 module Builtins:
