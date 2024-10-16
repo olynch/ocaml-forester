@@ -2,19 +2,7 @@ open Base
 
 (** {1 Binary relation symbols} *)
 
-module Rel: sig
-  type t = string
-
-  val t : t Repr.ty
-  val links : t
-  val transclusion : t
-  val authors : t
-  val contributors : t
-  val tags : t
-  val taxa : t
-end
-
-type rel = Rel.t
+type rel = string
 
 (** {1 Query modifiers} *)
 
@@ -64,7 +52,7 @@ type 'a binder = { body: 'a }
 val binder_t : 'a Repr.t -> 'a binder Repr.t
 
 type ('vertex, 'var) expr =
-  | Rel of mode * polarity * Rel.t * ('vertex, 'var) vertex_expr
+  | Rel of mode * polarity * rel * ('vertex, 'var) vertex_expr
   | Isect of ('vertex, 'var) expr list
   | Union of ('vertex, 'var) expr list
   | Complement of ('vertex, 'var) expr

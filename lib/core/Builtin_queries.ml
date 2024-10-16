@@ -2,35 +2,49 @@ open Query
 
 open Locally_nameless(Global_name)
 
-let context vtx =
-  rel Edges Incoming Rel.transclusion vtx
+module Dx = Datalog_expr
 
-let backlinks vtx =
-  rel Edges Incoming Rel.links vtx
+let context_datalog vtx : _ Dx.query =
+  let open Dx.Notation in
+  let x = "X" in
+  Dx.{
+    var = x;
+    positives = [Builtin_relation.transclusion @* [var x; const vtx]];
+    negatives = []
+  }
 
-let has_taxon taxon =
-  rel Edges Incoming Rel.taxa (Vertex (Xml_tree.Content_vertex (Xml_tree.Content [Xml_tree.Text taxon])))
+let backlinks_datalog vtx : _ Dx.query =
+  let open Dx.Notation in
+  let x = "X" in
+  Dx.{
+    var = x;
+    positives = [Builtin_relation.links @* [var x; const vtx]];
+    negatives = []
+  }
 
-let related vtx =
-  isect
-    [
-      rel Edges Outgoing Rel.links vtx;
-      complement @@ has_taxon "reference"
-    ]
+let related_datalog vtx : _ Dx.query =
+  let open Dx.Notation in
+  let x = "X" in
+  Dx.{
+    var = x;
+    positives = [Builtin_relation.links @* [const vtx; var x]];
+    negatives = [Builtin_relation.is_reference @* [var x]]
+  }
 
-let contributions vtx =
-  union
-    [
-      rel Edges Incoming Rel.authors vtx;
-      rel Edges Incoming Rel.contributors vtx
-    ]
+let contributions_datalog vtx : _ Dx.query =
+  let open Dx.Notation in
+  let x = "X" in
+  Dx.{
+    var = x;
+    positives = [Builtin_relation.contribution @* [var x; const vtx]];
+    negatives = []
+  }
 
-let tree_under x =
-  rel Paths Outgoing Rel.transclusion x
-
-let references vtx =
-  isect
-    [
-      union_fam_rel (tree_under vtx) Edges Outgoing Rel.links;
-      has_taxon "reference"
-    ]
+let references_datalog vtx : _ Datalog_expr.query =
+  let open Dx.Notation in
+  let x = "X" in
+  Dx.{
+    var = x;
+    positives = [Builtin_relation.references @* [const vtx; var x]];
+    negatives = []
+  }

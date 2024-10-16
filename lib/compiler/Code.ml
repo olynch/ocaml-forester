@@ -37,6 +37,12 @@ type node =
   | Decl_xmlns of string * string
   | Alloc of Trie.path
   | Namespace of Trie.path * t
+  | Dx_sequent of t * t list
+  | Dx_query of string * t list * t list
+  | Dx_prop of t * t list
+  | Dx_var of string
+  | Dx_const_content of t
+  | Dx_const_iri of t
 [@@deriving show, repr]
 
 and t = node Range.located list

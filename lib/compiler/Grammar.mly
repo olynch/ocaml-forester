@@ -12,8 +12,13 @@
 %token IMPORT EXPORT DEF NAMESPACE LET FUN OPEN
 %token OBJECT PATCH CALL
 %token SUBTREE SCOPE PUT GET DEFAULT ALLOC
-%token LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE
+%token LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE TICK AT_SIGN HASH
 %token EOF
+
+%token DATALOG
+
+%token DX_ENTAILED
+%token <string> DX_VAR
 
 %start <Code.t> main
 
@@ -43,13 +48,14 @@ let ws_or(p) :=
 | x = p; { [x] }
 
 let ws_list(p) := flatten(list(ws_or(p)))
+let separated_ws_list(sep,p) := flatten(separated_list(sep,ws_or(p)))
 
 let textual_node :=
 | ~ = TEXT; <Code.Text>
 | ~ = WHITESPACE; <Code.Text>
-| ~ = head_node; <Fun.id>
+| ~ = head_node1; <Fun.id>
 
-let code_expr == ws_list(locate(head_node))
+let code_expr == ws_list(locate(head_node1))
 let textual_expr == list(locate(textual_node))
 
 let head_node :=
@@ -79,7 +85,15 @@ let head_node :=
 | ~ = squares(textual_expr); <Code.squares>
 | ~ = parens(textual_expr); <Code.parens>
 | ~ = VERBATIM; <Code.Verbatim>
+| DATALOG; LBRACE; list(WHITESPACE); ~ = dx_sequent_node; RBRACE; <>
 
+let head_node1 :=
+| ~ = head_node; <>
+| DX_ENTAILED; { Code.Text "-:" }
+| x = DX_VAR; { Code.Text ("?" ^ x) }
+| TICK; { Code.Text "'" }
+| AT_SIGN; { Code.Text "@" }
+| HASH; { Code.Text "#" }
 
 let method_decl :=
 | k = squares(TEXT); list(WHITESPACE); v = arg; { k, v }
@@ -105,3 +119,27 @@ let fun_spec == ~ = ident; ~ = binder; ~ = arg; <>
 
 let main :=
 | ~ = ws_list(locate(head_node)); EOF; <>
+
+let dx_rel :=
+| x = locate(ident); { [Range.{x with value = Code.Ident x.value}] }
+| TICK; ~ = arg; <>
+
+let dx_term_node :=
+| ~ = DX_VAR; <Code.Dx_var>
+| TICK; ~ = arg; <Code.Dx_const_content>
+| AT_SIGN; ~ = arg; <Code.Dx_const_iri>
+
+let dx_term :=
+| x = locate(dx_term_node); { [x] }
+
+let dx_prop_node :=
+| ~ = dx_rel; ~ = ws_list(dx_term); <Code.Dx_prop>
+
+let dx_prop :=
+| p = locate(dx_prop_node); { [p] }
+
+let dx_sequent_node :=
+| ~ = dx_prop; DX_ENTAILED; ~ = ws_list(braces(dx_prop)); <Code.Dx_sequent>
+| x = DX_VAR; list(WHITESPACE); DX_ENTAILED; pos = ws_list(braces(dx_prop)); { Code.Dx_query (x, pos, []) }
+| ~ = DX_VAR; list(WHITESPACE); DX_ENTAILED; ~ = ws_list(braces(dx_prop)); HASH; ~ = ws_list(braces(dx_prop)); <Code.Dx_query>
+

@@ -30,6 +30,7 @@ depends: [
   "uri" {>= "4.4.0"}
   "pure-html" {>= "3.6.1"}
   "base64" {>= "3.5.1"}
+  "datalog" {>= "0.7"}
   "odoc" {with-doc}
 ]
 build: [

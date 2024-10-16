@@ -17,11 +17,25 @@ module type S = sig
   val get_expanded_title : ?scope: iri -> ?flags: T.title_flags -> T.content T.frontmatter -> T.content
   val get_content_of_transclusion : T.content T.transclusion -> T.content
   val get_title_or_content_of_vertex : ?not_found: (iri -> T.content option) -> modifier: T.modifier -> T.content T.vertex -> T.content option
+
+  val run_datalog_query : (string, Vertex.t) Datalog_expr.query -> Vertex_set.t
   val run_query : T.query -> Vertex_set.t
 end
 
 module Make (Graphs: Forest_graphs.S) : S = struct
   type article = T.content T.article
+
+  module Dci = Datalog_engine
+  module Dx = Datalog_expr
+
+  let execute_datalog_script script =
+    let@ sequent = List.iter @~ script in
+    Dci.db_add Graphs.dl_db (Datalog_eval.eval_sequent sequent)
+
+  let () = execute_datalog_script Builtin_relation.axioms
+
+  let run_datalog_query =
+    Datalog_eval.run_query Graphs.dl_db
 
   type resource =
     | Article of article
@@ -30,9 +44,18 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   let resources : (Iri.t, resource) Hashtbl.t =
     Hashtbl.create 1000
 
+  let add_edge rel ~source ~target =
+    let premises = [] in
+    let conclusion =
+      let args = [Dx.Const source; Dx.Const target] in
+      Dx.{ rel; args }
+    in
+    execute_datalog_script [{ conclusion; premises }];
+    Graphs.add_edge rel ~source ~target
+
   let rec analyse_content_node (scope : Iri.t) (node : 'a T.content_node) : unit =
     match node with
-    | Text _ | CDATA _ | Iri _ | Results_of_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
+    | Text _ | CDATA _ | Iri _ | Results_of_query _ | Results_of_datalog_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
     | Transclude transclusion ->
       analyse_transclusion scope transclusion
     | Xml_elt elt ->
@@ -40,7 +63,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     | Section section ->
       analyse_section scope section
     | Link link ->
-      Graphs.add_edge Q.Rel.links ~source: (Iri_vertex scope) ~target: (Iri_vertex link.href);
+      add_edge Builtin_relation.links ~source: (Iri_vertex scope) ~target: (Iri_vertex link.href);
       analyse_content scope link.content
     | Prim (_, content) ->
       analyse_content scope content
@@ -48,6 +71,8 @@ module Make (Graphs: Forest_graphs.S) : S = struct
       analyse_content scope content
     | Resource resource ->
       analyse_resource scope resource
+    | Datalog_script script ->
+      execute_datalog_script script
 
   and analyse_resource scope resource =
     analyse_content scope resource.content
@@ -55,7 +80,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   and analyse_transclusion (scope : Iri.t) (transclusion : T.content T.transclusion) : unit =
     match transclusion.target with
     | Full _ | Mainmatter ->
-      Graphs.add_edge Q.Rel.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex transclusion.href)
+      add_edge Builtin_relation.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex transclusion.href)
     | Title _ | Taxon -> ()
 
   and analyse_content (scope : Iri.t) (content : T.content) : unit =
@@ -64,10 +89,10 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   and analyse_attribution (scope : Iri.t) (attr : _ T.attribution) =
     let rel =
       match attr.role with
-      | Author -> Q.Rel.authors
-      | Contributor -> Q.Rel.contributors
+      | Author -> Builtin_relation.authors
+      | Contributor -> Builtin_relation.contributors
     in
-    Graphs.add_edge rel ~source: (Iri_vertex scope) ~target: attr.vertex;
+    add_edge rel ~source: (Iri_vertex scope) ~target: attr.vertex;
     analyse_vertex scope attr.vertex
 
   and analyse_vertex scope = function
@@ -76,12 +101,12 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   and analyse_tag (scope : Iri.t) (tag : _ T.vertex) =
     analyse_vertex scope tag;
-    Graphs.add_edge Q.Rel.tags ~source: (Iri_vertex scope) ~target: tag
+    add_edge Builtin_relation.tags ~source: (Iri_vertex scope) ~target: tag
 
   and analyse_taxon (scope : Iri.t) (taxon_opt : T.content option) =
     let@ taxon = Option.iter @~ taxon_opt in
     analyse_content scope taxon;
-    Graphs.add_edge Q.Rel.taxa ~source: (Iri_vertex scope) ~target: (Content_vertex taxon)
+    add_edge Builtin_relation.taxa ~source: (Iri_vertex scope) ~target: (Content_vertex taxon)
 
   and analyse_attributions (scope : Iri.t) (attrs : _ T.attribution list) =
     attrs |> List.iter @@ analyse_attribution scope
@@ -107,7 +132,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   and analyse_section (scope : Iri.t) (section : T.content T.section) : unit =
     begin
       let@ target = Option.iter @~ section.frontmatter.iri in
-      Graphs.add_edge Q.Rel.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex target)
+      add_edge Builtin_relation.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex target)
     end;
     analyse_frontmatter section.frontmatter;
     analyse_content (Option.value ~default: scope section.frontmatter.iri) section.mainmatter
@@ -150,8 +175,8 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     | None ->
       Reporter.fatalf Tree_not_found "Could not find tree %a" pp_iri addr
 
-  module Query_engine = Query_engine.Make(Graphs)
-  include Query_engine
+  module Legacy_query_engine = Legacy_query_engine.Make(Graphs)
+  include Legacy_query_engine
 
   let section_symbol = "§"
 

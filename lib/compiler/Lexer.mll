@@ -12,6 +12,7 @@ let alpha = ['a'-'z' 'A'-'Z']
 let int = '-'? digit+
 let ident = '\\' (alpha) (alpha | digit | '-' | '/')*
 let hash_ident = '#' (alpha | digit | '-')*
+let dx_var = '?' (alpha | digit | '-')*
 let xml_base_ident = (alpha) (alpha | digit | '-' | '_')*
 let xml_qname = (xml_base_ident ':' xml_base_ident) | xml_base_ident
 let addr = (alpha) (alpha | digit | '_' | '-')*
@@ -27,6 +28,8 @@ rule token = parse
   | "%" { comment lexbuf }
   | "##{" { Grammar.HASH_HASH_LBRACE }
   | "#{" { Grammar.HASH_LBRACE }
+  | "'" { Grammar.TICK }
+  | '@' { Grammar.AT_SIGN }
   | "\\\\" { Grammar.IDENT {|\|} }
   | "\\," { Grammar.IDENT {|,|} }
   | "\\\"" { Grammar.IDENT {|"|} }
@@ -39,7 +42,10 @@ rule token = parse
   | "\\}" { Grammar.IDENT {|}|} }
   | "\\[" { Grammar.IDENT {|[|} }
   | "\\]" { Grammar.IDENT {|]|} }
+  | "-:" { Grammar.DX_ENTAILED }
+  | "#" { Grammar.HASH }
   | "\\verb" { custom_verbatim_herald lexbuf }
+  | "\\datalog" { Grammar.DATALOG }
   | "\\startverb" { custom_verbatim "\\stopverb" (Buffer.create 2000) lexbuf }
   | "\\ " { Grammar.IDENT {| |} }
   | "\\scope" { Grammar.SCOPE }
@@ -59,6 +65,7 @@ rule token = parse
   | "\\patch" { Grammar.PATCH }
   | "\\call" { Grammar.CALL }
   | hash_ident { Grammar.HASH_IDENT (drop_sigil '#' (Lexing.lexeme lexbuf)) }
+  | dx_var { Grammar.DX_VAR (drop_sigil '?' (Lexing.lexeme lexbuf)) }
   |
   "\\<"
     {
@@ -74,7 +81,6 @@ rule token = parse
   | ']' { Grammar.RSQUARE }
   | '(' { Grammar.LPAREN }
   | ')' { Grammar.RPAREN }
-
   | text { Grammar.TEXT (Lexing.lexeme lexbuf) }
   | wschar+ { Grammar.WHITESPACE (Lexing.lexeme lexbuf) }
   | newline { Lexing.new_line lexbuf; Grammar.WHITESPACE (Lexing.lexeme lexbuf) }

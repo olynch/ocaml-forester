@@ -26,7 +26,7 @@ module Make () = struct
     | Range.{ value = Syn.Group (Braces, arg); _ } as node :: nodes ->
       T.set nodes;
       Some ({ node with value = arg })
-    | Range.{ value = (Syn.Sym _ | Syn.Verbatim _ | Syn.Var _); _ } as node :: nodes ->
+    | Range.{ value = (Syn.Sym _ | Syn.Verbatim _ | Syn.Var _ | Syn.Dx_sequent _ | Syn.Dx_query _); _ } as node :: nodes ->
       T.set nodes;
       Some ({ node with value = [node] })
     | _ -> None

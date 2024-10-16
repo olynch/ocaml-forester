@@ -43,6 +43,12 @@ type node =
   | Tag of [`Content | `Iri]
   | Date
   | Number
+  | Dx_sequent of t * t list
+  | Dx_query of string * t list * t list
+  | Dx_prop of t * t list
+  | Dx_var of string
+  | Dx_const of [`Content | `Iri] * t
+  | Dx_execute
 [@@deriving show]
 
 and t = node Range.located list

@@ -34,7 +34,16 @@ let build (trees : Code.tree list) =
     | Object { methods; _ } | Patch { methods; _ } ->
       let@ _, code = List.iter @~ methods in
       analyse_code roots code
-    | Text _ | Hash_ident _ | Angle_ident _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ -> ()
+    | Dx_prop (rel, args) ->
+      analyse_code roots rel;
+      List.iter (analyse_code roots) args
+    | Dx_sequent (concl, premises) ->
+      analyse_code roots concl;
+      List.iter (analyse_code roots) premises
+    | Dx_query (_, positives, negatives) ->
+      List.iter (analyse_code roots) positives;
+      List.iter (analyse_code roots) negatives
+    | Text _ | Hash_ident _ | Angle_ident _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ | Dx_var _ | Dx_const_content _ | Dx_const_iri _ -> ()
   in
   begin
     let@ tree = List.iter @~ trees in

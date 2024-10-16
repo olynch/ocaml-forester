@@ -22,6 +22,11 @@ module V = struct
     | Query_polarity of Query.polarity
     | Query_mode of Query.mode
     | Query_expr of (T.content T.vertex, Symbol.t Query.lnvar) Query.expr
+    | Dx_prop of (string, T.content T.vertex) Datalog_expr.prop
+    | Dx_sequent of (string, T.content T.vertex) Datalog_expr.sequent
+    | Dx_query of (string, T.content T.vertex) Datalog_expr.query
+    | Dx_var of string
+    | Dx_const of Vertex.t
     | Sym of Symbol.t
     | Obj of Symbol.t
   [@@deriving show]
@@ -95,13 +100,11 @@ module V = struct
 end
 
 let default_backmatter ~(iri : iri) : T.content =
-  let a = Query.Vertex (T.Iri_vertex iri) in
-  let module QLN = Query.Locally_nameless(Query.Global_name) in
+  let vtx = T.Iri_vertex iri in
   let make_section title query =
-    let query = QLN.distill query in
     let section =
       let frontmatter = T.default_frontmatter ~title: (T.Content [T.Text title]) () in
-      let mainmatter = T.Content [T.Results_of_query query] in
+      let mainmatter = T.Content [T.Results_of_datalog_query query] in
       let flags = { T.default_section_flags with hidden_when_empty = Some true } in
       T.{ frontmatter; mainmatter; flags }
     in
@@ -109,11 +112,11 @@ let default_backmatter ~(iri : iri) : T.content =
   in
   T.Content
     [
-      make_section "references" @@ Builtin_queries.references a;
-      make_section "context" @@ Builtin_queries.context a;
-      make_section "backlinks" @@ Builtin_queries.backlinks a;
-      make_section "related" @@ Builtin_queries.related a;
-      make_section "contributions" @@ Builtin_queries.contributions a
+      make_section "references" @@ Builtin_queries.references_datalog vtx;
+      make_section "context" @@ Builtin_queries.context_datalog vtx;
+      make_section "backlinks" @@ Builtin_queries.backlinks_datalog vtx;
+      make_section "related" @@ Builtin_queries.related_datalog vtx;
+      make_section "contributions" @@ Builtin_queries.contributions_datalog vtx
     ]
 
 type job = LaTeX_to_svg of { hash: string; source: string; content: svg: string -> T.content }
@@ -155,6 +158,22 @@ let resolve_iri ~loc str =
 let extract_iri (node : V.located) =
   let text = V.extract_text node in
   resolve_iri ~loc: node.loc text
+
+let extract_dx_term (node : V.located) =
+  match node.value with
+  | Dx_var name -> Datalog_expr.Var name
+  | Dx_const vtx -> Datalog_expr.Const vtx
+  | _ -> Reporter.fatalf Type_error "Expected datalog term"
+
+let extract_dx_prop (node : V.located) =
+  match node.value with
+  | Dx_prop prop -> prop
+  | _ -> Reporter.fatalf Type_error "Expected datalog proposition"
+
+let extract_dx_sequent (x : V.located) =
+  match x.value with
+  | Dx_sequent sequent -> sequent
+  | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected datalog sequent"
 
 let extract_vertex ~type_ (node : V.located) =
   match type_ with
@@ -312,9 +331,9 @@ and eval_node node : V.t =
     let vtx = eval_pop_arg ~loc |> extract_query_vertex_expr ~host ~type_ in
     let r =
       match builtin with
-      | `Taxon -> Query.Rel.taxa
-      | `Author -> Query.Rel.authors
-      | `Tag -> Query.Rel.tags
+      | `Taxon -> Builtin_relation.taxa
+      | `Author -> Builtin_relation.authors
+      | `Tag -> Builtin_relation.tags
     in
     let q = Query.rel Edges Incoming r vtx in
     focus ?loc: node.loc @@ V.Query_expr q
@@ -347,12 +366,15 @@ and eval_node node : V.t =
     let transclusion = T.{ href = iri; target = Full flags; modifier = Identity } in
     emit_content_node ~loc @@ Transclude transclusion
   | Results_of_query ->
-    let query =
-      eval_pop_arg ~loc
-      |> V.extract_query_expr
-      |> QLN.distill
-    in
-    emit_content_node ~loc @@ Results_of_query query
+    let arg = eval_pop_arg ~loc in
+    begin
+      match arg.value with
+      | V.Dx_query query ->
+        emit_content_node ~loc @@ Results_of_datalog_query query
+      | V.Query_expr query ->
+        emit_content_node ~loc @@ Results_of_query (QLN.distill query)
+      | _ -> Reporter.fatalf ?loc: node.loc Type_error "Expected either legacy or datalog query expression"
+    end
   | Embed_tex ->
     let preamble = pop_content_arg ~loc |> T.TeX_like.string_of_content in
     let body = pop_content_arg ~loc |> T.TeX_like.string_of_content in
@@ -542,6 +564,49 @@ and eval_node node : V.t =
     process_tape ()
   | Sym sym ->
     focus ?loc: node.loc @@ V.Sym sym
+  | Dx_prop (rel, args) ->
+    let rel = { node with value = eval_tape rel } |> V.extract_text in
+    let args =
+      let@ arg = List.map @~ args in
+      { node with value = eval_tape arg } |> extract_dx_term
+    in
+    focus ?loc: node.loc @@ V.Dx_prop { rel; args }
+  | Dx_sequent (conclusion, premises) ->
+    let conclusion = { node with value = eval_tape conclusion } |> extract_dx_prop in
+    let premises =
+      let@ premise = List.map @~ premises in
+      { node with value = eval_tape premise } |> extract_dx_prop
+    in
+    focus ?loc: node.loc @@ V.Dx_sequent { conclusion; premises }
+  | Dx_query (var, positives, negatives) ->
+    let positives =
+      let@ premise = List.map @~ positives in
+      { node with value = eval_tape premise } |> extract_dx_prop
+    in
+    let negatives =
+      let@ premise = List.map @~ negatives in
+      { node with value = eval_tape premise } |> extract_dx_prop
+    in
+    focus ?loc: node.loc @@ V.Dx_query { var; positives; negatives }
+  | Dx_var name ->
+    focus ?loc: node.loc @@ V.Dx_var name
+  | Dx_const (type_, arg) ->
+    let arg = { node with value = eval_tape arg } in
+    let const =
+      match type_ with
+      | `Content -> T.Content_vertex (V.extract_content arg)
+      | `Iri ->
+        begin
+          match extract_iri arg with
+          | Ok iri -> T.Iri_vertex iri
+          | Error err ->
+            Reporter.fatalf ?loc: node.loc Type_error "Expected valid RFC 3987 IRI in datalog constant expression"
+        end
+    in
+    focus ?loc: node.loc @@ V.Dx_const const
+  | Dx_execute ->
+    let script = eval_pop_arg ~loc: node.loc |> extract_dx_sequent in
+    emit_content_node ~loc: node.loc @@ T.Datalog_script [script]
 
 and eval_var ~loc x =
   match Env.find_opt x @@ Lex_env.read () with
@@ -563,11 +628,11 @@ and focus ?loc = function
       | V.Content (T.Content content') -> V.Content (T.Content (content @ content'))
       | value -> value
     end
-  | V.Query_expr _ | V.Query_mode _ | V.Query_polarity _ | V.Sym _ | V.Obj _ as v ->
+  | V.Query_expr _ | V.Query_mode _ | V.Query_polarity _ | V.Sym _ | V.Obj _ | V.Dx_prop _ | V.Dx_sequent _ | V.Dx_query _ | V.Dx_var _ | V.Dx_const _ as v ->
     begin
       match process_tape () with
       | V.Content content when T.strip_whitespace content = T.Content [] -> v
-      | _ -> Reporter.fatalf ?loc Type_error "Expected solitary node"
+      | v' -> Reporter.fatalf ?loc Type_error "Expected solitary node but got %a / %a" V.pp v V.pp v'
     end
 
 and focus_clo ?loc rho xs body =

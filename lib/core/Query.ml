@@ -1,34 +1,7 @@
 open Base
 
-module Set = struct
-  type t = string
-  [@@deriving repr]
-
-  let pp = Format.pp_print_string
-
-  let make_builtin name = "org.forester.set." ^ name
-
-  let references = make_builtin "references"
-  let people = make_builtin "people"
-end
-
-module Rel = struct
-  type t = string
-  [@@deriving repr]
-
-  let pp = Format.pp_print_string
-
-  let make_builtin name = "org.forester.rel." ^ name
-
-  let links = make_builtin "links"
-  let transclusion = make_builtin "transclusion"
-  let authors = make_builtin "authors"
-  let contributors = make_builtin "contributors"
-  let taxa = make_builtin "taxa"
-  let tags = make_builtin "tags"
-end
-
-type rel = Rel.t
+type rel = string
+[@@deriving show, repr]
 
 type mode =
   | Edges
@@ -52,7 +25,7 @@ type 'a binder = { body: 'a }
 [@@deriving show, repr]
 
 type ('vertex, 'var) expr =
-  | Rel of mode * polarity * Rel.t * ('vertex, 'var) vertex_expr
+  | Rel of mode * polarity * rel * ('vertex, 'var) vertex_expr
   | Isect of ('vertex, 'var) expr list
   | Union of ('vertex, 'var) expr list
   | Complement of ('vertex, 'var) expr
@@ -78,7 +51,7 @@ let expr_t vertex_t var_t =
         end
       |~ case1
         "Rel"
-        (quad mode_t polarity_t Rel.t (vertex_expr_t vertex_t var_t))
+        (quad mode_t polarity_t rel_t (vertex_expr_t vertex_t var_t))
         (fun (x1, x2, x3, x4) -> Rel (x1, x2, x3, x4))
       |~ case1 "Isect" (list expr_t) (fun x -> Isect x)
       |~ case1 "Union" (list expr_t) (fun x -> Union x)

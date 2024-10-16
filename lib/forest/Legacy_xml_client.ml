@@ -254,6 +254,20 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       F.run_query q
       |> Util.get_sorted_articles
       |> List.map (Fun.compose render_section article_to_section)
+    | Results_of_datalog_query q ->
+      let article_to_section =
+        T.article_to_section
+          ~flags: {
+            T.default_section_flags with
+            expanded = Some false;
+            numbered = Some false;
+            included_in_toc = Some false;
+            metadata_shown = Some true
+          }
+      in
+      F.run_datalog_query q
+      |> Util.get_sorted_articles
+      |> List.map (Fun.compose render_section article_to_section)
     | Section section ->
       [render_section section]
     | KaTeX (mode, content) ->
@@ -271,6 +285,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       [render_img img]
     | Resource resource ->
       [render_resource resource]
+    | Datalog_script _ -> []
 
   and render_resource (resource : T.content T.resource) =
     X.resource
@@ -314,34 +329,41 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     in
     [X.link attrs @@ render_content link.content]
 
-  and render_attributions scope attributions =
-    match scope with
-    | None -> X.null []
-    | Some scope ->
-      let module QLN = Query.Locally_nameless(Query.Global_name) in
-      let articles_below =
-        let query =
-          Query.isect
-            [
-              Query.rel Query.Paths Query.Outgoing Query.Rel.transclusion (Query.Vertex (T.Iri_vertex scope));
-              Query.complement (Builtin_queries.has_taxon "reference")
-            ]
+  and render_attributions =
+    let attributions_cache = Hashtbl.create 1000 in
+    fun scope attributions ->
+      match Hashtbl.find_opt attributions_cache (scope, attributions) with
+      | Some cached -> cached
+      | None ->
+        let result =
+          match scope with
+          | None -> X.null []
+          | Some scope ->
+            let module QLN = Query.Locally_nameless(Query.Global_name) in
+            let articles_below =
+              let dx_query =
+                let open Datalog_expr.Notation in
+                let positives = [Builtin_relation.transclusion_tc @* [const (T.Iri_vertex scope); var "X"]] in
+                let negatives = [Builtin_relation.is_reference @* [var "X"]] in
+                Datalog_expr.{ var = "X"; positives; negatives }
+              in
+              dx_query
+              |> F.run_datalog_query
+              |> Util.get_sorted_articles
+            in
+            let all_attributions =
+              List_util.nub @@
+              attributions @
+              let@ article = List.concat_map @~ articles_below in
+              let@ attribution = List.filter_map @~ article.frontmatter.attributions in
+              if List.exists (fun (existing : _ T.attribution) -> attribution.vertex = existing.vertex) attributions then None
+              else
+                Some T.{ attribution with role = Contributor }
+            in
+            X.authors [] @@ List.map render_attribution all_attributions
         in
-        query
-        |> QLN.distill
-        |> F.run_query
-        |> Util.get_sorted_articles
-      in
-      let all_attributions =
-        List_util.nub @@
-        attributions @
-        let@ article = List.concat_map @~ articles_below in
-        let@ attribution = List.filter_map @~ article.frontmatter.attributions in
-        if List.exists (fun (existing : _ T.attribution) -> attribution.vertex = existing.vertex) attributions then None
-        else
-          Some T.{ attribution with role = Contributor }
-      in
-      X.authors [] @@ List.map render_attribution all_attributions
+        Hashtbl.add attributions_cache (scope, attributions) result;
+        result
 
   and render_attribution attrib =
     let tag =

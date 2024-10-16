@@ -4,6 +4,8 @@ open Lexing
 
 module I = Grammar.MenhirInterpreter
 
+let lexer lexbuf = Lexer.token lexbuf
+
 (* debugging helpers *)
 let _string_of_token token =
   match token with
@@ -50,7 +52,7 @@ let try_parse lexbuf =
     match chkpt with
     | I.HandlingError _ ->
       let loc = Asai.Range.of_lexbuf lexbuf in
-      Reporter.emitf ~loc Parse_error "syntax error, unexpected `%s`\n" (Lexing.lexeme lexbuf);
+      Reporter.emitf ~loc Parse_error "syntax error, unexpected `%s`" (Lexing.lexeme lexbuf);
       begin
         match last_token with
         | Grammar.RPAREN
@@ -121,7 +123,7 @@ let try_parse lexbuf =
       run bracketing last_token last_accept last_input_needed supplier @@ I.resume checkpoint
   in
   let checkpoint = Grammar.Incremental.main lexbuf.lex_curr_p in
-  let supplier = I.lexer_lexbuf_to_supplier Lexer.token lexbuf in
+  let supplier = I.lexer_lexbuf_to_supplier lexer lexbuf in
   run [] Grammar.EOF checkpoint checkpoint supplier checkpoint
 
 let maybe_with_errors (f : unit -> 'a) : ('a, 'a * 'b list) result =

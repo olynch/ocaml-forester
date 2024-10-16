@@ -8,6 +8,15 @@ end
 module Make (Graphs: Forest_graphs.S) : S = struct
   module Q = Query
 
+  let eval_vertex ~env : (_, Q.dbix) Q.vertex_expr -> _ = function
+    | Query.Vertex vertex -> vertex
+    | Query.Var ix ->
+      begin
+        match List.nth_opt env ix with
+        | Some vtx -> vtx
+        | None -> Reporter.fatalf Type_error "Bound variable not found in environment when evaluating query"
+      end
+
   let query_rel mode pol rel vtx =
     let fn =
       match pol with
@@ -40,15 +49,6 @@ module Make (Graphs: Forest_graphs.S) : S = struct
       let xs = Vertex_set.to_list @@ run_query ~env q in
       let@ x = List.for_all @~ xs in
       check_query ~env: (x :: env) scope.body vtx
-
-  and eval_vertex ~env : (_, Q.dbix) Q.vertex_expr -> _ = function
-    | Query.Vertex vertex -> vertex
-    | Query.Var ix ->
-      begin
-        match List.nth_opt env ix with
-        | Some vtx -> vtx
-        | None -> Reporter.fatalf Type_error "Bound variable not found in environment when evaluating query"
-      end
 
   and check_isect ~env qs vtx =
     let@ q = List.for_all @~ qs in

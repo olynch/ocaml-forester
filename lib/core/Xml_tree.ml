@@ -147,6 +147,8 @@ type 'content content_node =
   | Img of img
   | Resource of 'content resource
   | Iri of iri
+  | Datalog_script of (string, 'content vertex) Datalog_expr.script
+  | Results_of_datalog_query of (string, 'content vertex) Datalog_expr.query
 [@@deriving show, repr]
 
 type content =
@@ -251,7 +253,7 @@ module TeX_like: sig
     | CDATA str -> Format.fprintf fmt "%s" str
     | KaTeX (_, xs) -> pp_content fmt xs
     | TeX_cs cs -> pp_tex_cs fmt cs
-    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Resource _ | Iri _ ->
+    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Resource _ | Iri _ | Datalog_script _ | Results_of_datalog_query _ ->
       Reporter.fatalf Type_error "Cannot render this kind of content as TeX-like string"
 
   let string_of_content =

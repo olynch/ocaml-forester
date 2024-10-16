@@ -89,7 +89,7 @@ let rec expand : Code.t -> Syn.t = function
     let qname = expand_xml_ident loc @@ Forester_xml_names.split_xml_qname name in
     let attrs, rest = get_xml_attrs [] rest in
     let arg_opt, rest = get_arg_opt rest in
-    let tag = Syn.Xml_tag (qname, attrs, Option.value ~default:[] arg_opt) in
+    let tag = Syn.Xml_tag (qname, attrs, Option.value ~default: [] arg_opt) in
     { value = tag; loc } :: expand rest
   | { value = Scope body; _ } :: rest ->
     let body =
@@ -108,6 +108,12 @@ let rec expand : Code.t -> Syn.t = function
   | { value = Get k; loc } :: rest ->
     let k = expand_ident loc k in
     { value = Syn.Get k; loc } :: expand rest
+  | { value = Dx_prop (rel, args); loc } :: rest ->
+    { value = Syn.Dx_prop (expand rel, List.map expand args); loc } :: expand rest
+  | { value = Dx_sequent (concl, premises); loc } :: rest ->
+    { value = Syn.Dx_sequent (expand concl, List.map expand premises); loc } :: expand rest
+  | { value = Dx_query (var, positives, negatives); loc } :: rest ->
+    { value = Syn.Dx_query (var, List.map expand positives, List.map expand negatives); loc } :: expand rest
   | { value = Fun (xs, body); loc } :: rest ->
     expand_lambda loc (xs, body) :: expand rest
   | { value = Object { self; methods }; loc } :: rest ->
@@ -155,6 +161,12 @@ let rec expand : Code.t -> Syn.t = function
         end
     end;
     expand rest
+  | { value = Dx_var name; loc } :: rest ->
+    { value = Syn.Dx_var name; loc } :: expand rest
+  | { value = Dx_const_content arg; loc } :: rest ->
+    { value = Syn.Dx_const (`Content, expand arg); loc } :: expand rest
+  | { value = Dx_const_iri arg; loc } :: rest ->
+    { value = Syn.Dx_const (`Iri, expand arg); loc } :: expand rest
   | { value = Let (a, bs, def); loc } :: rest ->
     let lam = expand_lambda loc (bs, def) in
     let@ () = Sc.section [] in
@@ -316,12 +328,17 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["query"; "outgoing"], Syn.Query_polarity Outgoing;
       ["query"; "edges"], Syn.Query_mode Edges;
       ["query"; "paths"], Syn.Query_mode Paths;
-      ["rel"; "tags"], Syn.Text Query.Rel.tags;
-      ["rel"; "taxa"], Syn.Text Query.Rel.taxa;
-      ["rel"; "authors"], Syn.Text Query.Rel.authors;
-      ["rel"; "contributors"], Syn.Text Query.Rel.authors;
-      ["rel"; "transclusion"], Syn.Text Query.Rel.transclusion;
-      ["rel"; "links"], Syn.Text Query.Rel.links
+      ["rel"; "tags"], Syn.Text Builtin_relation.tags;
+      ["rel"; "taxa"], Syn.Text Builtin_relation.taxa;
+      ["rel"; "authors"], Syn.Text Builtin_relation.authors;
+      ["rel"; "contributors"], Syn.Text Builtin_relation.authors;
+      ["rel"; "transclusion"], Syn.Text Builtin_relation.transclusion;
+      ["rel"; "transclusion"; "transitive-closure"], Syn.Text Builtin_relation.transclusion_tc;
+      ["rel"; "transclusion"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transclusion_rtc;
+      ["rel"; "links"], Syn.Text Builtin_relation.links;
+      ["rel"; "is-reference"], Syn.Text Builtin_relation.is_reference;
+      ["rel"; "is-person"], Syn.Text Builtin_relation.is_person;
+      ["execute"], Syn.Dx_execute
     ];
   Builtins.Transclude.alloc_expanded ();
   Builtins.Transclude.alloc_show_heading ();
