@@ -6,8 +6,6 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 val pp : Format.formatter -> t -> unit
+val show : t -> string
 
 val iri_of_vertex : t -> iri option
-
-val pack : t -> Datalog_engine.symbol
-val unpack : Datalog_engine.symbol -> t option

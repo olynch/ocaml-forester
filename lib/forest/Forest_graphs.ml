@@ -52,7 +52,7 @@ module Make () : S = struct
 
   let register_iri iri =
     let vtx : Vertex.t = Iri_vertex iri in
-    Dl.db_add_fact dl_db @@ Dl.mk_literal (Dl.StringSymbol.make Builtin_relation.is_node) [Dl.mk_const (Vertex.pack vtx)];
+    Dl.db_add_fact dl_db @@ Dl.mk_literal Builtin_relation.is_node [Dl.mk_const vtx];
     Hashtbl.clear rel_preorder_table;
     all_vertices_ref := Vertex_set.add vtx !all_vertices_ref;
     let@ gph = Seq.iter @~ Hashtbl.to_seq_values rel_graph_table in
@@ -63,5 +63,10 @@ module Make () : S = struct
     let gph = get_graph rel in
     Forest_graph.add_edge gph source target;
     Dl.db_add_fact dl_db @@
-      Dl.mk_literal (Dl.StringSymbol.make rel) [Dl.mk_const (Vertex.pack source); Dl.mk_const (Vertex.pack target)]
+      Dl.mk_literal
+        rel
+        [
+          Dl.mk_const source;
+          Dl.mk_const target
+        ]
 end
