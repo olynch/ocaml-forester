@@ -9,6 +9,12 @@
  (explain true)
  (flags --inspection --table --dump))
 
+; The target for saving menhir's stdout to Grammar_messages.ml
+(rule
+ (targets Grammar_messages.ml)
+ (deps Grammar.messages Grammar.mly)
+ (action  (with-stdout-to %{targets} (run menhir --compile-errors %{deps}))))
+
 (library
  (name Forester_compiler)
  (preprocess

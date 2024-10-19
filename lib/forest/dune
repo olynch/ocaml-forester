@@ -17,6 +17,7 @@
   ocamlgraph
   yojson
   algaeff
+  asai
   pure-html
   iri))
 

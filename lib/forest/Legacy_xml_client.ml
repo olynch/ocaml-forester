@@ -304,12 +304,12 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     match Hashtbl.find_opt transclusion_cache transclusion with
     | Some nodes -> nodes
     | None ->
-      match F.get_content_of_transclusion transclusion with 
+      match F.get_content_of_transclusion transclusion with
       | None -> Reporter.fatalf Resource_not_found "Could not find tree %a" pp_iri transclusion.href
-      | Some content -> 
-      let nodes = render_content content in
-      Hashtbl.add transclusion_cache transclusion nodes;
-      nodes
+      | Some content ->
+        let nodes = render_content content in
+        Hashtbl.add transclusion_cache transclusion nodes;
+        nodes
 
   and render_link (link : T.content T.link) : P.node list =
     let article_opt = F.get_article link.href in
@@ -400,6 +400,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       ]
 
   let render_article (article : T.content T.article) : P.node =
+    let@ () = Reporter.tracef "when rendering article %a" Format.(pp_print_option Iri.pp) article.frontmatter.iri in
     let xmlns_prefix = Xmlns.{ prefix = X.reserved_prefix; xmlns = X.forester_xmlns } in
     let@ () = Scope.run ~env: article.frontmatter.iri in
     let@ () = Xmlns.run in

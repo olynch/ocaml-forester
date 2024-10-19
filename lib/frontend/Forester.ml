@@ -113,11 +113,19 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
   let addr = Filename.chop_extension basename in
   let native = EP.native_exn fp in
   let source_path = if dev then Some (Unix.realpath native) else None in
-  match Parse.parse_file native with
-  | Result.Ok code -> Some Code.{ source_path; addr = Some addr; code }
-  | Result.Error _ -> None
-  | exception exn ->
-    if ignore_malformed then None else raise exn
+  try
+    match Parse.parse_file native with
+    | Ok code -> Some Code.{ source_path; addr = Some addr; code }
+    | Error diagnostic ->
+      if ignore_malformed then None
+      else
+        begin
+          Reporter.Tty.display diagnostic;
+          None
+        end
+  with
+    | exn ->
+      if ignore_malformed then None else raise exn
 
 let export_publication ~env (publication : Job.publication) : unit =
   let vertices = F.run_datalog_query publication.query in
@@ -221,3 +229,20 @@ let render_forest ~env ~dev ~host ~home : unit =
           EP.save ~create: (`Or_truncate 0o644) dest asset.content
         end
   end
+
+let export ~env ~host : unit =
+  let@ () = Reporter.profile "Export forest" in
+  let local_resources =
+    let@ resource = Seq.filter @~ F.get_all_resources () in
+    match resource with
+    | T.Article { frontmatter = { iri = Some iri; _ }; _ } ->
+      Iri.host iri = Some host
+    | T.Asset asset -> asset.host = host
+    | _ -> false
+  in
+  let cwd = Eio.Stdenv.cwd env in
+  let result = Repr.to_json_string ~minify: true (T.forest_t T.content_t) @@ List.of_seq local_resources in
+  let dir = Eio.Path.(cwd / "export") in
+  let filename = host ^ ".json" in
+  Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
+  Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / filename) result

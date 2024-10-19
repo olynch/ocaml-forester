@@ -20,6 +20,84 @@ end
 
 module U = Algaeff.State.Make(struct type t = Env.t end)
 
+let edit_distance ~cutoff x y =
+  let len_x, len_y = String.length x, String.length y in
+  let grid = Array.make_matrix (len_x + 1) (len_y + 1) 0 in
+  for i = 1 to len_x do
+    grid.(i).(0) <- i;
+  done;
+  for j = 1 to len_y do
+    grid.(0).(j) <- j;
+  done;
+  for j = 1 to len_y do
+    for i = 1 to len_x do
+      let cost = if x.[i - 1] = y.[j - 1] then 0 else 1 in
+      let k = Int.min (grid.(i - 1).(j) + 1) (grid.(i).(j - 1) + 1) in
+      grid.(i).(j) <- Int.min k (grid.(i - 1).(j - 1) + cost)
+    done;
+  done;
+  let result = grid.(len_x).(len_y) in
+  if result > cutoff then None
+  else
+    Some result
+
+let suggestions
+    ?prefix
+    ~(cutoff : int)
+    (p : Trie.bwd_path)
+    : ('data, 'tag) Trie.t -> ('data, int) Trie.t
+  =
+  let compare p d =
+    edit_distance ~cutoff (String.concat "" (Bwd.to_list p)) (String.concat "" (Bwd.to_list d))
+  in
+  Trie.filter_map
+    ?prefix
+    (
+      fun q (data, _) ->
+        match compare p q with
+        | Some i ->
+          if i > cutoff then
+            None
+          else
+            (Some (data, i))
+        | None -> None
+    )
+
+let create_suggestions path =
+  let visible = Sc.get_visible () in
+  let suggestions =
+    suggestions ~cutoff: 2 (Bwd.of_list path) visible
+    |> Trie.to_seq
+    |> Seq.map (fun (path, (data, distance)) -> (path, data, distance))
+    |> List.of_seq
+    |> List.sort (fun (_, _, a) (_, _, b) -> Int.compare a b)
+  in
+  let extra_remarks =
+    if List.length suggestions > 0 then
+      let (path, data, distance) = List.hd suggestions in
+      let location_hint =
+        match data with
+        | R.P.Term ({ loc = Some loc; _ } :: _) ->
+          begin
+            match Range.view loc with
+            | `End_of_file pos -> []
+            | `Range (pos, _) ->
+              match pos with
+              | { source; offset; start_of_line; line_num } ->
+                begin
+                  match Range.title source with
+                  | Some string ->
+                    [Asai.Diagnostic.loctextf "defined in %s" string]
+                  | _ -> []
+                end
+          end
+        | _ -> []
+      in
+      [Asai.Diagnostic.loctextf "Did you mean %a?" Sc.pp_path path] @ location_hint
+    else []
+  in
+  extra_remarks
+
 module Builtins = struct
 
   let create_sym path =
@@ -190,6 +268,10 @@ let rec expand : Code.t -> Syn.t = function
     let symbol = Symbol.named path in
     Sc.include_singleton path @@ Term [Range.locate_opt loc (Syn.Sym symbol)];
     expand rest
+  | { value = Comment _; loc } :: rest ->
+    expand rest
+  | { value = Error _; loc } :: rest ->
+    expand rest
 
 and expand_method (key, body) =
   key, expand body
@@ -223,22 +305,26 @@ and expand_ident loc path =
     begin
       match TeX_cs.parse name with
       | None ->
+        let extra_remarks = create_suggestions path in
         Reporter.fatalf
           ?loc
+          ~extra_remarks
           Resolution_error
           "path %a could not be resolved"
-          Trie.pp_path
+          Sc.pp_path
           path
       | Some (cs, rest) ->
         let rest = match rest with "" -> [] | _ -> [Range.{ value = Syn.Text rest; loc }] in
         Range.{ value = Syn.TeX_cs cs; loc } :: rest
     end
   | None, _ ->
+    let extra_remarks = create_suggestions path in
     Reporter.fatalf
       ?loc
+      ~extra_remarks
       Resolution_error
       "path %a could not be resolved"
-      Trie.pp_path
+      Sc.pp_path
       path
   | Some (Term x, ()), _ ->
     let relocate Range.{ value; _ } = Range.{ value; loc } in
@@ -248,7 +334,7 @@ and expand_ident loc path =
       ?loc
       Resolution_error
       "path %a resolved to xmlns:%s=\"%s\" instead of term"
-      Trie.pp_path
+      Sc.pp_path
       path
       xmlns
       prefix

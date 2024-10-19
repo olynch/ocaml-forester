@@ -183,7 +183,12 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     match get_article addr with
     | Some article -> article
     | None ->
-      Reporter.fatalf Resource_not_found "Could not find tree %a" pp_iri addr
+      Reporter.fatalf
+        ~extra_remarks: [Asai.Diagnostic.loctextf "the tree %a is either missing, or failed to evaluate." pp_iri addr]
+        Resource_not_found
+        "Could not find tree %a"
+        pp_iri
+        addr
 
   module Legacy_query_engine = Legacy_query_engine.Make(Graphs)
   include Legacy_query_engine

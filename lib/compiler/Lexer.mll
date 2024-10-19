@@ -14,10 +14,12 @@
   let set_mode mode = drop_mode(); push_mode mode
   let push_verbatim_mode herald = push_mode @@ Verbatim (herald, Buffer.create 2000)
 
-  let raise_err lexbuf =
+  let raise_err ?msg lexbuf =
     let loc = Asai.Range.of_lexbuf lexbuf in
-    Forester_core.Reporter.fatalf ~loc Forester_core.Reporter.Message.Parse_error "unrecognized token `%s`" @@
-    String.escaped @@ Lexing.lexeme lexbuf
+    Forester_core.Reporter.fatalf
+      ~loc
+      Forester_core.Reporter.Message.Parse_error
+      "unrecognized token `%s`.@ %a" (String.escaped @@ Lexing.lexeme lexbuf) Format.(pp_print_option pp_print_string) msg
 }
 
 let digit = ['0'-'9']
@@ -55,7 +57,7 @@ rule token = parse
   | wschar+ as str { [Grammar.WHITESPACE str] }
   | newline as str { Lexing.new_line lexbuf; [Grammar.WHITESPACE str] }
   | eof { [Grammar.EOF] }
-  | _ { raise_err lexbuf }
+  | _ { raise_err ?msg:None lexbuf }
 
 and ident_init = parse
   | "verb" (verbatim_herald as herald) '|' { drop_mode (); push_verbatim_mode herald; [] }
@@ -83,12 +85,12 @@ and ident_init = parse
   | (simple_name as s) "/" { set_mode Ident_fragments; [Grammar.IDENT s; Grammar.SLASH] }
   | simple_name as s { drop_mode (); [Grammar.IDENT s] }
   | special_name as c { drop_mode (); [Grammar.IDENT (String.make 1 c)] }
-  | _ { raise_err lexbuf }
+  | _ { raise_err ?msg:None lexbuf }
 
 and ident_fragments = parse
   | (simple_name as s) "/" { [Grammar.IDENT s; Grammar.SLASH] }
   | simple_name as s { drop_mode (); [Grammar.IDENT s] }
-  | _ { raise_err lexbuf }
+  | _ { raise_err ?msg:None lexbuf }
 
 and comment = parse
   | newline_followed_by_ws { Lexing.new_line lexbuf; token lexbuf }

@@ -49,6 +49,8 @@ type node =
   | Dx_var of string
   | Dx_const_content of t
   | Dx_const_iri of t
+  | Comment of string
+  | Error of string
 [@@deriving show, repr]
 
 and t = node Range.located list

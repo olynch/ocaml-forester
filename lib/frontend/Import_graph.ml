@@ -49,7 +49,7 @@ let build (trees : Code.tree list) =
     | Dx_query (_, positives, negatives) ->
       List.iter (analyse_code roots) positives;
       List.iter (analyse_code roots) negatives
-    | Text _ | Hash_ident _ | Xml_ident _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ | Dx_var _ | Dx_const_content _ | Dx_const_iri _ -> ()
+    | Text _ | Hash_ident _ | Xml_ident _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ | Dx_var _ | Dx_const_content _ | Dx_const_iri _ | Comment _ | Error _ -> ()
   in
   begin
     let@ tree = List.iter @~ trees in

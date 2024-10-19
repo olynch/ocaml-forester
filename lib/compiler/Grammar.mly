@@ -12,6 +12,7 @@
 %token <string option * string> XML_ELT_IDENT
 %token <string> DECL_XMLNS
 %token <string> TEXT VERBATIM
+%token <string> COMMENT
 %token <string> WHITESPACE
 %token <string> IDENT
 
