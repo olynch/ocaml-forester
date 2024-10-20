@@ -110,7 +110,7 @@ let query_tag ~env filter_tags config_filename =
   let tags = Forest.tags ~forest in
   let filtered =
     tags |> Seq.filter @@ fun (_, ts) ->
-    List.for_all (fun t -> List.mem t ts) ts
+    List.for_all (fun t -> List.mem t filter_tags) ts
   in
   filtered
   |> Seq.iter @@ fun (addr, tags) ->
@@ -132,6 +132,34 @@ let query_all ~env config_filename =
   |> Yojson.Basic.to_string
   |> Format.printf "%s"
 
+module String_set = Set.Make (String)
+
+let transplant ~env tag output config_filename =
+  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+  let forest =
+    Forest.plant_forest @@
+    Process.read_trees_in_dirs ~dev:true ~ignore_malformed:true @@
+    make_dirs ~env config.trees
+  in
+  let query_lnvar = Query.(
+      union_fam_rel
+        (rel Edges Incoming Rel.tags (Addr (User_addr tag)))
+        Paths
+        Outgoing
+        Rel.transclusion) in
+  let query = Query.distill_expr query_lnvar in
+  let results = forest.run_query query in
+  let get_source addr = Option.bind
+                          (Addr_map.find_opt addr forest.trees)
+                          (fun tree -> tree.fm.source_path) in
+  let sources = results
+                |> Addr_set.to_list
+                |> List.filter_map get_source
+                |> String_set.of_list
+  in
+  let oc = open_out output in
+  sources |> String_set.iter (fun path -> Printf.fprintf oc "%s\n" path);
+  close_out oc
 
 let init ~env () =
   let default_theme_url =
@@ -313,7 +341,7 @@ let query_taxon_cmd ~env =
 
 let query_tag_cmd ~env =
   let arg_tags =
-    Arg.(value @@ pos_all string [] @@ info [] ~docv:"TAG")
+    Arg.(value @@ pos_right 0 string [] @@ info [] ~docv:"TAG")
   in
   let doc = "List all trees with tag TAG" in
   let info = Cmd.info "tag" ~version ~doc in
@@ -328,6 +356,17 @@ let query_cmd ~env =
   let doc = "Query your forest" in
   let info = Cmd.info "query" ~version ~doc in
   Cmd.group info [query_taxon_cmd ~env; query_tag_cmd ~env; query_all_cmd ~env]
+
+let transplant_cmd ~env =
+  let tag =
+    Arg.(value @@ pos 1 string "" @@ info [] ~docv:"TAG")
+  in
+  let output =
+    Arg.(value @@ pos 2 string "" @@ info [] ~docv:"OUTPUT")
+  in
+  let doc = "Get a list of trees to transplant" in
+  let info = Cmd.info "transplant" ~version ~doc in
+  Cmd.v info Term.(const (transplant ~env) $ tag $ output $ arg_config)
 
 let init_cmd ~env =
   let doc = "Initialize a new forest" in
@@ -350,7 +389,7 @@ let cmd ~env =
   in
 
   let info = Cmd.info "forester" ~version ~doc ~man in
-  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; query_cmd ~env; init_cmd ~env;]
+  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; query_cmd ~env; transplant_cmd ~env; init_cmd ~env;]
 
 
 let () =

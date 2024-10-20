@@ -1,4 +1,4 @@
-FROM ocaml/opam:alpine-ocaml-5.1-flambda AS forester-builder
+FROM ocaml/opam:alpine-ocaml-5.2-flambda AS forester-builder
 
 RUN sudo apk update
 
