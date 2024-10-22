@@ -125,7 +125,7 @@ type result = { main: T.content T.article; side: T.content T.article list; jobs:
 module Tape = Tape_effect.Make ()
 module Lex_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
 module Dyn_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
-module Host_env = Algaeff.Reader.Make(struct type t = string option end)
+module Host_env = Algaeff.Reader.Make(struct type t = string end)
 module Heap = Algaeff.State.Make(struct type t = V.obj Env.t end)
 module Emitted_trees = Algaeff.State.Make(struct type t = T.content T.article list end)
 module Jobs = Algaeff.State.Make(struct type t = job list end)

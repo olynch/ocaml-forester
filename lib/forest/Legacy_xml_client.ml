@@ -14,7 +14,7 @@ module type S = sig
 end
 
 module type Params = sig
-  val host : string option
+  val host : string
   val home : string option
 end
 
@@ -48,14 +48,14 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
         | Iri.Relative xs -> xs
     else
       Iri.to_string ~pctencode: false @@
-        Iri.iri ?host ~path ()
+        Iri.iri ~host ~path ()
 
   let iri_to_string iri =
-    if Iri.scheme iri = Iri_scheme.scheme then
-      let host = Iri.host iri in
+    match Iri.host iri with
+    | Some host when Iri.scheme iri = Iri_scheme.scheme ->
       let path = Iri.path iri in
       forester_iri_to_string ~host ~path
-    else
+    | _ ->
       Iri.to_string ~pctencode: false iri
 
   let iri_type iri =
@@ -77,11 +77,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     | false -> bare_route ^ ".xml"
 
   let route_foreign_forester_iri ~host ~path ~is_asset =
-    "foreign-" ^
-      match host with
-      | None -> route_bare_forester_iri ~path ~is_asset
-      | Some host ->
-        host ^ "-" ^ route_bare_forester_iri ~path ~is_asset
+    "foreign-" ^ host ^ "-" ^ route_bare_forester_iri ~path ~is_asset
 
   let route_forester_iri ~host ~path ~is_asset =
     if host = Params.host then
@@ -109,11 +105,10 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     | _ -> false
 
   let route iri =
-    match Iri.scheme iri with
-    | scheme when scheme = Iri_scheme.scheme ->
+    match Iri.host iri with
+    | Some host when Iri.scheme iri = Iri_scheme.scheme ->
       if iri_is_home iri then "index.xml"
       else
-        let host = Iri.host iri in
         let path = Iri.path iri in
         let is_asset = iri_is_asset iri in
         route_forester_iri ~host ~path ~is_asset

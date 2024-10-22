@@ -4,7 +4,7 @@ module T := Xml_tree
 module P := Pure_html
 
 module type Params = sig
-  val host : string option
+  val host : string
   val home : string option
 end
 

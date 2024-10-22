@@ -3,18 +3,19 @@ open Forester_core
 type env = Eio_unix.Stdenv.base
 type dir = Eio.Fs.dir_ty Eio.Path.t
 
-val plant_forest_from_dirs :
+val plant_raw_forest_from_dirs :
   env: env ->
-  host: string option ->
+  host: string ->
   dev: bool ->
   tree_dirs: dir list ->
   asset_dirs: dir list ->
+  foreign_dirs: dir list ->
   unit
 
 val render_forest :
   env: env ->
   dev: bool ->
-  host: string option ->
+  host: string ->
   home: string option ->
   stylesheet: string ->
   unit
@@ -39,12 +40,12 @@ val create_tree :
   string
 
 val json_manifest :
-  host: string option ->
+  host: string ->
   home: string option ->
   dev: bool ->
   string
 
 val complete :
-  host: string option ->
+  host: string ->
   string ->
   (iri * string) Seq.t
