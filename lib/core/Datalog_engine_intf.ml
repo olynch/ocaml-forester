@@ -4,10 +4,10 @@ module type S = sig
   type term
   type literal
   type clause
-  
+
   type var
   val var_of_string : string -> var
-  
+
   val mk_var : var -> term
   val mk_const : vertex -> term
   val mk_literal : relation -> term list -> literal

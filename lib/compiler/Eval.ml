@@ -331,9 +331,9 @@ and eval_node node : V.t =
     let vtx = eval_pop_arg ~loc |> extract_query_vertex_expr ~host ~type_ in
     let r =
       match builtin with
-      | `Taxon -> Builtin_relation.taxa
-      | `Author -> Builtin_relation.authors
-      | `Tag -> Builtin_relation.tags
+      | `Taxon -> Builtin_relation.has_taxon
+      | `Author -> Builtin_relation.has_author
+      | `Tag -> Builtin_relation.has_tag
     in
     let q = Query.rel Edges Incoming r vtx in
     focus ?loc: node.loc @@ V.Query_expr q

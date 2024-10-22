@@ -63,7 +63,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     | Section section ->
       analyse_section scope section
     | Link link ->
-      add_edge Builtin_relation.links ~source: (Iri_vertex scope) ~target: (Iri_vertex link.href);
+      add_edge Builtin_relation.links_to ~source: (Iri_vertex scope) ~target: (Iri_vertex link.href);
       analyse_content scope link.content
     | Prim (_, content) ->
       analyse_content scope content
@@ -80,7 +80,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   and analyse_transclusion (scope : Iri.t) (transclusion : T.content T.transclusion) : unit =
     match transclusion.target with
     | Full _ | Mainmatter ->
-      add_edge Builtin_relation.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex transclusion.href)
+      add_edge Builtin_relation.transcludes ~source: (Iri_vertex scope) ~target: (Iri_vertex transclusion.href)
     | Title _ | Taxon -> ()
 
   and analyse_content (scope : Iri.t) (content : T.content) : unit =
@@ -89,8 +89,8 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   and analyse_attribution (scope : Iri.t) (attr : _ T.attribution) =
     let rel =
       match attr.role with
-      | Author -> Builtin_relation.authors
-      | Contributor -> Builtin_relation.contributors
+      | Author -> Builtin_relation.has_author
+      | Contributor -> Builtin_relation.has_direct_contributor
     in
     add_edge rel ~source: (Iri_vertex scope) ~target: attr.vertex;
     analyse_vertex scope attr.vertex
@@ -101,12 +101,12 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   and analyse_tag (scope : Iri.t) (tag : _ T.vertex) =
     analyse_vertex scope tag;
-    add_edge Builtin_relation.tags ~source: (Iri_vertex scope) ~target: tag
+    add_edge Builtin_relation.has_tag ~source: (Iri_vertex scope) ~target: tag
 
   and analyse_taxon (scope : Iri.t) (taxon_opt : T.content option) =
     let@ taxon = Option.iter @~ taxon_opt in
     analyse_content scope taxon;
-    add_edge Builtin_relation.taxa ~source: (Iri_vertex scope) ~target: (Content_vertex taxon)
+    add_edge Builtin_relation.has_taxon ~source: (Iri_vertex scope) ~target: (Content_vertex taxon)
 
   and analyse_attributions (scope : Iri.t) (attrs : _ T.attribution list) =
     attrs |> List.iter @@ analyse_attribution scope
@@ -132,7 +132,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   and analyse_section (scope : Iri.t) (section : T.content T.section) : unit =
     begin
       let@ target = Option.iter @~ section.frontmatter.iri in
-      add_edge Builtin_relation.transclusion ~source: (Iri_vertex scope) ~target: (Iri_vertex target)
+      add_edge Builtin_relation.transcludes ~source: (Iri_vertex scope) ~target: (Iri_vertex target)
     end;
     analyse_frontmatter section.frontmatter;
     analyse_content (Option.value ~default: scope section.frontmatter.iri) section.mainmatter

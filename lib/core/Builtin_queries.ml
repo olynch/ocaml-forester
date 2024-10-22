@@ -9,7 +9,7 @@ let context_datalog vtx : _ Dx.query =
   let x = "X" in
   Dx.{
     var = x;
-    positives = [Builtin_relation.transclusion @* [var x; const vtx]];
+    positives = [Builtin_relation.transcludes @* [var x; const vtx]];
     negatives = []
   }
 
@@ -18,7 +18,7 @@ let backlinks_datalog vtx : _ Dx.query =
   let x = "X" in
   Dx.{
     var = x;
-    positives = [Builtin_relation.links @* [var x; const vtx]];
+    positives = [Builtin_relation.links_to @* [var x; const vtx]];
     negatives = []
   }
 
@@ -27,7 +27,7 @@ let related_datalog vtx : _ Dx.query =
   let x = "X" in
   Dx.{
     var = x;
-    positives = [Builtin_relation.links @* [const vtx; var x]];
+    positives = [Builtin_relation.links_to @* [const vtx; var x]];
     negatives = [Builtin_relation.is_reference @* [var x]]
   }
 
@@ -36,7 +36,7 @@ let contributions_datalog vtx : _ Dx.query =
   let x = "X" in
   Dx.{
     var = x;
-    positives = [Builtin_relation.contribution @* [var x; const vtx]];
+    positives = [Builtin_relation.has_direct_contributor @* [var x; const vtx]];
     negatives = []
   }
 

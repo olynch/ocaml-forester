@@ -339,26 +339,24 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
           match scope with
           | None -> X.null []
           | Some scope ->
-            let module QLN = Query.Locally_nameless(Query.Global_name) in
-            let articles_below =
-              let dx_query =
-                let open Datalog_expr.Notation in
-                let positives = [Builtin_relation.transclusion_tc @* [const (T.Iri_vertex scope); var "X"]] in
-                let negatives = [Builtin_relation.is_reference @* [var "X"]] in
+            let indirect_attributions =
+              let open Datalog_expr.Notation in
+              let query =
+                let positives = [Builtin_relation.has_indirect_contributor @* [const (T.Iri_vertex scope); var "X"]] in
+                let negatives = [] in
                 Datalog_expr.{ var = "X"; positives; negatives }
               in
-              dx_query
-              |> F.run_datalog_query
-              |> Util.get_sorted_articles
+              let@ biotree = List.filter_map @~ Util.get_sorted_articles @@ F.run_datalog_query query in
+              let@ iri = Option.map @~ biotree.frontmatter.iri in
+              T.{ vertex = T.Iri_vertex iri; role = Contributor }
             in
             let all_attributions =
               List_util.nub @@
               attributions @
-              let@ article = List.concat_map @~ articles_below in
-              let@ attribution = List.filter_map @~ article.frontmatter.attributions in
+              let@ attribution = List.filter_map @~ indirect_attributions in
               if List.exists (fun (existing : _ T.attribution) -> attribution.vertex = existing.vertex) attributions then None
               else
-                Some T.{ attribution with role = Contributor }
+                Some attribution
             in
             X.authors [] @@ List.map render_attribution all_attributions
         in

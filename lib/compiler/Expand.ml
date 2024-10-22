@@ -328,14 +328,14 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["query"; "outgoing"], Syn.Query_polarity Outgoing;
       ["query"; "edges"], Syn.Query_mode Edges;
       ["query"; "paths"], Syn.Query_mode Paths;
-      ["rel"; "tags"], Syn.Text Builtin_relation.tags;
-      ["rel"; "taxa"], Syn.Text Builtin_relation.taxa;
-      ["rel"; "authors"], Syn.Text Builtin_relation.authors;
-      ["rel"; "contributors"], Syn.Text Builtin_relation.authors;
-      ["rel"; "transclusion"], Syn.Text Builtin_relation.transclusion;
-      ["rel"; "transclusion"; "transitive-closure"], Syn.Text Builtin_relation.transclusion_tc;
-      ["rel"; "transclusion"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transclusion_rtc;
-      ["rel"; "links"], Syn.Text Builtin_relation.links;
+      ["rel"; "has-tag"], Syn.Text Builtin_relation.has_tag;
+      ["rel"; "has-taxon"], Syn.Text Builtin_relation.has_taxon;
+      ["rel"; "has-author"], Syn.Text Builtin_relation.has_author;
+      ["rel"; "has-direct-contributor"], Syn.Text Builtin_relation.has_direct_contributor;
+      ["rel"; "transcludes"], Syn.Text Builtin_relation.transcludes;
+      ["rel"; "transcludes"; "transitive-closure"], Syn.Text Builtin_relation.transcludes_tc;
+      ["rel"; "transcludes"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transcludes_rtc;
+      ["rel"; "links-to"], Syn.Text Builtin_relation.links_to;
       ["rel"; "is-reference"], Syn.Text Builtin_relation.is_reference;
       ["rel"; "is-person"], Syn.Text Builtin_relation.is_person;
       ["execute"], Syn.Dx_execute
