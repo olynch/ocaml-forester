@@ -167,3 +167,16 @@ let render_forest ~env ~dev ~host ~home ~stylesheet : unit =
     let@ writer = Eio.Buf_write.with_flow flow in
     Client.pp_xml ~stylesheet (Eio.Buf_write.make_formatter writer) article
   end
+
+let export ~env ~host ~asset_dirs : unit =
+  let@ () = Reporter.profile "Export forest" in
+  let cwd = Eio.Stdenv.cwd env in
+  let trees = FU.get_all_articles () in
+  let result = Json_client.render_trees ~host trees in
+  let dir = Eio.Path.(cwd / "export" / host) in
+  Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
+  Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / "forest.json") result;
+  let@ dir_to_copy = List.iter @~ asset_dirs in
+  let source = EP.native_exn dir_to_copy in
+  let dest_dir = EP.native_exn dir in
+  Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir

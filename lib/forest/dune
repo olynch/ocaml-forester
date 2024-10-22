@@ -2,7 +2,7 @@
  (name Forester_forest)
  (public_name forester.forest)
  (preprocess
-  (pps ppx_deriving.show))
+  (pps ppx_deriving.show ppx_repr))
  (libraries
   forester.prelude
   forester.xml_names

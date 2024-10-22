@@ -31,6 +31,18 @@ let build ~env config_filename dev render_only no_assets no_theme =
   let@ dir_to_copy = List.iter @~ dirs_to_copy in
   Forester.copy_contents_of_dir ~env @@ path_of_dir ~env dir_to_copy
 
+let export ~env config_filename =
+  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
+  let tree_dirs = paths_of_dirs ~env config.trees in
+  let asset_dirs = paths_of_dirs ~env config.assets in
+  Forester.plant_forest_from_dirs ~env ~host: config.host ~dev: false ~tree_dirs ~asset_dirs;
+  let host =
+    match config.host with
+    | Some host -> host
+    | None -> Reporter.fatalf Configuration_error "To export a forest, you must first fill in the `host' field in %s" config_filename
+  in
+  Forester.export ~env ~host ~asset_dirs
+
 let new_tree ~env config_filename dest_dir prefix template random =
   let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
@@ -169,6 +181,12 @@ let build_cmd ~env =
       $ arg_no_theme
     )
 
+let export_cmd ~env =
+  let doc = "Export your forest to an archive that can be planted elsewhere" in
+  let man = [] in
+  let info = Cmd.info "export" ~version ~doc ~man in
+  Cmd.v info Term.(const (export ~env) $ arg_config)
+
 let new_tree_cmd ~env =
   let arg_prefix =
     let doc = "The namespace prefix for the created tree." in
@@ -252,7 +270,7 @@ let cmd ~env =
     ]
   in
   let info = Cmd.info "forester" ~version ~doc ~man in
-  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; init_cmd ~env; query_cmd ~env]
+  Cmd.group info [build_cmd ~env; new_tree_cmd ~env; complete_cmd ~env; init_cmd ~env; query_cmd ~env; export_cmd ~env]
 
 let () =
   Random.self_init ();

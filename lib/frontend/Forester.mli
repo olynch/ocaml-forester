@@ -19,6 +19,12 @@ val render_forest :
   stylesheet: string ->
   unit
 
+val export :
+  env: env ->
+  host: string ->
+  asset_dirs: dir list ->
+  unit
+
 val copy_contents_of_dir :
   env: env ->
   dir ->
