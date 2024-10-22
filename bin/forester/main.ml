@@ -60,16 +60,15 @@ let query_all ~env config_filename =
   Forester.json_manifest ~host: config.host ~home: config.home ~dev: true |> Format.printf "%s"
 
 let default_config_str =
-  {|
-[forest]
+  {|[forest]
 trees = ["trees" ]  # The directories in which your trees are stored
 assets = ["assets"] # The directories in which your assets are stored
 theme = "theme"     # The directory in which your theme is stored
+home = "index"
 |}
 
 let index_tree_str =
-  {|
-\title{Hello, World!}
+  {|\title{Hello, World!}
 \p{
   Welcome to your first tree! This tree is the root of your forest.
   \ul{
