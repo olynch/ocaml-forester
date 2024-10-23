@@ -152,7 +152,7 @@ let rec expand : Code.t -> Syn.t = function
     begin
       match import with
       | None ->
-        Reporter.emitf ?loc: loc Tree_not_found "Could not find tree named `%s'" dep
+        Reporter.emitf ?loc: loc Resource_not_found "Could not import tree named `%s'" dep
       | Some tree ->
         begin
           match vis with
@@ -338,7 +338,8 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
       ["rel"; "links-to"], Syn.Text Builtin_relation.links_to;
       ["rel"; "is-reference"], Syn.Text Builtin_relation.is_reference;
       ["rel"; "is-person"], Syn.Text Builtin_relation.is_person;
-      ["execute"], Syn.Dx_execute
+      ["execute"], Syn.Dx_execute;
+      ["route-asset"], Syn.Route_asset;
     ];
   Builtins.Transclude.alloc_expanded ();
   Builtins.Transclude.alloc_show_heading ();

@@ -9,7 +9,6 @@ module Forest_config = struct
     assets: string list;
     foreign: string list;
     theme: string;
-    stylesheet: string
   }
   [@@deriving show, repr]
 end
@@ -22,7 +21,6 @@ let default_forest_config : Forest_config.t =
     foreign = [];
     theme = "theme";
     home = None;
-    stylesheet = "default.xsl"
   }
 
 let parse_forest_config_file filename =
@@ -49,6 +47,12 @@ let parse_forest_config_file filename =
       | Some _ ->
         Reporter.emitf Configuration_error "In your configuration file, change `root' key to `home' in the [forest] group."
     in
+    let _ =
+      match get tbl (forest |-- key "stylesheet" |-- string) with
+      | None -> ()
+      | Some _ ->
+        Reporter.emitf Configuration_error "Custom XSL stylesheet injection is no longer supported; please remove the `stylesheet' key from the [forest] group."
+    in
     let trees =
       Option.value ~default: default_forest_config.trees @@
         get tbl (forest |-- key "trees" |-- array |-- strings)
@@ -65,8 +69,4 @@ let parse_forest_config_file filename =
       Option.value ~default: default_forest_config.theme @@
         get tbl (forest |-- key "theme" |-- string)
     in
-    let stylesheet =
-      Option.value ~default: default_forest_config.stylesheet @@
-        get tbl (forest |-- key "stylesheet" |-- string)
-    in
-    Forest_config.{ host; assets; trees; foreign; theme; home; stylesheet }
+    Forest_config.{ host; assets; trees; foreign; theme; home }

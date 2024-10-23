@@ -17,7 +17,6 @@ val render_forest :
   dev: bool ->
   host: string ->
   home: string option ->
-  stylesheet: string ->
   unit
 
 val export :

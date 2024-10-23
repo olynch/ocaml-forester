@@ -25,4 +25,5 @@ and process_dir dirs dir =
 let scan_directories dirs =
   let@ () = S.run in
   let@ fp = List.iter @~ dirs in
-  process_dir [] fp
+  let@ _, basename = Option.iter @~ EP.split fp in
+  process_dir [basename] fp

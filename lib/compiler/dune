@@ -19,7 +19,13 @@
   bwd
   algaeff
   base64
-  iri)
+  iri
+  multihash
+  multihash-digestif
+  multicodec
+  multibase
+  cstruct
+  cid)
  (public_name forester.compiler))
 
 (env

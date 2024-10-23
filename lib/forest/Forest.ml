@@ -7,12 +7,13 @@ module Q = Query
 module type S = sig
   type resource =
     | Article of T.content T.article
-    | Asset of iri
+    | Asset of { iri: iri; contents: string; filename: string }
 
   val plant_resource : resource -> unit
 
   val get_resource : Iri.t -> resource option
   val get_article : Iri.t -> T.content T.article option
+  val get_all_resources : unit -> resource Seq.t
 
   val get_expanded_title : ?scope: iri -> ?flags: T.title_flags -> T.content T.frontmatter -> T.content
   val get_content_of_transclusion : T.content T.transclusion -> T.content
@@ -39,7 +40,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   type resource =
     | Article of article
-    | Asset of iri
+    | Asset of { iri: iri; contents: string; filename: string }
 
   let resources : (Iri.t, resource) Hashtbl.t =
     Hashtbl.create 1000
@@ -149,7 +150,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   let iri_for_resource = function
     | Article article -> article.frontmatter.iri
-    | Asset iri -> Some iri
+    | Asset asset -> Some asset.iri
 
   let plant_resource resource =
     analyse_resource resource;
@@ -163,6 +164,9 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   let get_resource iri =
     Hashtbl.find_opt resources iri
 
+  let get_all_resources () =
+    Hashtbl.to_seq_values resources
+
   let get_article iri =
     let@ resource = Option.bind @@ get_resource iri in
     match resource with
@@ -173,7 +177,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     match get_article addr with
     | Some article -> article
     | None ->
-      Reporter.fatalf Tree_not_found "Could not find tree %a" pp_iri addr
+      Reporter.fatalf Resource_not_found "Could not find tree %a" pp_iri addr
 
   module Legacy_query_engine = Legacy_query_engine.Make(Graphs)
   include Legacy_query_engine

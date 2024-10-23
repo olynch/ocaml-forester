@@ -6,7 +6,6 @@ module Forest_config: sig
     assets: string list;
     foreign: string list;
     theme: string;
-    stylesheet: string;
   }
 end
 

@@ -49,6 +49,7 @@ type node =
   | Dx_var of string
   | Dx_const of [`Content | `Iri] * t
   | Dx_execute
+  | Route_asset
 [@@deriving show]
 
 and t = node Range.located list

@@ -65,26 +65,6 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     | Absolute [_] -> "user"
     | _ -> failwith "addr_type"
 
-  let route_bare_forester_iri ~path ~is_asset =
-    let bare_route =
-      String.concat (if is_asset then "/" else "-") @@
-        match path with
-        | Iri.Absolute xs -> xs
-        | Iri.Relative xs -> xs (* impossible? *)
-    in
-    match is_asset with
-    | true -> bare_route
-    | false -> bare_route ^ ".xml"
-
-  let route_foreign_forester_iri ~host ~path ~is_asset =
-    "foreign-" ^ host ^ "-" ^ route_bare_forester_iri ~path ~is_asset
-
-  let route_forester_iri ~host ~path ~is_asset =
-    if host = Params.host then
-      route_bare_forester_iri ~path ~is_asset
-    else
-      route_foreign_forester_iri ~host ~path ~is_asset
-
   let home_iri =
     let@ root = Option.bind Params.home in
     let base = Iri_scheme.base_iri ~host: Params.host in
@@ -99,20 +79,28 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       Iri.equal ~normalize: true home_iri iri
     | None -> false
 
-  let iri_is_asset iri =
-    match F.get_resource iri with
-    | Some (F.Asset _) -> true
-    | _ -> false
-
   let route iri =
-    match Iri.host iri with
-    | Some host when Iri.scheme iri = Iri_scheme.scheme ->
-      if iri_is_home iri then "index.xml"
-      else
-        let path = Iri.path iri in
-        let is_asset = iri_is_asset iri in
-        route_forester_iri ~host ~path ~is_asset
-    | _ -> Iri.to_uri iri
+    match F.get_resource iri with
+    | Some (F.Article _) ->
+      let host = Option.value ~default: "" @@ Iri.host iri in
+      let bare_route =
+        String.concat "-" @@
+          match Iri.path iri with
+          | Iri.Absolute xs -> xs
+          | Iri.Relative xs -> xs (* impossible? *)
+      in
+      begin
+        if host = Params.host then
+          if iri_is_home iri then "index.xml"
+          else
+            bare_route ^ ".xml"
+        else
+          "foreign-" ^ host ^ bare_route ^ ".xml"
+      end
+    | Some (F.Asset asset) ->
+      "content/" ^ asset.filename
+    | None ->
+      Iri.to_uri iri
 
   let get_expanded_title frontmatter =
     let scope = Scope.read () in

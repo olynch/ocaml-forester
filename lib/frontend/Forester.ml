@@ -126,20 +126,26 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
 
 let plant_raw_forest_from_dirs ~env ~host ~dev ~tree_dirs ~asset_dirs ~foreign_dirs : unit =
   let parsed_trees = parse_trees_in_dirs ~dev tree_dirs in
-  let@ () = Reporter.profile "Expand, evaluate, and analyse forest" in
   begin
-    let@ _, article = Seq.iter @~ Iri_map.to_seq @@ Forest_reader.read_trees ~host ~env parsed_trees in
-    F.plant_resource @@ F.Article article
+    let@ () = Reporter.profile "Read assets" in
+    let@ source_path = Seq.iter @~ Dir_scanner.scan_directories asset_dirs in
+    let source_path = String.concat "/" source_path in
+    let cwd = Eio.Stdenv.cwd env in
+    let content = EP.load EP.(cwd / source_path) in
+    let filename, iri = Forester_compiler.Asset_content_addresser.install ~source_path ~content in
+    F.plant_resource @@ F.Asset { iri; contents = content; filename }
   end;
   begin
-    let@ asset_path = Seq.iter @~ Dir_scanner.scan_directories asset_dirs in
-    let asset_iri = Iri.iri ~scheme: Iri_scheme.scheme ~host ~path: (Absolute asset_path) () in
-    F.plant_resource @@ F.Asset asset_iri
-  end;
-  begin
-    let@ _foreign_dir = List.iter @~ foreign_dirs in
-    (* TODO: plant the trees & assets from the foreign directory *)
-    ()
+    let@ () = Reporter.profile "Expand, evaluate, and analyse forest" in
+    begin
+      let@ _, article = Seq.iter @~ Iri_map.to_seq @@ Forest_reader.read_trees ~host ~env parsed_trees in
+      F.plant_resource @@ F.Article article
+    end;
+    begin
+      let@ _foreign_dir = List.iter @~ foreign_dirs in
+      (* TODO: plant the trees & assets from the foreign directory *)
+      ()
+    end
   end
 
 let json_manifest ~host ~home ~dev : string =
@@ -149,28 +155,40 @@ let json_manifest ~host ~home ~dev : string =
   let module R = Json_manifest_client.Make(Client)(F) in
   Yojson.Basic.to_string @@ R.render_trees ~dev ~host all_articles
 
-let render_forest ~env ~dev ~host ~home ~stylesheet : unit =
+let render_forest ~env ~dev ~host ~home : unit =
   let module P = struct let host = host let home = home end in
   let module Client = Legacy_xml_client.Make(P)(F)() in
   let module R = Json_manifest_client.Make(Client)(F) in
   let@ () = Reporter.profile "Render forest" in
   let cwd = Eio.Stdenv.cwd env in
-  let all_articles = FU.get_all_articles () in
+  let all_resources = List.of_seq @@ F.get_all_resources () in
   begin
+    let all_articles = List.filter_map (function F.Article article -> Some article | _ -> None) all_resources in
     let json_string = Yojson.Basic.to_string @@ R.render_trees ~dev ~host all_articles in
     let json_path = EP.(cwd / output_dir_name / "forest.json") in
     Eio_util.ensure_context_of_path ~perm: 0o755 json_path;
     EP.save ~create: (`Or_truncate 0o644) json_path json_string
   end;
   begin
-    let@ article = Eio.Fiber.List.iter ~max_fibers: 20 @~ all_articles in
+    let@ resource = Eio.Fiber.List.iter ~max_fibers: 20 @~ all_resources in
     let@ () = Reporter.easy_run in
-    let@ route = Option.iter @~ Option.map Client.route article.frontmatter.iri in
-    let path = EP.(cwd / output_dir_name / route) in
-    Eio_util.ensure_context_of_path ~perm: 0o755 path;
-    let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) path in
-    let@ writer = Eio.Buf_write.with_flow flow in
-    Client.pp_xml ~stylesheet (Eio.Buf_write.make_formatter writer) article
+    match resource with
+    | F.Article article ->
+      let@ route = Option.iter @~ Option.map Client.route article.frontmatter.iri in
+      let path = EP.(cwd / output_dir_name / route) in
+      Eio_util.ensure_context_of_path ~perm: 0o755 path;
+      let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) path in
+      let@ writer = Eio.Buf_write.with_flow flow in
+      Client.pp_xml ~stylesheet:"default.xsl" (Eio.Buf_write.make_formatter writer) article
+    | F.Asset asset ->
+      let route = Client.route asset.iri in
+      let dest = EP.(cwd / output_dir_name / route) in
+      if Eio_util.file_exists dest then ()
+      else
+        begin
+          Eio_util.ensure_context_of_path ~perm: 0o755 dest;
+          EP.save ~create: (`Or_truncate 0o644) dest asset.contents
+        end
   end
 
 let export ~env ~host ~asset_dirs : unit =

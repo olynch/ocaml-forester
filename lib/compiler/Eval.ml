@@ -402,6 +402,10 @@ and eval_node node : V.t =
       T.{ href; target; modifier = Identity }
     in
     emit_content_node ~loc @@ T.Transclude transclusion
+  | Route_asset ->
+    let source_path = pop_text_arg ~loc in
+    let iri = Asset_content_addresser.iri_of_asset ~source_path in
+    emit_content_node ~loc @@ T.Text (Iri.to_string ~pctencode: false iri)
   | Object { self; methods } ->
     let table =
       let env = Lex_env.read () in

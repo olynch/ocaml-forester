@@ -31,6 +31,7 @@ depends: [
   "pure-html" {>= "3.6.1"}
   "base64" {>= "3.5.1"}
   "datalog" {>= "0.7"}
+  "cid" {>= "0.1.0"}
   "odoc" {with-doc}
 ]
 build: [

@@ -18,16 +18,16 @@ let version =
     | None -> "n/a"
     | Some v -> Build_info.V1.Version.to_string v
 
-let build ~env config_filename dev render_only no_assets no_theme =
+let build ~env config_filename dev no_theme =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   let tree_dirs = paths_of_dirs ~env config.trees in
   let asset_dirs = paths_of_dirs ~env config.assets in
   let foreign_dirs = paths_of_dirs ~env config.foreign in
   Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev ~tree_dirs ~asset_dirs ~foreign_dirs;
-  Forester.render_forest ~env ~dev ~host: config.host ~home: config.home ~stylesheet: config.stylesheet;
+  Forester.render_forest ~env ~dev ~host: config.host ~home: config.home;
   let dirs_to_copy =
     (if not no_theme then [config.theme] else []) @
-      (if not no_assets then config.assets else [])
+      []
   in
   let@ dir_to_copy = List.iter @~ dirs_to_copy in
   Forester.copy_contents_of_dir ~env @@ path_of_dir ~env dir_to_copy
@@ -151,17 +151,9 @@ let build_cmd ~env =
     let doc = "Run forester in development mode; this will attach source file locations to the generated json." in
     Arg.value @@ Arg.flag @@ Arg.info ["dev"] ~doc
   in
-  let arg_no_assets =
-    let doc = "Build without copying the asset directory" in
-    Arg.value @@ Arg.flag @@ Arg.info ["no-assets"] ~doc
-  in
   let arg_no_theme =
     let doc = "Build without copying the theme directory" in
     Arg.value @@ Arg.flag @@ Arg.info ["no-theme"] ~doc
-  in
-  let arg_render_only =
-    let doc = "Builds the entire forest but renders only the specified comma-separated list of trees" in
-    Arg.value @@ Arg.opt (Arg.some' (Arg.list Arg.string)) None @@ Arg.info ["render-only"] ~docv: "TREES" ~doc
   in
   let doc = "Build the forest" in
   let man =
@@ -177,8 +169,6 @@ let build_cmd ~env =
       const (build ~env)
       $ arg_config
       $ arg_dev
-      $ arg_render_only
-      $ arg_no_assets
       $ arg_no_theme
     )
 

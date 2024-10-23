@@ -1,6 +1,5 @@
 module Message = struct
   type t =
-    | Tree_not_found
     | Duplicate_tree
     | Parse_error
     | Type_error
@@ -18,12 +17,12 @@ module Message = struct
     | Routing_error
     | Profiling
     | External_error
+    | Resource_not_found
     | Log
   [@@deriving show]
 
   let default_severity : t -> Asai.Diagnostic.severity = function
     | Duplicate_tree -> Error
-    | Tree_not_found -> Error
     | Parse_error -> Error
     | Type_error -> Error
     | Type_warning -> Warning
@@ -41,6 +40,7 @@ module Message = struct
     | Profiling -> Info
     | External_error -> Error
     | Log -> Info
+    | Resource_not_found -> Error
 
   let short_code : t -> string =
     show
