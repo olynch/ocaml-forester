@@ -1,6 +1,6 @@
 open Forester_core
 
-module T := Xml_tree
+module T := Types
 module P := Pure_html
 
 module type Params = sig

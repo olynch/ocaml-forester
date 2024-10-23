@@ -1,7 +1,7 @@
 open Forester_prelude
 open Forester_core
 
-module T = Xml_tree
+module T = Types
 module Q = Query
 
 type resource = T.content T.resource

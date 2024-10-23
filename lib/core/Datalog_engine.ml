@@ -1,4 +1,4 @@
-module T = Xml_tree
+module T = Types
 module D = Datalog.Default
 (* BottomUp.Make(struct include Vertex let to_string = show end) *)
 

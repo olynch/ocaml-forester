@@ -2,7 +2,7 @@ open Forester_prelude
 open Forester_core
 
 module type S = sig
-  val run_query : Xml_tree.query -> Vertex_set.t
+  val run_query : Types.query -> Vertex_set.t
 end
 
 module Make (Graphs: Forest_graphs.S) : S = struct
@@ -32,7 +32,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     | Q.Incoming -> Forest_graph.mem_edge gph vtx' vtx
     | Q.Outgoing -> Forest_graph.mem_edge gph vtx vtx'
 
-  let rec check_query ~env (q : Xml_tree.query) vtx =
+  let rec check_query ~env (q : Types.query) vtx =
     match q with
     | Rel (mode, pol, rel, vtx_val') ->
       let vtx' = eval_vertex ~env vtx_val' in
@@ -62,7 +62,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     let@ q = List.exists @~ qs in
     check_query ~env q vtx
 
-  and run_query ~env (q : Xml_tree.query) : Vertex_set.t =
+  and run_query ~env (q : Types.query) : Vertex_set.t =
     match q with
     | Rel (mode, pol, rel, vtx_val) ->
       let vtx = eval_vertex ~env vtx_val in

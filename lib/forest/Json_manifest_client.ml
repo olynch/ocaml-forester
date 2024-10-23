@@ -1,7 +1,7 @@
 open Forester_prelude
 open Forester_core
 
-module T = Xml_tree
+module T = Types
 
 module Make (R: sig val route : Iri.t -> string end) (F: Forest.S) = struct
 

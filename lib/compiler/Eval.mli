@@ -1,5 +1,5 @@
 open Forester_core
-module T := Xml_tree
+module T := Types
 
 type job =
   | LaTeX_to_svg of

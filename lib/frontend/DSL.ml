@@ -1,5 +1,5 @@
 open Forester_core
-module X = Forester_core.Xml_tree
+module X = Forester_core.Types
 
 let txt str = X.Text str
 

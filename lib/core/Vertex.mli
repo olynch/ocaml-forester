@@ -1,6 +1,6 @@
 open Base
 
-type t = Xml_tree.content Xml_tree.vertex
+type t = Types.content Types.vertex
 include Set.OrderedType with type t := t
 val equal : t -> t -> bool
 val hash : t -> int

@@ -4,7 +4,7 @@ open Forester_forest
 open Forester_compiler
 
 module M = Iri_map
-module T = Xml_tree
+module T = Types
 module F = Forest.Make(Forest_graphs.Make ())
 module FU = Forest_util.Make(F)
 module PT = Plain_text_client.Make(F)(Plain_text_client.Default_params)

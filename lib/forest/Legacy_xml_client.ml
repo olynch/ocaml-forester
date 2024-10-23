@@ -2,7 +2,7 @@ open Forester_prelude
 open Forester_xml_names
 open Forester_core
 
-module T = Xml_tree
+module T = Types
 module P = Pure_html
 module X = Xml_forester
 

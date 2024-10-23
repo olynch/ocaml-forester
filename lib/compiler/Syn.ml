@@ -39,7 +39,7 @@ type node =
   | Parent
   | Taxon
   | Meta
-  | Attribution of Xml_tree.attribution_role * [`Content | `Iri]
+  | Attribution of Types.attribution_role * [`Content | `Iri]
   | Tag of [`Content | `Iri]
   | Date
   | Number

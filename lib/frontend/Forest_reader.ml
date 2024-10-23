@@ -2,7 +2,7 @@ open Forester_prelude
 open Forester_core
 open Forester_compiler
 
-module T = Xml_tree
+module T = Types
 
 type env = Eio_unix.Stdenv.base
 

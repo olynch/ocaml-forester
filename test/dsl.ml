@@ -1,6 +1,6 @@
 open Forester_frontend.DSL
 open Forester_core
-open Xml_tree
+open Types
 open Query
 
 let content =

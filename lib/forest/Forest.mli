@@ -1,6 +1,6 @@
 open Forester_core
 
-module T = Xml_tree
+module T = Types
 
 type resource = T.content T.resource
 

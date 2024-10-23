@@ -15,7 +15,7 @@ module Prim = Prim
 
 module TeX_cs = TeX_cs
 
-module Xml_tree = Xml_tree
+module Types = Types
 
 module Trie = Trie
 
