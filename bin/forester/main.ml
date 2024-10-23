@@ -139,6 +139,7 @@ git -C theme checkout %s
   ["trees"; "assets"] |> List.iter (Eio_util.try_create_dir ~cwd);
   Eio_util.try_create_file ~cwd ~content: default_config_str "forest.toml";
   Eio_util.try_create_file ~cwd ~content: "output/" ".gitignore";
+  Eio_util.try_create_file ~cwd ~content: "" "assets/.gitkeep";
   Eio_util.try_create_file ~cwd ~content: index_tree_str "trees/index.tree";
   Reporter.emitf Log "%s" "Initialized forest, try editing `trees/index.tree` and running `forester build`. Afterwards, you can open `output/index.xml` in your browser to view your forest."
 
