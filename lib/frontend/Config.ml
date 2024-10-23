@@ -58,7 +58,7 @@ let parse_forest_config_file filename =
         get tbl (forest |-- key "trees" |-- array |-- strings)
     in
     let foreign =
-      Option.value ~default: default_forest_config.trees @@
+      Option.value ~default: default_forest_config.foreign @@
         get tbl (forest |-- key "foreign" |-- array |-- strings)
     in
     let assets =

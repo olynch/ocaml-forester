@@ -91,6 +91,9 @@ type 'content resource =
   | Asset of asset
 [@@deriving show, repr]
 
+type 'content forest = 'content resource list
+[@@deriving show, repr]
+
 type 'content content_target =
   | Full of section_flags
   | Mainmatter

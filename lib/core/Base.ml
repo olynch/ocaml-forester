@@ -1,6 +1,6 @@
 type iri = Iri.t
 
-let iri_t = Repr.map Repr.string Iri.of_string (Iri.to_string ~pctencode: false)
+let iri_t = Repr.map Repr.string (Iri.of_string ~pctdecode: true) (Iri.to_string ~pctencode: true)
 
 let pp_iri (fmt : Format.formatter) (iri : Iri.t) =
   Format.fprintf fmt "%s" @@

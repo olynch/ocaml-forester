@@ -22,8 +22,8 @@ let build ~env config_filename dev no_theme =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   let tree_dirs = paths_of_dirs ~env config.trees in
   let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_dirs = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev ~tree_dirs ~asset_dirs ~foreign_dirs;
+  let foreign_paths = paths_of_dirs ~env config.foreign in
+  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev ~tree_dirs ~asset_dirs ~foreign_paths;
   Forester.render_forest ~env ~dev ~host: config.host ~home: config.home;
   let dirs_to_copy =
     (if not no_theme then [config.theme] else []) @
@@ -36,8 +36,8 @@ let export ~env config_filename =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   let tree_dirs = paths_of_dirs ~env config.trees in
   let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_dirs = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: false ~tree_dirs ~asset_dirs ~foreign_dirs;
+  let foreign_paths = paths_of_dirs ~env config.foreign in
+  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: false ~tree_dirs ~asset_dirs ~foreign_paths;
   let host = config.host in
   Forester.export ~env ~host
 
@@ -46,8 +46,8 @@ let new_tree ~env config_filename dest_dir prefix template random =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   let tree_dirs = paths_of_dirs ~env config.trees in
   let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_dirs = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_dirs;
+  let foreign_paths = paths_of_dirs ~env config.foreign in
+  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_paths;
   let mode = if random then `Random else `Sequential in
   let dest = path_of_dir ~env dest_dir in
   let addr = Forester.create_tree ~env ~dest ~prefix ~template ~mode in
@@ -58,8 +58,8 @@ let complete ~env config_filename title =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   let tree_dirs = paths_of_dirs ~env config.trees in
   let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_dirs = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_dirs;
+  let foreign_paths = paths_of_dirs ~env config.foreign in
+  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_paths;
   let@ iri, title = Seq.iter @~ Forester.complete ~host: config.host title in
   Format.printf "%a, %s\n" pp_iri iri title
 
@@ -68,8 +68,8 @@ let query_all ~env config_filename =
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   let tree_dirs = paths_of_dirs ~env config.trees in
   let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_dirs = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_dirs;
+  let foreign_paths = paths_of_dirs ~env config.foreign in
+  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_paths;
   Forester.json_manifest ~host: config.host ~home: config.home ~dev: true |> Format.printf "%s"
 
 let default_config_str =

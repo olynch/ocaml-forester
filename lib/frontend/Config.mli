@@ -7,6 +7,7 @@ module Forest_config: sig
     foreign: string list;
     theme: string;
   }
+  [@@deriving show]
 end
 
 val default_forest_config : Forest_config.t

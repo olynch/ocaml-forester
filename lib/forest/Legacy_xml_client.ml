@@ -92,7 +92,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
         else
           bare_route ^ suffix
       else
-        "foreign-" ^ host ^ bare_route ^ suffix
+        "foreign-" ^ host ^ "-" ^ bare_route ^ suffix
     end
 
   let route iri =

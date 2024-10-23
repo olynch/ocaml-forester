@@ -124,7 +124,22 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
   | exception exn ->
     if ignore_malformed then None else raise exn
 
-let plant_raw_forest_from_dirs ~env ~host ~dev ~tree_dirs ~asset_dirs ~foreign_dirs : unit =
+let plant_raw_forest_from_dirs ~env ~host ~dev ~tree_dirs ~asset_dirs ~foreign_paths : unit =
+  begin
+    let@ path = List.iter @~ foreign_paths in
+    let path_str = EP.native_exn path in
+    let@ () = Reporter.profile @@ Format.sprintf "Implant foreign forest from `%s'" path_str in
+    let blob = try EP.load path with _ -> Reporter.fatalf IO_error "Could not read foreign forest blob at `%s`" path_str in
+    match Repr.of_json_string (T.forest_t T.content_t) blob with
+    | Ok forest ->
+      List.iter F.plant_resource forest
+    | Error (`Msg err) ->
+      Reporter.fatalf Parse_error "Could not parse foreign forest blob: %s" err
+    | exception (Iri.Error err) ->
+      Reporter.fatalf Parse_error "Encountered error while decoding foreign forest blob: %s" (Iri.string_of_error err)
+    | exception exn ->
+      Reporter.fatalf Parse_error "Encountered unknown error while decoding foreign forest blob: %s" (Printexc.to_string exn)
+  end;
   let parsed_trees = parse_trees_in_dirs ~dev tree_dirs in
   begin
     let@ () = Reporter.profile "Read assets" in
@@ -142,7 +157,7 @@ let plant_raw_forest_from_dirs ~env ~host ~dev ~tree_dirs ~asset_dirs ~foreign_d
       F.plant_resource @@ T.Article article
     end;
     begin
-      let@ _foreign_dir = List.iter @~ foreign_dirs in
+      let@ _foreign_dir = List.iter @~ foreign_paths in
       (* TODO: plant the trees & assets from the foreign directory *)
       ()
     end
@@ -202,7 +217,8 @@ let export ~env ~host : unit =
     | _ -> false
   in
   let cwd = Eio.Stdenv.cwd env in
-  let result = Json_client.render ~host @@ List.of_seq local_resources in
-  let dir = Eio.Path.(cwd / "export" / host) in
+  let result = Repr.to_json_string ~minify: true (T.forest_t T.content_t) @@ List.of_seq local_resources in
+  let dir = Eio.Path.(cwd / "export") in
+  let filename = host ^ ".json" in
   Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
-  Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / "forest.json") result
+  Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / filename) result

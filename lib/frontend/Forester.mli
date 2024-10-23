@@ -9,7 +9,7 @@ val plant_raw_forest_from_dirs :
   dev: bool ->
   tree_dirs: dir list ->
   asset_dirs: dir list ->
-  foreign_dirs: dir list ->
+  foreign_paths: dir list ->
   unit
 
 val render_forest :
