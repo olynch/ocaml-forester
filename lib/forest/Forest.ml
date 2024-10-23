@@ -70,13 +70,13 @@ module Make (Graphs: Forest_graphs.S) : S = struct
       analyse_content scope content
     | KaTeX (_, content) ->
       analyse_content scope content
-    | Resource resource ->
-      analyse_resource scope resource
+    | Artefact artefact  ->
+      analyse_artefact scope artefact
     | Datalog_script script ->
       execute_datalog_script script
 
-  and analyse_resource scope resource =
-    analyse_content scope resource.content
+  and analyse_artefact scope artefact =
+    analyse_content scope artefact.content
 
   and analyse_transclusion (scope : Iri.t) (transclusion : T.content T.transclusion) : unit =
     match transclusion.target with

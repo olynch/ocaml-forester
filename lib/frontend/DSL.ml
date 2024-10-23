@@ -47,8 +47,8 @@ let transclude href =
       modifier = Identity
     }
 
-let resource content =
-  X.Resource
+let artefact content =
+  X.Artefact
     X.{
       hash = "";
       content = Content content;

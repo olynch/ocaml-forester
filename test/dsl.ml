@@ -28,7 +28,7 @@ let content =
       tex "\\begin{}";
       link "https://git.sr.ht/~jonsterling/ocaml-forester" [txt "Forester"];
       img "img.png";
-      resource [txt "res"];
+      artefact [txt "res"];
     ]
 
 let () = Format.printf "%a" (pp_content_node pp_content) content

@@ -193,9 +193,11 @@ let render_forest ~env ~dev ~host ~home : unit =
 
 let export ~env ~host ~asset_dirs : unit =
   let@ () = Reporter.profile "Export forest" in
+  let all_resources = List.of_seq @@ F.get_all_resources () in
+  let all_articles = List.filter_map (function F.Article article -> Some article | _ -> None) all_resources in
+
   let cwd = Eio.Stdenv.cwd env in
-  let trees = FU.get_all_articles () in
-  let result = Json_client.render_trees ~host trees in
+  let result = Json_client.render_trees ~host all_articles in
   let dir = Eio.Path.(cwd / "export" / host) in
   Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
   Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / "forest.json") result;

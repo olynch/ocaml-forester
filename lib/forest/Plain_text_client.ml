@@ -23,7 +23,7 @@ module Make (F: Forest.S) : S = struct
     | Section section -> pp_section fmt section
     | Prim (_, content) -> pp_content fmt content
     | Link link -> pp_link fmt link
-    | Results_of_query _ | Results_of_datalog_query _ | Img _ | Resource _ | Datalog_script _ -> ()
+    | Results_of_query _ | Results_of_datalog_query _ | Img _ | Artefact _ | Datalog_script _ -> ()
 
   and pp_transclusion fmt (transclusion : T.content T.transclusion) =
     pp_content fmt @@ F.get_content_of_transclusion transclusion

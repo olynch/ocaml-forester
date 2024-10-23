@@ -3,7 +3,7 @@ module T = Xml_tree
 
 type t = {
   host: string;
-  articles: T.content T.article list
+  articles: T.content T.article list;
 }
 [@@deriving repr]
 

@@ -118,17 +118,17 @@ type img =
   | Remote of string
 [@@deriving show, repr]
 
-type resource_source = {
+type artefact_source = {
   type_: string;
   part: string;
   source: string
 }
 [@@deriving show, repr]
 
-type 'content resource = {
+type 'content artefact = {
   hash: string;
   content: 'content;
-  sources: resource_source list
+  sources: artefact_source list
 }
 [@@deriving show, repr]
 
@@ -145,7 +145,7 @@ type 'content content_node =
   | TeX_cs of TeX_cs.t
   | Link of 'content link
   | Img of img
-  | Resource of 'content resource
+  | Artefact of 'content artefact
   | Iri of iri
   | Datalog_script of (string, 'content vertex) Datalog_expr.script
   | Results_of_datalog_query of (string, 'content vertex) Datalog_expr.query
@@ -253,7 +253,7 @@ module TeX_like: sig
     | CDATA str -> Format.fprintf fmt "%s" str
     | KaTeX (_, xs) -> pp_content fmt xs
     | TeX_cs cs -> pp_tex_cs fmt cs
-    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Resource _ | Iri _ | Datalog_script _ | Results_of_datalog_query _ ->
+    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Artefact _ | Iri _ | Datalog_script _ | Results_of_datalog_query _ ->
       Reporter.fatalf Type_error "Cannot render this kind of content as TeX-like string"
 
   let string_of_content =

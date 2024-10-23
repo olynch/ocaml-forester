@@ -390,8 +390,8 @@ and eval_node node : V.t =
           T.{ type_ = "latex"; part = "body"; source = body }
         ]
       in
-      let resource = T.{ hash; content; sources } in
-      T.Content [T.Resource resource]
+      let artefact = T.{ hash; content; sources } in
+      T.Content [T.Artefact artefact]
     in
     let job = LaTeX_to_svg { hash; source; content } in
     Jobs.modify (List.cons job);

@@ -266,11 +266,11 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       [P.txt ~raw: true "\\%s" @@ TeX_cs.show cs]
     | Img img ->
       [render_img img]
-    | Resource resource ->
-      [render_resource resource]
+    | Artefact resource ->
+      [render_artefact resource]
     | Datalog_script _ -> []
 
-  and render_resource (resource : T.content T.resource) =
+  and render_artefact (resource : T.content T.artefact) =
     X.resource
       [X.hash "%s" resource.hash]
       [
