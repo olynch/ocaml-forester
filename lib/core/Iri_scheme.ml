@@ -24,7 +24,7 @@ let fresh ~host =
     ~path: (Absolute ["unstable"; string_of_int (Oo.id object end)])
     ()
 
-let is_stable_iri iri =
+let is_named_iri iri =
   match Iri.scheme iri, Iri.path iri with
   | sch, Absolute (("unstable" | "hash") :: _) when sch = scheme -> false
   | _ -> true

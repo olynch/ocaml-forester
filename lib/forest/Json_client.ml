@@ -3,9 +3,9 @@ module T = Xml_tree
 
 type t = {
   host: string;
-  articles: T.content T.article list;
+  resources: T.content T.resource list;
 }
 [@@deriving repr]
 
-let render_trees ~host articles =
-  Repr.to_json_string t { host; articles }
+let render ~host resources =
+  Repr.to_json_string t { host; resources }

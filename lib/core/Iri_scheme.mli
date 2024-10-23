@@ -20,7 +20,7 @@ val fresh :
   host: string ->
   iri
 
-val is_stable_iri : iri -> bool
+val is_named_iri : iri -> bool
 
 val relativise_iri :
   host: string ->

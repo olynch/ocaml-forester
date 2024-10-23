@@ -2,11 +2,9 @@ open Forester_core
 
 module T = Xml_tree
 
-module type S = sig
-  type resource =
-    | Article of T.content T.article
-    | Asset of { iri: iri; contents: string; filename: string }
+type resource = T.content T.resource
 
+module type S = sig
   val plant_resource : resource -> unit
   val get_resource : iri -> resource option
   val get_article : iri -> T.content T.article option

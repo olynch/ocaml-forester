@@ -39,7 +39,7 @@ let export ~env config_filename =
   let foreign_dirs = paths_of_dirs ~env config.foreign in
   Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: false ~tree_dirs ~asset_dirs ~foreign_dirs;
   let host = config.host in
-  Forester.export ~env ~host ~asset_dirs
+  Forester.export ~env ~host
 
 let new_tree ~env config_filename dest_dir prefix template random =
   let@ () = Reporter.silence in

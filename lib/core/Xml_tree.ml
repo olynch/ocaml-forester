@@ -34,12 +34,12 @@ let default_section_flags =
     expanded = None
   }
 
-type xml_attr = { key: xml_qname; value: string }
+type 'content xml_attr = { key: xml_qname; value: 'content }
 [@@deriving show, repr]
 
 type 'content xml_elt = {
   name: xml_qname;
-  attrs: xml_attr list;
+  attrs: 'content xml_attr list;
   content: 'content
 }
 [@@deriving show, repr]
@@ -81,6 +81,14 @@ type 'content article = {
   mainmatter: 'content;
   backmatter: 'content;
 }
+[@@deriving show, repr]
+
+type asset = { iri: iri; host: string; content: string }
+[@@deriving show, repr]
+
+type 'content resource =
+  | Article of 'content article
+  | Asset of asset
 [@@deriving show, repr]
 
 type 'content content_target =
@@ -147,6 +155,7 @@ type 'content content_node =
   | Img of img
   | Artefact of 'content artefact
   | Iri of iri
+  | Route_of_iri of iri
   | Datalog_script of (string, 'content vertex) Datalog_expr.script
   | Results_of_datalog_query of (string, 'content vertex) Datalog_expr.query
 [@@deriving show, repr]
@@ -253,7 +262,7 @@ module TeX_like: sig
     | CDATA str -> Format.fprintf fmt "%s" str
     | KaTeX (_, xs) -> pp_content fmt xs
     | TeX_cs cs -> pp_tex_cs fmt cs
-    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Artefact _ | Iri _ | Datalog_script _ | Results_of_datalog_query _ ->
+    | Xml_elt _ | Transclude _ | Contextual_number _ | Results_of_query _ | Section _ | Prim _ | Link _ | Img _ | Artefact _ | Iri _ | Route_of_iri _ | Datalog_script _ | Results_of_datalog_query _ ->
       Reporter.fatalf Type_error "Cannot render this kind of content as TeX-like string"
 
   let string_of_content =

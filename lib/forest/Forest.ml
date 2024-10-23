@@ -4,11 +4,9 @@ open Forester_core
 module T = Xml_tree
 module Q = Query
 
-module type S = sig
-  type resource =
-    | Article of T.content T.article
-    | Asset of { iri: iri; contents: string; filename: string }
+type resource = T.content T.resource
 
+module type S = sig
   val plant_resource : resource -> unit
 
   val get_resource : Iri.t -> resource option
@@ -38,10 +36,6 @@ module Make (Graphs: Forest_graphs.S) : S = struct
   let run_datalog_query =
     Datalog_eval.run_query Graphs.dl_db
 
-  type resource =
-    | Article of article
-    | Asset of { iri: iri; contents: string; filename: string }
-
   let resources : (Iri.t, resource) Hashtbl.t =
     Hashtbl.create 1000
 
@@ -56,7 +50,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   let rec analyse_content_node (scope : Iri.t) (node : 'a T.content_node) : unit =
     match node with
-    | Text _ | CDATA _ | Iri _ | Results_of_query _ | Results_of_datalog_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
+    | Text _ | CDATA _ | Iri _ | Route_of_iri _ | Results_of_query _ | Results_of_datalog_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
     | Transclude transclusion ->
       analyse_transclusion scope transclusion
     | Xml_elt elt ->
@@ -70,7 +64,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
       analyse_content scope content
     | KaTeX (_, content) ->
       analyse_content scope content
-    | Artefact artefact  ->
+    | Artefact artefact ->
       analyse_artefact scope artefact
     | Datalog_script script ->
       execute_datalog_script script
@@ -145,16 +139,17 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     analyse_content scope article.backmatter
 
   let analyse_resource = function
-    | Article article -> analyse_article article
-    | Asset _ -> ()
+    | T.Article article -> analyse_article article
+    | T.Asset _ -> ()
 
   let iri_for_resource = function
-    | Article article -> article.frontmatter.iri
-    | Asset asset -> Some asset.iri
+    | T.Article article -> article.frontmatter.iri
+    | T.Asset asset -> Some asset.iri
 
   let plant_resource resource =
     analyse_resource resource;
     let@ iri = Option.iter @~ iri_for_resource resource in
+    let iri = Iri.normalize iri in
     match Hashtbl.mem resources iri with
     | false ->
       Hashtbl.add resources iri resource
@@ -162,6 +157,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
       Reporter.emitf Duplicate_tree "Already planted resource at address %a" pp_iri iri
 
   let get_resource iri =
+    let iri = Iri.normalize iri in
     Hashtbl.find_opt resources iri
 
   let get_all_resources () =

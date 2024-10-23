@@ -20,7 +20,6 @@ end
 
 module Make (Params: Params) (F: Forest.S) () : S = struct
 
-  module PT = Plain_text_client.Make(F)
   module Util = Forest_util.Make(F)
 
   module Xmlns = struct
@@ -79,28 +78,36 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       Iri.equal ~normalize: true home_iri iri
     | None -> false
 
+  let route_resource_iri ~suffix iri =
+    let host = Option.value ~default: "" @@ Iri.host iri in
+    let bare_route =
+      String.concat "-" @@
+        match Iri.path iri with
+        | Iri.Absolute xs -> xs
+        | Iri.Relative xs -> xs (* impossible? *)
+    in
+    begin
+      if host = Params.host then
+        if iri_is_home iri then "index.xml"
+        else
+          bare_route ^ suffix
+      else
+        "foreign-" ^ host ^ bare_route ^ suffix
+    end
+
   let route iri =
     match F.get_resource iri with
-    | Some (F.Article _) ->
-      let host = Option.value ~default: "" @@ Iri.host iri in
-      let bare_route =
-        String.concat "-" @@
-          match Iri.path iri with
-          | Iri.Absolute xs -> xs
-          | Iri.Relative xs -> xs (* impossible? *)
+    | Some resource ->
+      let suffix =
+        match resource with
+        | T.Article _ -> ".xml"
+        | T.Asset _ -> ""
       in
-      begin
-        if host = Params.host then
-          if iri_is_home iri then "index.xml"
-          else
-            bare_route ^ ".xml"
-        else
-          "foreign-" ^ host ^ bare_route ^ ".xml"
-      end
-    | Some (F.Asset asset) ->
-      "content/" ^ asset.filename
+      route_resource_iri ~suffix iri
     | None ->
       Iri.to_uri iri
+
+  module PT = Plain_text_client.Make(F)(struct let route = route end)
 
   let get_expanded_title frontmatter =
     let scope = Scope.read () in
@@ -114,7 +121,8 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     | _ -> Format.sprintf "%s:%s" qname.prefix qname.uname
 
   let render_xml_attr T.{ key; value } =
-    P.string_attr (render_xml_qname key) "%s" value
+    let str_value = PT.string_of_content value in
+    P.string_attr (render_xml_qname key) "%s" str_value
 
   let render_prim_node p =
     X.prim p []
@@ -195,6 +203,8 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
       let relativised = Iri_scheme.relativise_iri ~host: Params.host iri in
       let str = Format.asprintf "%a" pp_iri relativised in
       [P.txt "%s" str]
+    | Route_of_iri iri ->
+      [P.txt "%s" (route iri)]
     | Xml_elt elt ->
       let prefixes_to_add, (name, attrs, content) =
         let@ () = Xmlns.within_scope in

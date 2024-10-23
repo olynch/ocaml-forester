@@ -7,7 +7,7 @@ module M = Iri_map
 module T = Xml_tree
 module F = Forest.Make(Forest_graphs.Make ())
 module FU = Forest_util.Make(F)
-module PT = Plain_text_client.Make(F)
+module PT = Plain_text_client.Make(F)(Plain_text_client.Default_params)
 module C = T.Comparators(PT)
 module EP = Eio.Path
 
@@ -91,7 +91,7 @@ let create_tree ~env ~dest ~prefix ~template ~mode =
 let complete ~host prefix =
   let@ article = Seq.filter_map @~ List.to_seq @@ get_all_articles () in
   let@ iri = Option.bind article.frontmatter.iri in
-  let@ iri = Option.bind @@ Option_util.guard Iri_scheme.is_stable_iri iri in
+  let@ iri = Option.bind @@ Option_util.guard Iri_scheme.is_named_iri iri in
   let iri = Iri_scheme.relativise_iri ~host iri in
   let@ title = Option.bind article.frontmatter.title in
   let title = Format.asprintf "%a" PT.pp_content title in
@@ -132,14 +132,14 @@ let plant_raw_forest_from_dirs ~env ~host ~dev ~tree_dirs ~asset_dirs ~foreign_d
     let source_path = String.concat "/" source_path in
     let cwd = Eio.Stdenv.cwd env in
     let content = EP.load EP.(cwd / source_path) in
-    let filename, iri = Forester_compiler.Asset_content_addresser.install ~source_path ~content in
-    F.plant_resource @@ F.Asset { iri; contents = content; filename }
+    let iri = Forester_compiler.Asset_router.install ~host ~source_path ~content in
+    F.plant_resource @@ T.Asset { iri; host; content }
   end;
   begin
     let@ () = Reporter.profile "Expand, evaluate, and analyse forest" in
     begin
       let@ _, article = Seq.iter @~ Iri_map.to_seq @@ Forest_reader.read_trees ~host ~env parsed_trees in
-      F.plant_resource @@ F.Article article
+      F.plant_resource @@ T.Article article
     end;
     begin
       let@ _foreign_dir = List.iter @~ foreign_dirs in
@@ -163,7 +163,7 @@ let render_forest ~env ~dev ~host ~home : unit =
   let cwd = Eio.Stdenv.cwd env in
   let all_resources = List.of_seq @@ F.get_all_resources () in
   begin
-    let all_articles = List.filter_map (function F.Article article -> Some article | _ -> None) all_resources in
+    let all_articles = List.filter_map (function T.Article article -> Some article | _ -> None) all_resources in
     let json_string = Yojson.Basic.to_string @@ R.render_trees ~dev ~host all_articles in
     let json_path = EP.(cwd / output_dir_name / "forest.json") in
     Eio_util.ensure_context_of_path ~perm: 0o755 json_path;
@@ -173,35 +173,36 @@ let render_forest ~env ~dev ~host ~home : unit =
     let@ resource = Eio.Fiber.List.iter ~max_fibers: 20 @~ all_resources in
     let@ () = Reporter.easy_run in
     match resource with
-    | F.Article article ->
+    | T.Article article ->
       let@ route = Option.iter @~ Option.map Client.route article.frontmatter.iri in
       let path = EP.(cwd / output_dir_name / route) in
       Eio_util.ensure_context_of_path ~perm: 0o755 path;
       let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) path in
       let@ writer = Eio.Buf_write.with_flow flow in
-      Client.pp_xml ~stylesheet:"default.xsl" (Eio.Buf_write.make_formatter writer) article
-    | F.Asset asset ->
+      Client.pp_xml ~stylesheet: "default.xsl" (Eio.Buf_write.make_formatter writer) article
+    | T.Asset asset ->
       let route = Client.route asset.iri in
       let dest = EP.(cwd / output_dir_name / route) in
       if Eio_util.file_exists dest then ()
       else
         begin
           Eio_util.ensure_context_of_path ~perm: 0o755 dest;
-          EP.save ~create: (`Or_truncate 0o644) dest asset.contents
+          EP.save ~create: (`Or_truncate 0o644) dest asset.content
         end
   end
 
-let export ~env ~host ~asset_dirs : unit =
+let export ~env ~host : unit =
   let@ () = Reporter.profile "Export forest" in
-  let all_resources = List.of_seq @@ F.get_all_resources () in
-  let all_articles = List.filter_map (function F.Article article -> Some article | _ -> None) all_resources in
-
+  let local_resources =
+    let@ resource = Seq.filter @~ F.get_all_resources () in
+    match resource with
+    | T.Article { frontmatter = { iri = Some iri; _ }; _ } ->
+      Iri.host iri = Some host
+    | T.Asset asset -> asset.host = host
+    | _ -> false
+  in
   let cwd = Eio.Stdenv.cwd env in
-  let result = Json_client.render_trees ~host all_articles in
+  let result = Json_client.render ~host @@ List.of_seq local_resources in
   let dir = Eio.Path.(cwd / "export" / host) in
   Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
-  Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / "forest.json") result;
-  let@ dir_to_copy = List.iter @~ asset_dirs in
-  let source = EP.native_exn dir_to_copy in
-  let dest_dir = EP.native_exn dir in
-  Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir
+  Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / "forest.json") result

@@ -1,6 +1,6 @@
 open Forester_core
 
-val render_trees :
+val render :
   host: string ->
-  Xml_tree.content Xml_tree.article list ->
+  Xml_tree.content Xml_tree.resource list ->
   string

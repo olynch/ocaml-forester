@@ -262,10 +262,10 @@ and eval_node node : V.t =
     in
     emit_content_node ~loc @@ KaTeX (mode, content)
   | Xml_tag (name, attrs, body) ->
-    let rec process : _ list -> T.xml_attr list = function
+    let rec process : _ list -> _ T.xml_attr list = function
       | [] -> []
       | (key, v) :: attrs ->
-        T.{ key; value = V.extract_text { node with value = eval_tape v } } :: process attrs
+        T.{ key; value = V.extract_content { node with value = eval_tape v } } :: process attrs
     in
     let name = T.{ prefix = name.prefix; uname = name.uname; xmlns = name.xmlns } in
     let content = { node with value = eval_tape body } |> V.extract_content in
@@ -404,8 +404,8 @@ and eval_node node : V.t =
     emit_content_node ~loc @@ T.Transclude transclusion
   | Route_asset ->
     let source_path = pop_text_arg ~loc in
-    let iri = Asset_content_addresser.iri_of_asset ~source_path in
-    emit_content_node ~loc @@ T.Text (Iri.to_string ~pctencode: false iri)
+    let iri = Asset_router.iri_of_asset ~source_path in
+    emit_content_node ~loc @@ T.Route_of_iri iri
   | Object { self; methods } ->
     let table =
       let env = Lex_env.read () in

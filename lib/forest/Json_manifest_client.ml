@@ -5,7 +5,7 @@ module T = Xml_tree
 
 module Make (R: sig val route : Iri.t -> string end) (F: Forest.S) = struct
 
-  module PT = Plain_text_client.Make(F)
+  module PT = Plain_text_client.Make(F)(Plain_text_client.Default_params)
 
   let render_tree ~dev ~host (doc : T.content T.article) =
     let@ iri = Option.bind doc.frontmatter.iri in
