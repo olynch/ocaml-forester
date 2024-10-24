@@ -1,3 +1,5 @@
+open Forester_prelude
+
 let scheme = "forest"
 
 let base_iri ~host =
@@ -35,3 +37,10 @@ let relativise_iri ~host iri =
     Iri.iri ~path: (Iri.Relative components) ()
   else
     iri
+
+let () =
+  let@ exn = Printexc.register_printer in
+  match exn with
+  | Iri.Error err ->
+    Option.some @@ Format.sprintf "Iri.error (%s)" (Iri.string_of_error err)
+  | _ -> None
