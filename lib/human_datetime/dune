@@ -1,0 +1,13 @@
+(ocamllex Lexer)
+
+(menhir
+ (modules Grammar)
+ (explain true)
+ (flags --inspection --table --dump))
+
+(library
+ (name Forester_human_datetime)
+ (libraries menhirLib ptime)
+ (preprocess
+  (pps ppx_repr))
+ (public_name forester.human_datetime))

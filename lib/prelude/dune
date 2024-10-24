@@ -1,6 +1,6 @@
 (library
  (name Forester_prelude)
- (libraries unix ptime uucp bwd)
+ (libraries forester.human_datetime unix ptime uucp bwd)
  (preprocess
   (pps ppx_repr))
  (public_name forester.prelude))
