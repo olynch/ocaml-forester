@@ -56,7 +56,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   let rec analyse_content_node (scope : Iri.t) (node : 'a T.content_node) : unit =
     match node with
-    | Text _ | CDATA _ | Iri _ | Route_of_iri _ | Results_of_query _ | Results_of_datalog_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
+    | Text _ | CDATA _ | Route_of_iri _ | Iri _ | Results_of_query _ | Results_of_datalog_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
     | Transclude transclusion ->
       analyse_transclusion scope transclusion
     | Xml_elt elt ->
@@ -121,7 +121,6 @@ module Make (Graphs: Forest_graphs.S) : S = struct
 
   and analyse_frontmatter (fm : T.content T.frontmatter) : unit =
     let@ scope = Option.iter @~ fm.iri in
-    Graphs.register_iri scope;
     Option.iter (analyse_content scope) fm.title;
     analyse_taxon scope fm.taxon;
     analyse_attributions scope fm.attributions;
@@ -162,6 +161,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     let iri = Iri.normalize iri in
     match Hashtbl.mem resources iri with
     | false ->
+      Graphs.register_iri iri;
       Hashtbl.add resources iri resource
     | true ->
       ()

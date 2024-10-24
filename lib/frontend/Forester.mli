@@ -25,11 +25,6 @@ val render_forest :
   home: string option ->
   unit
 
-val export :
-  env: env ->
-  host: string ->
-  unit
-
 val copy_contents_of_dir :
   env: env ->
   dir ->

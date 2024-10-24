@@ -56,6 +56,7 @@ type node =
   | Dx_const of [`Content | `Iri] * t
   | Dx_execute
   | Route_asset
+  | Publish_results_of_query
 [@@deriving show]
 
 and t = node Range.located list

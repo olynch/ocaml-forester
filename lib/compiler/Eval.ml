@@ -125,8 +125,7 @@ let default_backmatter ~(iri : iri) : T.content =
       make_section "contributions" @@ Builtin_queries.contributions_datalog vtx
     ]
 
-type job = LaTeX_to_svg of { hash: string; source: string; content: svg: string -> T.content }
-type result = { main: T.content T.article; side: T.content T.article list; jobs: job list }
+type result = { main: T.content T.article; side: T.content T.article list; jobs: Job.job list }
 
 module Tape = Tape_effect.Make ()
 module Lex_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
@@ -134,7 +133,7 @@ module Dyn_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
 module Host_env = Algaeff.Reader.Make(struct type t = string end)
 module Heap = Algaeff.State.Make(struct type t = V.obj Env.t end)
 module Emitted_trees = Algaeff.State.Make(struct type t = T.content T.article list end)
-module Jobs = Algaeff.State.Make(struct type t = job list end)
+module Jobs = Algaeff.State.Make(struct type t = Job.job list end)
 module Frontmatter = Algaeff.State.Make(struct type t = T.content T.frontmatter end)
 
 let get_transclusion_flags ~loc =
@@ -379,7 +378,18 @@ and eval_node node : V.t =
         emit_content_node ~loc @@ Results_of_datalog_query query
       | V.Query_expr query ->
         emit_content_node ~loc @@ Results_of_query (QLN.distill query)
-      | _ -> Reporter.fatalf ?loc: node.loc Type_error "Expected either legacy or datalog query expression"
+      | _ -> Reporter.fatalf ?loc: arg.loc Type_error "Expected either legacy or datalog query expression"
+    end
+  | Publish_results_of_query ->
+    let name = pop_text_arg ~loc in
+    let query_arg = eval_pop_arg ~loc in
+    begin
+      match query_arg.value with
+      | V.Dx_query query ->
+        let job = Job.Publish { name; query; format = Json_blob } in
+        Jobs.modify (List.cons job);
+        process_tape ()
+      | _ -> Reporter.fatalf ?loc: query_arg.loc Type_error "Expected datalog query expression"
     end
   | Embed_tex ->
     let preamble = pop_content_arg ~loc |> T.TeX_like.string_of_content in
@@ -399,7 +409,7 @@ and eval_node node : V.t =
       let artefact = T.{ hash; content; sources } in
       T.Content [T.Artefact artefact]
     in
-    let job = LaTeX_to_svg { hash; source; content } in
+    let job = Job.LaTeX_to_svg { hash; source; content } in
     Jobs.modify (List.cons job);
     let transclusion =
       let host = Host_env.read () in
@@ -411,7 +421,17 @@ and eval_node node : V.t =
   | Route_asset ->
     let source_path = pop_text_arg ~loc in
     let iri = Asset_router.iri_of_asset ~source_path in
-    emit_content_node ~loc @@ T.Route_of_iri iri
+    let sequents =
+      Option.value ~default: [] @@
+        let fm = Frontmatter.get () in
+        let@ current_iri = Option.map @~ fm.iri in
+        let open Datalog_expr.Notation in
+        [
+          Builtin_relation.in_bundle_step @* [const (T.Iri_vertex current_iri); const (T.Iri_vertex iri)] << []
+        ]
+    in
+    let datalog = T.Datalog_script sequents in
+    emit_content_nodes ~loc @@ [datalog; T.Route_of_iri iri]
   | Object { self; methods } ->
     let table =
       let env = Lex_env.read () in
@@ -668,8 +688,11 @@ and focus_clo ?loc rho xs body =
         | _ -> Reporter.fatalf ?loc Type_error "Expected %i additional arguments" (List.length xs)
       end
 
+and emit_content_nodes ~loc content =
+  focus ?loc @@ Content (T.Content content)
+
 and emit_content_node ~loc content =
-  focus ?loc @@ Content (T.Content [content])
+  emit_content_nodes ~loc [content]
 
 and eval_tree_inner ~(iri : iri) (tree : Syn.tree) : T.content T.article =
   let attribution_is_author attr =

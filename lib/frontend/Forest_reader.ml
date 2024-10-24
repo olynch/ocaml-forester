@@ -21,13 +21,9 @@ let organise_trees ~host (trees : Code.tree list) : Code.tree String_map.t =
   in
   List.fold_left alg String_map.empty trees
 
-let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article Iri_map.t =
+let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article list * Job.publication list =
   let unexpanded_trees = organise_trees ~host trees in
-  let add_article (article : _ T.article) articles =
-    match article.frontmatter.iri with
-    | Some iri -> Iri_map.add iri article articles
-    | None -> articles
-  in
+  let add_article (article : _ T.article) articles = article :: articles in
   let (_, articles, jobs) =
     let task addr (units, trees, jobs) =
       match String_map.find_opt addr unexpanded_trees with
@@ -41,17 +37,23 @@ let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article
     Import_graph.topo_fold
       task
       (Import_graph.build trees)
-      (Expand.Env.empty, Iri_map.empty, [])
+      (Expand.Env.empty, [], [])
   in
-  let run_job ~env job : _ T.article =
+  let job_worker ~env job : _ =
     let@ () = Reporter.easy_run in
     match job with
-    | Eval.LaTeX_to_svg { hash; source; content } ->
+    | Job.LaTeX_to_svg { hash; source; content } ->
       let svg = Build_latex.latex_to_svg ~env source in
       let frontmatter = T.default_frontmatter ~iri: (Iri_scheme.hash_iri ~host hash) () in
       let mainmatter = content ~svg in
       let backmatter = T.Content [] in
-      T.{ frontmatter; mainmatter; backmatter }
+      `Article T.{ frontmatter; mainmatter; backmatter }
+    | Job.Publish publication ->
+      `Publication publication
   in
-  let job_results = Eio.Fiber.List.map ~max_fibers: 20 (run_job ~env) jobs in
-  List.fold_right add_article job_results articles
+  let results = Eio.Fiber.List.map ~max_fibers: 20 (job_worker ~env) jobs in
+  let accumulator (articles, publications) = function
+    | `Article article -> article :: articles, publications
+    | `Publication publication -> articles, publication :: publications
+  in
+  List.fold_left accumulator (articles, []) results

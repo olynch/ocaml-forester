@@ -12,6 +12,8 @@ let has_author = make_builtin "authored-by"
 let has_taxon = make_builtin "has-taxon"
 let has_tag = make_builtin "has-tag"
 let is_node = make_builtin "is-node"
+let in_bundle_closure = make_builtin "in-bundle-closure"
+let in_bundle_step = make_builtin "in-bundle-step"
 
 let transcludes_rtc = make_builtin "transcludes.reflexive-transitive-closure"
 let transcludes_tc = make_builtin "transcludes.transitive-closure"
@@ -46,5 +48,8 @@ let axioms : _ Dx.script =
       is_reference @* [var "Z"]
     ];
     has_direct_contributor @* [var "X"; var "Y"] << [has_author @* [var "X"; var "Y"]];
-    has_indirect_contributor @* [var "X"; var "Z"] << [transcludes_rtc @* [var "X"; var "Y"]; has_direct_contributor @* [var "Y"; var "Z"]]
+    has_indirect_contributor @* [var "X"; var "Z"] << [transcludes_rtc @* [var "X"; var "Y"]; has_direct_contributor @* [var "Y"; var "Z"]];
+    in_bundle_closure @* [var "X"; var "X"] << [is_node @* [var "X"]];
+    in_bundle_closure @* [var "X"; var "Z"] << [in_bundle_closure @* [var "X"; var "Y"]; in_bundle_step @* [var "Y"; var "Z"]];
+    in_bundle_step @* [var "X"; var "Y"] << [transcludes @* [var "X"; var "Y"]];
   ]

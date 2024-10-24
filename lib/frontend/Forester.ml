@@ -22,17 +22,6 @@ type dir = Eio.Fs.dir_ty EP.t
 
 let output_dir_name = "output"
 
-let get_sorted_articles addrs =
-  addrs
-  |> Vertex_set.to_seq
-  |> Seq.filter_map Vertex.iri_of_vertex
-  |> Seq.filter_map F.get_article
-  |> List.of_seq
-  |> List.sort C.compare_article
-
-let get_all_articles () =
-  get_sorted_articles @@ F.run_query @@ Query.isect []
-
 let rec random_not_in keys =
   let attempt = Random.int (36 * 36 * 36 * 36 - 1) in
   if List.fold_left (fun x y -> x || y) false (List.map (fun k -> k = attempt) keys) then
@@ -73,7 +62,7 @@ let next_addr ~prefix ~mode (addrs : string list) =
 
 let create_tree ~env ~dest ~prefix ~template ~mode =
   let addrs =
-    let@ article = List.filter_map @~ get_all_articles () in
+    let@ article = List.filter_map @~ FU.get_all_articles () in
     let@ iri = Option.bind article.frontmatter.iri in
     let (Absolute path | Relative path) = Iri.path iri in
     match List.rev path with
@@ -95,7 +84,7 @@ let create_tree ~env ~dest ~prefix ~template ~mode =
   next
 
 let complete ~host prefix =
-  let@ article = Seq.filter_map @~ List.to_seq @@ get_all_articles () in
+  let@ article = Seq.filter_map @~ List.to_seq @@ FU.get_all_articles () in
   let@ iri = Option.bind article.frontmatter.iri in
   let@ iri = Option.bind @@ Option_util.guard Iri_scheme.is_named_iri iri in
   let iri = Iri_scheme.relativise_iri ~host iri in
@@ -130,6 +119,27 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
   | exception exn ->
     if ignore_malformed then None else raise exn
 
+let export_publication ~env (publication : Job.publication) : unit =
+  let vertices = F.run_datalog_query publication.query in
+  let resources =
+    let@ vertex = List.filter_map @~ Vertex_set.elements vertices in
+    match vertex with
+    | Content_vertex _ -> None
+    | Iri_vertex iri ->
+      F.get_resource iri
+  in
+  match publication.format with
+  | Json_blob ->
+    let blob = Repr.to_json_string ~minify: true (T.forest_t T.content_t) resources in
+    let cwd = Eio.Stdenv.cwd env in
+    let dir = Eio.Path.(cwd / "publications") in
+    let filename = publication.name ^ ".json" in
+    Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
+    Eio.Path.save
+      ~create: (`Or_truncate 0o644)
+      Eio.Path.(dir / filename)
+      blob
+
 let plant_raw_forest_from_dirs ~env ~host ~dev ~tree_dirs ~asset_dirs ~foreign_paths : unit =
   begin
     let@ path = List.iter @~ foreign_paths in
@@ -158,14 +168,14 @@ let plant_raw_forest_from_dirs ~env ~host ~dev ~tree_dirs ~asset_dirs ~foreign_p
   end;
   begin
     let@ () = Reporter.profile "Expand, evaluate, and analyse forest" in
+    let articles, publications = Forest_reader.read_trees ~host ~env parsed_trees in
     begin
-      let@ _, article = Seq.iter @~ Iri_map.to_seq @@ Forest_reader.read_trees ~host ~env parsed_trees in
+      let@ article = List.iter @~ articles in
       F.plant_resource @@ T.Article article
     end;
     begin
-      let@ _foreign_dir = List.iter @~ foreign_paths in
-      (* TODO: plant the trees & assets from the foreign directory *)
-      ()
+      let@ publication = List.iter @~ publications in
+      export_publication ~env publication
     end
   end
 
@@ -211,20 +221,3 @@ let render_forest ~env ~dev ~host ~home : unit =
           EP.save ~create: (`Or_truncate 0o644) dest asset.content
         end
   end
-
-let export ~env ~host : unit =
-  let@ () = Reporter.profile "Export forest" in
-  let local_resources =
-    let@ resource = Seq.filter @~ F.get_all_resources () in
-    match resource with
-    | T.Article { frontmatter = { iri = Some iri; _ }; _ } ->
-      Iri.host iri = Some host
-    | T.Asset asset -> asset.host = host
-    | _ -> false
-  in
-  let cwd = Eio.Stdenv.cwd env in
-  let result = Repr.to_json_string ~minify: true (T.forest_t T.content_t) @@ List.of_seq local_resources in
-  let dir = Eio.Path.(cwd / "export") in
-  let filename = host ^ ".json" in
-  Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
-  Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / filename) result
