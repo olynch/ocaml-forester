@@ -9,3 +9,8 @@ let parse lexbuf =
 let parse_string str =
   let lexbuf = Lexing.from_string str in
   parse lexbuf
+
+let parse_string_exn str =
+  match parse_string str with
+  | None -> failwith "human datetime: parse error"
+  | Some dt -> dt

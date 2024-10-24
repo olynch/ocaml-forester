@@ -149,9 +149,15 @@ let to_ptime datetime =
     state.date.year <- y;
     Option.iter (go_month state) month_opt
   in
-  
   let state = init_ptime_date_time_state () in
   go_year state datetime;
   let date = state.date.year, state.date.month, state.date.day in
   let time = ((state.time.hour, state.time.minute, state.time.second), state.tz_offset_s) in
   Ptime.of_date_time (date, time)
+
+let compare_datetime dt0 dt1 =
+  match to_ptime dt0, to_ptime dt1 with
+  | Some x0, Some x1 -> Ptime.compare x0 x1
+  | None, None -> 0
+  | None, Some _ -> -1
+  | Some _, None -> 1

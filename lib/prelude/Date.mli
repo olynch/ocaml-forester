@@ -1,8 +1,10 @@
-type t = { yyyy: int; mm: int option; dd: int option }
+type t
+
 val t : t Repr.ty
 
+val drop_time : t -> t
+
 val pp : Format.formatter -> t -> unit
-val pp_human : Format.formatter -> t -> unit
 val parse : string -> t option
 val now : unit -> t
 

@@ -1,89 +1,36 @@
-open Fun_util
 module HDT = Forester_human_datetime
 
-type t = { yyyy: int; mm: int option; dd: int option }
-[@@deriving repr]
+type t = HDT.datetime
 
-let year d = d.yyyy
-let month d = d.mm
-let day d = d.dd
+let drop_time = function
+  | HDT.Year (y, Some (HDT.Month (m, Some (HDT.Day (d, _))))) ->
+    HDT.Year (y, Some (HDT.Month (m, Some (HDT.Day (d, None)))))
+  | dt -> dt
+
+let t =
+  let of_string str = HDT.parse_string_exn str in
+  let to_string dt = Format.asprintf "%a" HDT.pp_datetime dt in
+  Repr.map Repr.string of_string to_string
+
+let pp = HDT.pp_datetime
+let parse = HDT.parse_string
+let compare = HDT.compare_datetime
+
+let year = function HDT.Year (y, _) -> y
+
+let month = function
+  | HDT.Year (_, Some (HDT.Month (m, _))) -> Some m
+  | _ -> None
+
+let day = function
+  | HDT.Year (_, Some (HDT.Month (_, Some (HDT.Day (d, _))))) -> Some d
+  | _ -> None
 
 let now () =
-  let t = Unix.localtime (Unix.time ()) in
-  { yyyy = 1900 + t.tm_year; mm = Some (1 + t.tm_mon); dd = Some t.tm_mday }
-
-(* approximate, only for sorting *)
-let to_ptime (date : t) : Ptime.t =
-  let dd = Option.value ~default: 1 date.dd in
-  let mm = Option.value ~default: 1 date.mm in
-  match Ptime.of_date (date.yyyy, mm, dd) with
-  | None -> failwith "to_ptime"
-  | Some t -> t
-
-let compare (d0 : t) (d1 : t) =
-  Ptime.compare (to_ptime d0) (to_ptime d1)
-
-let parse_date str =
-  match String.split_on_char '-' str with
-  | yyyy :: rest ->
-    let yyyy = int_of_string yyyy in
-    begin
-      match rest with
-      | mm :: rest ->
-        let mm = Some (int_of_string mm) in
-        begin
-          match rest with
-          | [dd] ->
-            let dd = Some (int_of_string dd) in
-            Some { yyyy; mm; dd }
-          | _ ->
-            Some { yyyy; mm; dd = None }
-        end
-      | _ ->
-        Some { yyyy; mm = None; dd = None }
-    end
-  | _ ->
-    None
-
-let parse str =
-  match String.split_on_char 'T' str with
-  | [date] -> parse_date date
-  | date :: _ -> parse_date date
-  | _ ->
-    None
-
-let pp fmt date =
-  Format.fprintf fmt "%04d" date.yyyy;
-  let@ mm = Option.iter @~ date.mm in
-  Format.fprintf fmt "-%02d" mm;
-  let@ dd = Option.iter @~ date.dd in
-  Format.fprintf fmt "-%02d" dd
-
-let pp_month fmt i =
-  Format.fprintf fmt "%s" @@
-    match i with
-    | 1 -> "January"
-    | 2 -> "February"
-    | 3 -> "March"
-    | 4 -> "April"
-    | 5 -> "May"
-    | 6 -> "June"
-    | 7 -> "July"
-    | 8 -> "August"
-    | 9 -> "September"
-    | 10 -> "October"
-    | 11 -> "November"
-    | 12 -> "December"
-    | _ ->
-      failwith @@ Format.sprintf "Invalid date: %i" i
-
-let pp_human fmt date =
-  match date.mm with
-  | None ->
-    Format.fprintf fmt "%04d" date.yyyy
-  | Some mm ->
-    match date.dd with
-    | None ->
-      Format.fprintf fmt "%a %04d" pp_month mm date.yyyy
-    | Some dd ->
-      Format.fprintf fmt "%a %i, %04d" pp_month mm dd date.yyyy
+  let t = Unix.gmtime (Unix.time ()) in
+  let second = HDT.Second t.tm_sec in
+  let minute = HDT.Minute (t.tm_min, Some second) in
+  let hour = HDT.Hour (t.tm_hour, Some minute) in
+  let day = HDT.Day (t.tm_mday, Some (hour, HDT.Z)) in
+  let month = HDT.Month (1 + t.tm_mon, Some day) in
+  HDT.Year (1900 + t.tm_year, Some month)
