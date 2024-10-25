@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 %{ open Types %}
 
 %token <char> DIGIT
@@ -14,40 +20,40 @@ let xxxx ==
 | x0 = DIGIT; x1 = DIGIT; x2 = DIGIT; x3 = DIGIT; {
     int_of_string @@ Format.sprintf "%c%c%c%c" x0 x1 x2 x3
   }
-  
-let xx == 
+
+let xx ==
 | x0 = DIGIT; x1 = DIGIT; {
     int_of_string @@ Format.sprintf "%c%c" x0 x1
   }
 
-let second := 
+let second :=
 | ~ = xx; <Second>
 
 let minute(rest) :=
-| ~ = xx; ~ = option(preceded(COLON, rest)); <Minute> 
+| ~ = xx; ~ = option(preceded(COLON, rest)); <Minute>
 
-let hour(rest) := 
+let hour(rest) :=
 | ~ = xx; ~ = option(preceded(COLON, rest)); <Hour>
 
-let pm := 
+let pm :=
 | HYPHEN; {Minus}
 | PLUS; {Plus}
 
-let offset := 
+let offset :=
 | Z; {Z}
 | ~ = pm; ~ = hour(minute(void)); <Offset>
 
-let time_with_offset := 
-| ~ = hour(minute(second)); ~ = offset; <> 
+let time_with_offset :=
+| ~ = hour(minute(second)); ~ = offset; <>
 
-let day := 
+let day :=
 | ~ = xx; ~ = option(preceded(T, time_with_offset)); <Day>
 
-let month := 
+let month :=
 | ~ = xx; ~ = option(preceded(HYPHEN, day)); <Month>
 
-let year := 
+let year :=
 | ~ = xxxx; ~ = option(preceded(HYPHEN, month)); <Year>
 
-let datetime := 
+let datetime :=
 | ~ = year; EOF; <>

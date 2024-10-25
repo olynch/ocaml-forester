@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 Forester can also be used with `nix`. To run `forester`, use `nix run sourcehut:~jonsterling/ocaml-forester`. If you are working with a Nix flake-based project and want to include Forester as a build input, you can add it to your `flake.nix`:
 
 ```nix

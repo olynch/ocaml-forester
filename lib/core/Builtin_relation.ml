@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 let make_builtin name = "org.forester.rel." ^ name
 
 let links_to = make_builtin "links-to"

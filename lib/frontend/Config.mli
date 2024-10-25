@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 module Forest_config: sig
   type t = {
     host: string;

@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 module Forest_graphs = Forest_graphs
 module Forest = Forest
 module Forest_util = Forest_util

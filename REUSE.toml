@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+version = 3
+
+[[annotations]]
+path = ["test/*.expected", "static.patch"]
+precedence = "override"
+SPDX-FileCopyrightText = "2024 The Forester Project Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = ["topiary/*"]
+precedence = "override"
+SPDX-FileCopyrightText = "2024 Tweag I/O Limited"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [".envrc", ".nova/**/*", ".vscode/**/*", "flake.lock", "flake.nix"]
+precedence = "override"
+SPDX-FileCopyrightText = "2024 The Forester Project Contributors"
+SPDX-License-Identifier = "CC0-1.0"

@@ -1,5 +1,9 @@
 (lang dune 3.13)
 
+;;; SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+
 (using menhir 3.0)
 
 (name forester)

@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 open Forester_prelude
 module EP = Eio.Path
 module S = Algaeff.Sequencer.Make(struct type t = string list end)

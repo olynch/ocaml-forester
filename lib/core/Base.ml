@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 type iri = Iri.t
 
 let iri_t = Repr.map Repr.string (Iri.of_string ~pctdecode: true) (Iri.to_string ~pctencode: true)

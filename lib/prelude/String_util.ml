@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 open Bwd
 
 (* Based on cmap_utf_8 from https://erratique.ch/software/uucp/doc/Uucp/Case/index.html#caseexamples *)

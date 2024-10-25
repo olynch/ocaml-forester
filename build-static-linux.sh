@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 mkdir -p docker-build
 docker build --output=docker-build --target=forester-built .
 

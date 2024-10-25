@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 module T = Types
 module D = Datalog.Default
 (* BottomUp.Make(struct include Vertex let to_string = show end) *)

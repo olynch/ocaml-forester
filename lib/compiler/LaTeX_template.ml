@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 let pp fmt ~preamble ~body =
   let newline () = Format.fprintf fmt "\n" in
   Format.fprintf fmt {|\documentclass[crop,dvisvgm]{standalone}|};

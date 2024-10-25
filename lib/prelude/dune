@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+
 (library
  (name Forester_prelude)
  (libraries forester.human_datetime unix ptime uucp bwd)
