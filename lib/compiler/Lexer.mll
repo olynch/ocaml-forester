@@ -18,7 +18,7 @@
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 
-let special_name = ['%' '\\' ',' '"' '`' '_' ';' '#' '{' '}' '[' ']' ' ']
+let special_name = ['%' '\\' ',' '"' '`' '_' ';' '#' '{' '}' '[' ']' ' ' '|']
 let simple_name = (alpha | digit | '-')*
 
 let xml_base_ident = (alpha) (alpha | digit | '-' | '_')*
