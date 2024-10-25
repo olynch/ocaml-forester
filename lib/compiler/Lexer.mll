@@ -1,6 +1,5 @@
 {
   open Forester_prelude
-  let drop_sigil c str = 1 |> List.nth @@ String.split_on_char c str
   let raise_err lexbuf =
     let loc = Asai.Range.of_lexbuf lexbuf in
     Forester_core.Reporter.fatalf ~loc Forester_core.Reporter.Message.Parse_error "unrecognized token `%s`" @@
@@ -10,9 +9,10 @@
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let int = '-'? digit+
-let ident = '\\' (alpha) (alpha | digit | '-' | '/')*
-let hash_ident = '#' (alpha | digit | '-')*
-let dx_var = '?' (alpha | digit | '-')*
+
+let hierarchical_name = (alpha) (alpha | digit | '-' | '/')*
+let simple_name = (alpha | digit | '-')*
+
 let xml_base_ident = (alpha) (alpha | digit | '-' | '_')*
 let xml_qname = (xml_base_ident ':' xml_base_ident) | xml_base_ident
 let addr = (alpha) (alpha | digit | '_' | '-')*
@@ -42,12 +42,12 @@ rule token = parse
   | "\\}" { Grammar.IDENT {|}|} }
   | "\\[" { Grammar.IDENT {|[|} }
   | "\\]" { Grammar.IDENT {|]|} }
+  | "\\ " { Grammar.IDENT {| |} }
   | "-:" { Grammar.DX_ENTAILED }
   | "#" { Grammar.HASH }
   | "\\verb" { custom_verbatim_herald lexbuf }
   | "\\datalog" { Grammar.DATALOG }
   | "\\startverb" { custom_verbatim "\\stopverb" (Buffer.create 2000) lexbuf }
-  | "\\ " { Grammar.IDENT {| |} }
   | "\\scope" { Grammar.SCOPE }
   | "\\put" { Grammar.PUT }
   | "\\put?" { Grammar.DEFAULT }
@@ -64,8 +64,8 @@ rule token = parse
   | "\\object" { Grammar.OBJECT }
   | "\\patch" { Grammar.PATCH }
   | "\\call" { Grammar.CALL }
-  | hash_ident { Grammar.HASH_IDENT (drop_sigil '#' (Lexing.lexeme lexbuf)) }
-  | dx_var { Grammar.DX_VAR (drop_sigil '?' (Lexing.lexeme lexbuf)) }
+  | '#' (simple_name as name) { Grammar.HASH_IDENT name }
+  | '?' (simple_name as name) { Grammar.DX_VAR name }
   |
   "\\<"
     {
@@ -74,16 +74,16 @@ rule token = parse
       XML_ELT_IDENT qname
     }
   | "\\xmlns:" { DECL_XMLNS (xml_base_ident lexbuf) }
-  | ident { Grammar.IDENT (drop_sigil '\\' (Lexing.lexeme lexbuf)) }
+  | '\\' (hierarchical_name as name) { Grammar.IDENT name }
   | '{' { Grammar.LBRACE }
   | '}' { Grammar.RBRACE }
   | '[' { Grammar.LSQUARE }
   | ']' { Grammar.RSQUARE }
   | '(' { Grammar.LPAREN }
   | ')' { Grammar.RPAREN }
-  | text { Grammar.TEXT (Lexing.lexeme lexbuf) }
-  | wschar+ { Grammar.WHITESPACE (Lexing.lexeme lexbuf) }
-  | newline { Lexing.new_line lexbuf; Grammar.WHITESPACE (Lexing.lexeme lexbuf) }
+  | text as str { Grammar.TEXT str }
+  | wschar+ as str { Grammar.WHITESPACE str }
+  | newline as str { Lexing.new_line lexbuf; Grammar.WHITESPACE str }
   | eof { Grammar.EOF }
   | _ { raise_err lexbuf }
 
