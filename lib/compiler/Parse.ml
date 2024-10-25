@@ -4,7 +4,26 @@ open Lexing
 
 module I = Grammar.MenhirInterpreter
 
-let lexer lexbuf = Lexer.token lexbuf
+let buffer_lexer lexer =
+  let buf = ref [] in
+  let rec loop lexbuf =
+    match !buf with
+    | v :: vs ->
+      buf := vs; v
+    | [] ->
+      match lexer lexbuf with
+      | v :: vs -> buf := vs @ !buf; v
+      | [] -> loop lexbuf
+  in
+  loop
+
+let lexer =
+  let@ lexbuf = buffer_lexer in
+  match Stack.top @@ Lexer.mode_stack with
+  | Main -> Lexer.token lexbuf
+  | Ident_init -> Lexer.ident_init lexbuf
+  | Ident_fragments -> Lexer.ident_fragments lexbuf
+  | Verbatim (herald, buffer) -> Lexer.verbatim herald buffer lexbuf
 
 (* debugging helpers *)
 let _string_of_token token =

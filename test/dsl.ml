@@ -20,7 +20,7 @@ let content =
       figure [txt "figure"];
       figcaption [txt "caption"];
       cdata "cdata";
-      xml_elt "html" [];
+      xml_elt (None, "html") [];
       transclude "foo-001";
       contextual_number "chapter-3";
       results_of_query (union []);

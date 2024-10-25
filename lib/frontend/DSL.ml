@@ -24,12 +24,8 @@ let tex content = X.TeX_cs (Word content)
 let img href = X.(Img (Remote href))
 let content c = X.Content c
 
-let xml_elt name content =
+let xml_elt (prefix, uname) content =
   let open Forester_compiler in
-  let prefix, uname =
-    Lexer.xml_qname (Lexing.from_string name)
-    |> Forester_xml_names.split_xml_qname
-  in
   let prefix = Option.value ~default: "" prefix in
   let qname = X.{ prefix; uname; xmlns = None } in
   X.Xml_elt

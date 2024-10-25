@@ -154,7 +154,7 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     | false ->
       Hashtbl.add resources iri resource
     | true ->
-      Reporter.emitf Duplicate_tree "Already planted resource at address %a" pp_iri iri
+      ()
 
   let get_resource iri =
     let iri = Iri.normalize iri in

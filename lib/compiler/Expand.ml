@@ -85,8 +85,8 @@ let rec expand : Code.t -> Syn.t = function
   | { value = Ident path; loc } :: rest ->
     let out, rest = expand_method_calls (expand_ident loc path) rest in
     out @ expand rest
-  | { value = Angle_ident name; loc } :: rest ->
-    let qname = expand_xml_ident loc @@ Forester_xml_names.split_xml_qname name in
+  | { value = Xml_ident (prefix, uname); loc } :: rest ->
+    let qname = expand_xml_ident loc (prefix, uname) in
     let attrs, rest = get_xml_attrs [] rest in
     let arg_opt, rest = get_arg_opt rest in
     let tag = Syn.Xml_tag (qname, attrs, Option.value ~default: [] arg_opt) in

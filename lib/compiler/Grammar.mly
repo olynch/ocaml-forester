@@ -3,16 +3,17 @@
   open Forester_core
 %}
 
-%token <string> XML_ELT_IDENT
+%token <string option * string> XML_ELT_IDENT
 %token <string> DECL_XMLNS
 %token <string> TEXT VERBATIM
 %token <string> WHITESPACE
 %token <string> IDENT
+
 %token <string> HASH_IDENT
 %token IMPORT EXPORT DEF NAMESPACE LET FUN OPEN
 %token OBJECT PATCH CALL
 %token SUBTREE SCOPE PUT GET DEFAULT ALLOC
-%token LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE TICK AT_SIGN HASH
+%token SLASH LBRACE RBRACE LSQUARE RSQUARE LPAREN RPAREN HASH_LBRACE HASH_HASH_LBRACE TICK AT_SIGN HASH
 %token EOF
 
 %token DATALOG
@@ -74,18 +75,18 @@ let head_node :=
 | DEFAULT; ~ = ident; ~ = arg; <Code.Default>
 | GET; ~ = ident; <Code.Get>
 | OPEN; ~ = ident; <Code.Open>
-| ~ = XML_ELT_IDENT; <Code.Angle_ident>
+| (~,~) = XML_ELT_IDENT; <Code.Xml_ident>
 | ~ = DECL_XMLNS; ~ = txt_arg; <Code.Decl_xmlns>
 | OBJECT; self = option(squares(bvar)); methods = braces(ws_list(method_decl)); { Code.Object {self;  methods } }
 | PATCH; obj = braces(code_expr); self = option(squares(bvar)); methods = braces(ws_list(method_decl)); { Code.Patch {obj; self; methods} }
 | CALL; ~ = braces(code_expr); ~ = txt_arg; <Code.Call>
+| DATALOG; LBRACE; list(WHITESPACE); ~ = dx_sequent_node; RBRACE; <>
+| ~ = VERBATIM; <Code.Verbatim>
 | ~ = delimited(HASH_LBRACE, textual_expr, RBRACE); <Code.inline_math>
 | ~ = delimited(HASH_HASH_LBRACE, textual_expr, RBRACE); <Code.display_math>
 | ~ = braces(textual_expr); <Code.braces>
 | ~ = squares(textual_expr); <Code.squares>
 | ~ = parens(textual_expr); <Code.parens>
-| ~ = VERBATIM; <Code.Verbatim>
-| DATALOG; LBRACE; list(WHITESPACE); ~ = dx_sequent_node; RBRACE; <>
 
 let head_node1 :=
 | ~ = head_node; <>
@@ -99,8 +100,7 @@ let method_decl :=
 | k = squares(TEXT); list(WHITESPACE); v = arg; { k, v }
 
 let ident :=
-| ident = IDENT;
- { String.split_on_char '/' ident }
+| ~ = separated_nonempty_list(SLASH, IDENT); <>
 
 let ws_or_text :=
 | x = TEXT; { x }
