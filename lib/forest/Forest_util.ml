@@ -19,7 +19,9 @@ module Make (F: Forest.S) = struct
     |> List.sort C.compare_article
 
   let get_all_articles () =
-    Query.isect []
-    |> F.run_query
+    let open Datalog_expr.Notation in
+    let query = Datalog_expr.{ var = "X"; positives = [Builtin_relation.is_node @* [var "X"]]; negatives = [] } in
+    query
+    |> F.run_datalog_query
     |> get_sorted_articles
 end
