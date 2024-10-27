@@ -60,6 +60,10 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     | Transclude transclusion ->
       analyse_transclusion scope transclusion
     | Xml_elt elt ->
+      begin
+        let@ attr = List.iter @~ elt.attrs in
+        analyse_content scope attr.value
+      end;
       analyse_content scope elt.content
     | Section section ->
       analyse_section scope section
