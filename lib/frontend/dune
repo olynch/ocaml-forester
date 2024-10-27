@@ -13,6 +13,7 @@
   forester.core
   forester.compiler
   forester.forest
+  forester.human_datetime
   forester.xml_names
   ocamlgraph
   toml

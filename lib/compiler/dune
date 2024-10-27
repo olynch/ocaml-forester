@@ -17,6 +17,7 @@
   forester.prelude
   forester.xml_names
   forester.core
+  forester.human_datetime
   yuujinchou
   asai
   menhirLib

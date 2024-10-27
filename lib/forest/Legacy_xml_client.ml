@@ -380,9 +380,9 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
   and render_dates dates =
     X.null @@ List.map render_date dates
 
-  and render_date (date : Date.t) =
+  and render_date (date : Human_datetime.t) =
     let href_attr =
-      let str = Format.asprintf "%a" Date.pp (Date.drop_time date) in
+      let str = Format.asprintf "%a" Human_datetime.pp (Human_datetime.drop_time date) in
       let base = Iri_scheme.base_iri ~host: Params.host in
       let iri = Iri.resolve ~base (Iri.of_string str) in
       match F.get_article iri with
@@ -392,9 +392,9 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     X.date
       [href_attr]
       [
-        X.year [] "%i" (Date.year date);
-        Date.month date |> X.optional @@ X.month [] "%i";
-        Date.day date |> X.optional @@ X.day [] "%i"
+        X.year [] "%i" (Human_datetime.year date);
+        Human_datetime.month date |> X.optional @@ X.month [] "%i";
+        Human_datetime.day date |> X.optional @@ X.day [] "%i"
       ]
 
   let render_article (article : T.content T.article) : P.node =

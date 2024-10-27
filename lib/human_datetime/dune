@@ -10,8 +10,8 @@
  (flags --inspection --table --dump))
 
 (library
- (name Forester_human_datetime)
- (libraries menhirLib ptime)
+ (name Human_datetime)
+ (libraries menhirLib ptime unix repr)
  (preprocess
   (pps ppx_repr))
  (public_name forester.human_datetime))

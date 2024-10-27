@@ -577,7 +577,7 @@ and eval_node node : V.t =
   | Date ->
     let date_str = pop_text_arg ~loc in
     begin
-      match Date.parse date_str with
+      match Human_datetime.parse_string date_str with
       | None ->
         Reporter.fatalf ?loc: node.loc Parse_error "Invalid date string `%s`" date_str
       | Some date ->

@@ -64,7 +64,7 @@ type 'content attribution = {
 type 'content frontmatter = {
   iri: iri option;
   title: 'content option;
-  dates: Date.t list;
+  dates: Human_datetime.t list;
   attributions: 'content attribution list;
   taxon: 'content option;
   number: string option;
@@ -216,10 +216,10 @@ module Comparators (I: sig val string_of_content : content -> string end) = stru
 
   let compare_frontmatter =
     let latest_date (fm : content frontmatter) =
-      let sorted_dates = fm.dates |> List.sort @@ Compare.invert Date.compare in
+      let sorted_dates = fm.dates |> List.sort @@ Compare.invert Human_datetime.compare in
       List.nth_opt sorted_dates 0
     in
-    let by_date = Fun.flip @@ Compare.under latest_date @@ Compare.option Date.compare in
+    let by_date = Fun.flip @@ Compare.under latest_date @@ Compare.option Human_datetime.compare in
     let by_title = Compare.option compare_content |> Compare.under @@ fun fm -> fm.title in
     Compare.cascade by_date by_title
 

@@ -71,13 +71,13 @@ let create_tree ~env ~dest ~prefix ~template ~mode =
   in
   let next = next_addr addrs ~prefix ~mode in
   let fname = next ^ ".tree" in
-  let now = Date.now () in
+  let now = Human_datetime.now () in
   let template_content =
     match template with
     | None -> ""
     | Some name -> EP.load EP.(Eio.Stdenv.cwd env / "templates" / (name ^ ".tree"))
   in
-  let body = Format.asprintf "\\date{%a}\n" Date.pp now in
+  let body = Format.asprintf "\\date{%a}\n" Human_datetime.pp now in
   let create = `Exclusive 0o644 in
   let path = EP.(dest / fname) in
   EP.save ~create path @@ body ^ template_content;

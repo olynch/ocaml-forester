@@ -4,7 +4,7 @@
 
 (library
  (name Forester_prelude)
- (libraries forester.human_datetime unix ptime uucp bwd)
+ (libraries uucp bwd)
  (preprocess
   (pps ppx_repr))
  (public_name forester.prelude))

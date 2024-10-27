@@ -9,6 +9,7 @@
   (pps ppx_deriving.show ppx_repr))
  (libraries
   forester.prelude
+  forester.human_datetime
   forester.xml_names
   forester.core
   datalog
