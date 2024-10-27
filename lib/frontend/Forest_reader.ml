@@ -21,25 +21,15 @@ let organise_trees ~host (trees : Code.tree list) : Code.tree String_map.t =
   in
   List.fold_left alg String_map.empty trees
 
-let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article list * Job.publication list =
-  let unexpanded_trees = organise_trees ~host trees in
-  let add_article (article : _ T.article) articles = article :: articles in
-  let (_, articles, jobs) =
-    let task addr (units, trees, jobs) =
-      match String_map.find_opt addr unexpanded_trees with
-      | None -> units, trees, jobs
-      | Some tree ->
-        let units, syn = Expand.expand_tree units tree in
-        let iri = Iri_scheme.user_iri ~host addr in
-        let result = Eval.eval_tree ~host ~iri ~source_path: tree.source_path syn in
-        units, List.fold_right add_article (result.main :: result.side) trees, result.jobs @ jobs
-    in
-    Import_graph.topo_fold
-      task
-      (Import_graph.build trees)
-      (Expand.Env.empty, [], [])
-  in
-  let job_worker ~env job : _ =
+module Job_runner = struct
+  type env = { env: Eio_unix.Stdenv.base; host: string }
+  type input = Job.job
+  type output = { articles: T.content T.article list; publications: Job.publication list }
+
+  let nil = { articles = []; publications = [] }
+  let plus o1 o2 = { articles = o1.articles @ o2.articles; publications = o1.publications @ o2.publications }
+
+  let eval { env; host } job =
     let@ () = Reporter.easy_run in
     match job with
     | Job.LaTeX_to_svg { hash; source; content } ->
@@ -47,13 +37,46 @@ let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article
       let frontmatter = T.default_frontmatter ~iri: (Iri_scheme.hash_iri ~host hash) () in
       let mainmatter = content ~svg in
       let backmatter = T.Content [] in
-      `Article T.{ frontmatter; mainmatter; backmatter }
+      let article = T.{ frontmatter; mainmatter; backmatter } in
+      { nil with articles = [article] }
     | Job.Publish publication ->
-      `Publication publication
+      { nil with publications = [publication] }
+end
+
+module Eval_runner = struct
+  type env = { host: string }
+  type input = string * string option * Syn.t
+  type output = { articles: T.content T.article list; jobs: Job.job list }
+
+  let nil = { articles = []; jobs = [] }
+  let plus o1 o2 = { articles = o1.articles @ o2.articles; jobs = o1.jobs @ o2.jobs }
+
+  let eval { host } (addr, source_path, syn) =
+    let iri = Iri_scheme.user_iri ~host addr in
+    let result = Eval.eval_tree ~host ~iri ~source_path syn in
+    { articles = result.main :: result.side; jobs = result.jobs }
+end
+
+module Job_map_reduce = Map_reduce.Make(Job_runner)
+module Eval_map_reduce = Map_reduce.Make(Eval_runner)
+
+let read_trees ~(env : env) ~host (trees : Code.tree list) : T.content T.article list * Job.publication list =
+  let unexpanded_trees = organise_trees ~host trees in
+  let _, expanded_trees =
+    let task addr (units, trees) =
+      match String_map.find_opt addr unexpanded_trees with
+      | None -> units, trees
+      | Some tree ->
+        let units, syn = Expand.expand_tree units tree in
+        units, (addr, tree.source_path, syn) :: trees
+    in
+    Import_graph.topo_fold task (Import_graph.build trees) (Expand.Env.empty, [])
   in
-  let results = Eio.Fiber.List.map ~max_fibers: 20 (job_worker ~env) jobs in
-  let accumulator (articles, publications) = function
-    | `Article article -> article :: articles, publications
-    | `Publication publication -> articles, publication :: publications
+  let Eval_runner.{ articles; jobs } = Eval_map_reduce.reduce ~env: { host } expanded_trees in
+  let job_results =
+    Job_map_reduce.reduce
+      ~init: { Job_runner.nil with articles }
+      ~env: { env; host }
+      jobs
   in
-  List.fold_left accumulator (articles, []) results
+  job_results.articles, job_results.publications
