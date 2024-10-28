@@ -261,8 +261,7 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
             expanded = Some false;
             numbered = Some false;
             included_in_toc = Some false;
-            metadata_shown = Some true;
-            hidden_when_empty = Some true
+            metadata_shown = Some true
           }
       in
       F.run_datalog_query q
