@@ -20,7 +20,7 @@ module type S = sig
   val get_all_resources : unit -> resource Seq.t
 
   val get_expanded_title : ?scope: iri -> ?flags: T.title_flags -> T.content T.frontmatter -> T.content
-  val get_content_of_transclusion : T.content T.transclusion -> T.content
+  val get_content_of_transclusion : T.content T.transclusion -> T.content option
   val get_title_or_content_of_vertex : ?not_found: (iri -> T.content option) -> modifier: T.modifier -> T.content T.vertex -> T.content option
 
   val run_datalog_query : (string, Vertex.t) Datalog_expr.query -> Vertex_set.t
@@ -227,24 +227,26 @@ module Make (Graphs: Forest_graphs.S) : S = struct
     T.apply_modifier_to_content modifier content
 
   let get_content_of_transclusion (transclusion : T.content T.transclusion) =
-    let content =
-      match transclusion.target with
-      | Full flags ->
-        let article = get_article_exn transclusion.href in
-        T.Content [T.Section (T.article_to_section article ~flags)]
-      | Mainmatter ->
-        let article = get_article_exn transclusion.href in
-        article.mainmatter
-      | Title flags ->
-        begin
-          match get_article transclusion.href with
-          | None -> T.Content [T.Iri transclusion.href]
-          | Some article -> get_expanded_title ~flags article.frontmatter
-        end
-      | Taxon ->
-        let article = get_article_exn transclusion.href in
-        let default = T.Content [T.Text section_symbol] in
-        Option.value ~default article.frontmatter.taxon
+    let@ content =
+      Option.map @~
+        match transclusion.target with
+        | Full flags ->
+          let@ article = Option.map @~ get_article transclusion.href in
+          T.Content [T.Section (T.article_to_section article ~flags)]
+        | Mainmatter ->
+          let@ article = Option.map @~ get_article transclusion.href in
+          article.mainmatter
+        | Title flags ->
+          Option.some @@
+            begin
+              match get_article transclusion.href with
+              | None -> T.Content [T.Iri transclusion.href]
+              | Some article -> get_expanded_title ~flags article.frontmatter
+            end
+        | Taxon ->
+          let@ article = Option.map @~ get_article transclusion.href in
+          let default = T.Content [T.Text section_symbol] in
+          Option.value ~default article.frontmatter.taxon
     in
     T.apply_modifier_to_content transclusion.modifier content
 end

@@ -41,7 +41,9 @@ module Make (F: Forest.S) (P: Params) : S = struct
     | Results_of_query _ | Results_of_datalog_query _ | Img _ | Artefact _ | Datalog_script _ -> ()
 
   and pp_transclusion fmt (transclusion : T.content T.transclusion) =
-    pp_content fmt @@ F.get_content_of_transclusion transclusion
+    match F.get_content_of_transclusion transclusion with
+    | None -> Format.fprintf fmt "<could not resolve transclusion of %a>" pp_iri transclusion.href
+    | Some content -> pp_content fmt content
 
   and pp_link fmt (link : T.content T.link) =
     pp_content fmt link.content

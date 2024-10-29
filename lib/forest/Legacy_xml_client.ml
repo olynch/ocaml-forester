@@ -304,7 +304,9 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     match Hashtbl.find_opt transclusion_cache transclusion with
     | Some nodes -> nodes
     | None ->
-      let content = F.get_content_of_transclusion transclusion in
+      match F.get_content_of_transclusion transclusion with 
+      | None -> Reporter.fatalf Resource_not_found "Could not find tree %a" pp_iri transclusion.href
+      | Some content -> 
       let nodes = render_content content in
       Hashtbl.add transclusion_cache transclusion nodes;
       nodes
