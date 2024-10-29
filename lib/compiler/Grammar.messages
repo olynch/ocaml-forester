@@ -79,10 +79,6 @@ main: HASH_HASH_LBRACE SLASH
 
 Unexpected symbol "/"
 
-main: IDENT COMMENT
-
-You can't put a comment here!
-
 main: PATCH LBRACE TEXT
 
 \patch takes an object as argument, but this is just text!

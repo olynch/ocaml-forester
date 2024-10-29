@@ -94,6 +94,7 @@ let head_node :=
 | ~ = braces(textual_expr); <Code.braces>
 | ~ = squares(textual_expr); <Code.squares>
 | ~ = parens(textual_expr); <Code.parens>
+| ~ = COMMENT; <Code.Comment>
 
 let head_node1 :=
 | ~ = head_node; <>
