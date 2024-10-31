@@ -1,0 +1,16 @@
+image: archlinux
+packages:
+  - docker
+  - docker-buildx
+sources:
+  - https://git.sr.ht/~jonsterling/ocaml-forester
+tasks:
+  - setup: |
+      sudo systemctl start docker
+      sleep 5
+  - build: |
+      cd ocaml-forester
+      ./build-static-linux.sh
+
+artifacts:
+    - ocaml-forester/forester/bin/forester

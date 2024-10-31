@@ -3,6 +3,10 @@
 # SPDX-License-Identifier: CC0-1.0
 
 image: nixos/24.05
+
+environment:
+  NIX_CONFIG: "experimental-features = nix-command flakes"
+
 secrets:
     - d3cd871a-da6f-4ee3-94e9-fe8bc36233cc
 
@@ -17,8 +21,11 @@ tasks:
             nix-env -iA cachix -f https://cachix.org/api/v1/install
             nix-env -iA nixos.jq
             cachix use forester
-    - check: |
+    - build: |
             cd ocaml-forester
-            nix --extra-experimental-features "nix-command flakes" build --json \
+            nix build --json \
               | jq -r '.[].outputs | to_entries[].value' \
               | cachix push forester
+
+artifacts:
+    - ocaml-forester/result/bin/forester
