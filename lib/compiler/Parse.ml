@@ -121,8 +121,7 @@ let parse
           let end_position = lexbuf.lex_curr_p in
           if is_opening_delim token then
             let range = Range.of_lex_range (start_position, end_position) in
-            Stack.push (token, range) delim_stack;
-          ;
+            Stack.push (token, range) delim_stack; ;
           if is_closing_delim token then
             begin
               match Stack.top_opt delim_stack with
@@ -150,10 +149,10 @@ let parse
                   (Asai.Diagnostic.text "")
               )
           else
-            let err
-              =
-              get_parse_error env
-            in
+            (* let err *)
+            (*   = *)
+            (*   get_parse_error env *)
+            (* in *)
             let range_of_last_unclosed =
               Option.map snd @@ Stack.top_opt delim_stack
             in
@@ -176,11 +175,13 @@ let parse
             in
             Error
               (
-                Asai.Diagnostic.of_loctext
-                  ~extra_remarks
-                  Error
-                  Forester_core.Reporter.Message.Parse_error
-                  { loc = Some loc; value = err.value }
+                Asai.Diagnostic.(
+                  of_loctext
+                    ~extra_remarks
+                    Error
+                    Forester_core.Reporter.Message.Parse_error
+                    (loctext ~loc Format.(sprintf "syntax error, unexpected %s" (Lexing.lexeme lexbuf)))
+                )
               )
         | I.Accepted code -> Ok code
         | I.Rejected ->
