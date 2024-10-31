@@ -43,6 +43,7 @@
         legacyPackages = scope';
         packages.default = main;
         devShells.default = pkgs.mkShell {
+          TOPIARY_LANGUAGE_DIR = "topiary";
           inputsFrom = [ main ];
           buildInputs = devPackages ++ [
             pkgs.topiary
