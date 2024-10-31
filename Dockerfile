@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-FROM ocaml/opam:alpine-ocaml-5.1-flambda AS forester-builder
+FROM ocaml/opam:alpine-3.20-ocaml-5.2-flambda AS forester-builder
 
 RUN sudo apk update
 

@@ -1,13 +1,13 @@
 diff --git a/bin/forester/dune b/bin/forester/dune
-index 0106b25..75d328b 100644
+index 8267c08..32fb7fd 100644
 --- a/bin/forester/dune
 +++ b/bin/forester/dune
-@@ -1,7 +1,7 @@
- (executable
+@@ -6,7 +6,7 @@
   (public_name forester)
   (name main)
-- (flags (-g))
-+ (flags (-g -ccopt -static))
-  (link_flags (-g))
+  (flags (-g))
+- (link_flags (-g))
++ (link_flags (-g -ccopt -static))
   (preprocess
    (pps ppx_deriving.show))
+   (libraries
