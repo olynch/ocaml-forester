@@ -32,7 +32,7 @@ module Job_runner = struct
   let eval { env; host } job =
     let@ () = Reporter.easy_run in
     match job with
-    | Job.LaTeX_to_svg{ hash; source; content } ->
+    | Job.LaTeX_to_svg { hash; source; content } ->
       let svg = Build_latex.latex_to_svg ~env source in
       let frontmatter = T.default_frontmatter ~iri: (Iri_scheme.hash_iri ~host hash) () in
       let mainmatter = content ~svg in

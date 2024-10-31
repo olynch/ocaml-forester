@@ -200,7 +200,7 @@ let rec expand : Code.t -> Syn.t = function
     { value = Syn.Dx_query (var, List.map expand positives, List.map expand negatives); loc } :: expand rest
   | { value = Fun (xs, body); loc } :: rest ->
     expand_lambda loc (xs, body) :: expand rest
-  | { value = Object{ self; methods }; loc } :: rest ->
+  | { value = Object { self; methods }; loc } :: rest ->
     let self, methods =
       let@ () = Sc.section [] in
       let sym = Symbol.fresh () in
@@ -212,7 +212,7 @@ let rec expand : Code.t -> Syn.t = function
       sym, List.map expand_method methods
     in
     { value = Syn.Object { self; methods }; loc } :: expand rest
-  | { value = Patch{ obj; self; methods }; loc } :: rest ->
+  | { value = Patch { obj; self; methods }; loc } :: rest ->
     let self, super, methods =
       let@ () = Sc.section [] in
       let self_sym = Symbol.fresh () in
@@ -331,7 +331,7 @@ and expand_ident loc path =
   | Some (Term x, ()), _ ->
     let relocate Range.{ value; _ } = Range.{ value; loc } in
     List.map relocate x
-  | Some (Xmlns{ xmlns; prefix }, ()), _ ->
+  | Some (Xmlns { xmlns; prefix }, ()), _ ->
     Reporter.emitf
       ?loc
       Resolution_error
@@ -347,7 +347,7 @@ and expand_xml_ident loc (prefix, uname) =
   | None -> { xmlns = None; prefix = ""; uname }
   | Some prefix ->
     match Sc.resolve ["xmlns"; prefix] with
-    | Some (Xmlns{ xmlns; prefix }, ()) ->
+    | Some (Xmlns { xmlns; prefix }, ()) ->
       { xmlns = Some xmlns; prefix = prefix; uname }
     | _ ->
       Reporter.emitf

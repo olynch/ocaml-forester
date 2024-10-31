@@ -114,7 +114,7 @@ let completion
   } ->
     let triggerCharacter =
       match context with
-      | Some{ triggerCharacter; _ } ->
+      | Some { triggerCharacter; _ } ->
         triggerCharacter
       | None -> None
     in
@@ -211,7 +211,7 @@ let hover
   let content =
     match F.get_article iri_under_cursor with
     | None -> Format.asprintf "extracted iri %a" pp_iri iri_under_cursor
-    | Some{ mainmatter; _ } ->
+    | Some { mainmatter; _ } ->
       PT.string_of_content mainmatter
   in
   Some
@@ -256,7 +256,7 @@ let inlay_hint (params : L.InlayHintParams.t) : L.InlayHint.t list option =
     let server = State.get () in
     match Hashtbl.find_opt server.codes { uri = textDocument.uri } with
     | None -> None
-    | Some{ code; _ } ->
+    | Some { code; _ } ->
       List.filter_map
         (
           fun
@@ -347,13 +347,13 @@ module Notification = struct
         Reporter.lsp_run publish_diagnostics uri @@
           fun () ->
             Analysis.check server uri
-      | DidSaveTextDocument{ textDocument; _; } ->
+      | DidSaveTextDocument { textDocument; _; } ->
         begin
           match Hashtbl.find_opt server.documents textDocument with
           (* ocaml-lsp does *this* here: https://github.com/ocaml/ocaml-lsp/blob/8b47925eb44f907b8ec41a44c1b2a55447f1b439/ocaml-lsp-server/src/ocaml_lsp_server.ml#L757 *)
           | _ -> ()
         end
-      | TextDocumentDidChange{ textDocument = { uri; _ }; contentChanges } ->
+      | TextDocumentDidChange { textDocument = { uri; _ }; contentChanges } ->
         begin
           match Hashtbl.find_opt server.documents { uri } with
           | Some doc ->

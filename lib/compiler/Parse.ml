@@ -121,7 +121,8 @@ let parse
           let end_position = lexbuf.lex_curr_p in
           if is_opening_delim token then
             let range = Range.of_lex_range (start_position, end_position) in
-            Stack.push (token, range) delim_stack; ;
+            Stack.push (token, range) delim_stack;
+          ;
           if is_closing_delim token then
             begin
               match Stack.top_opt delim_stack with

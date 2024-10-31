@@ -85,7 +85,7 @@ let parse_from = function
     end
   | `Iri (env, iri) ->
     match F.get_article iri with
-    | Some{ frontmatter = { source_path = Some str; _ }; _ } ->
+    | Some { frontmatter = { source_path = Some str; _ }; _ } ->
       let p = EP.(env#fs / str) in
       parse_path p
     | _ ->
@@ -110,7 +110,7 @@ let dependencies (code : Code.t) host : iri Range.located list =
     | Fun (_, code)
     | Def (_, _, code) ->
       List.concat_map analyse_deps code
-    | Object{ methods; _ } | Patch{ methods; _ } ->
+    | Object { methods; _ } | Patch { methods; _ } ->
       let@ code = List.concat_map @~ methods in
       List.concat_map analyse_deps (snd code)
     | _ ->

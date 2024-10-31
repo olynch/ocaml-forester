@@ -76,7 +76,8 @@ module Token_modifiers_set = struct
       "modification";
       "documentation";
       "defaultLibrary"
-    ];;
+    ]
+  ;;
 end
 
 let legend =

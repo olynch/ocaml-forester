@@ -37,7 +37,7 @@ let build (trees : Code.tree list) =
       analyse_tree roots addr code
     | Scope code | Namespace (_, code) | Group (_, code) | Math (_, code) | Let (_, _, code) | Fun (_, code) | Def (_, _, code) ->
       analyse_code roots code
-    | Object{ methods; _ } | Patch{ methods; _ } ->
+    | Object { methods; _ } | Patch { methods; _ } ->
       let@ _, code = List.iter @~ methods in
       analyse_code roots code
     | Dx_prop (rel, args) ->
