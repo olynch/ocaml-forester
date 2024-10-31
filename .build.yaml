@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+#
+# SPDX-License-Identifier: CC0-1.0
+
+image: nixos/24.05
+secrets:
+    - d3cd871a-da6f-4ee3-94e9-fe8bc36233cc
+
+sources:
+    - https://git.sr.ht/~jonsterling/ocaml-forester
+
+environment:
+    cache: https://forester.cachix.org/
+
+tasks:
+    - setup: |
+            nix-env -iA cachix -f https://cachix.org/api/v1/install
+            nix-env -iA nixos.jq
+            cachix use forester
+    - check: |
+            cd ocaml-forester
+            nix --extra-experimental-features "nix-command flakes" build --json \
+              | jq -r '.[].outputs | to_entries[].value' \
+              | cachix push forester
