@@ -149,7 +149,15 @@ let check (server : Base.server) uri =
   let res = parse_from (`Uri (L.TextDocumentIdentifier.{ uri = uri }, server.documents)) in
   match res with
   | Ok code ->
-    let tree = Code.{ source_path = None; addr = None; code } in
+    let str_path = (Lsp.Uri.to_path uri) in
+    let addr =
+      String.split_on_char '/' str_path |> List.rev
+      |> List.hd
+      |> Filename.chop_extension
+      |> Option.some
+    in
+    let tree = Code.{ source_path = Some str_path; addr; code } in
+    Hashtbl.replace server.codes { uri } tree;
     let trans_deps = get_dependencies server code in
     let trees = trans_deps |> Code_set.to_list in
     let _units, _expanded_trees =
