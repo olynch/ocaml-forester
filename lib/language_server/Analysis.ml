@@ -29,8 +29,8 @@ let path_of_dir ~env dir =
 let paths_of_dirs ~env =
   List.map (path_of_dir ~env)
 
-let build_once ~env (state : Base.server) () =
-  let tree_dirs = (paths_of_dirs ~env state.config.trees) in
+let build_once (state : Base.server) () =
+  let tree_dirs = (paths_of_dirs ~env: state.env state.config.trees) in
   Eio.traceln "Planting forest";
   let parsed_trees =
     Forester_frontend.Forester.parse_trees_in_dirs
@@ -62,7 +62,7 @@ let build_once ~env (state : Base.server) () =
   try
     let articles, _ =
       Forester_frontend.Forest_reader.read_trees
-        ~env
+        ~env: state.env
         ~host: state.config.host
         parsed_trees
     in

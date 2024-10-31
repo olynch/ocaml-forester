@@ -69,6 +69,15 @@ let server_capabilities =
     `SemanticTokensOptions
       (L.SemanticTokensOptions.create ~legend: Semantic_tokens.legend ~full ())
   in
+  let documentLinkProvider =
+    L.DocumentLinkOptions.create
+      ~resolveProvider: true
+      ~workDoneProgress: false
+      ()
+  in
+  let workspaceSymbolProvider =
+    `WorkspaceSymbolOptions (L.WorkspaceSymbolOptions.create ())
+  in
   (* [NOTE: Position Encodings]
      For various historical reasons, the spec states that we are _required_ to support UTF-16.
      This causes more trouble than it's worth, so we always select UTF-8 as our encoding, even
@@ -88,6 +97,8 @@ let server_capabilities =
     ~completionProvider
     ~definitionProvider
     ~semanticTokensProvider
+    ~documentLinkProvider
+    ~workspaceSymbolProvider
     ()
 
 let supports_utf8_encoding (init_params : L.InitializeParams.t) =
@@ -193,7 +204,7 @@ let start ~env ~source ~config =
       should_shutdown = false;
     }
   in
-  Analysis.build_once ~env init ();
+  Analysis.build_once init ();
   Server.run ~init @@
     fun () ->
       begin

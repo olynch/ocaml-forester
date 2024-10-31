@@ -102,7 +102,8 @@ let initiate_shutdown () =
 
 (* [TODO: Reed M, 12/12/2022] No code actions for now. *)
 let code_action (_params : L.CodeActionParams.t) : L.CodeActionResult.t =
-  None
+  let action = L.CodeAction.create ~title: "find tree" () in
+  Some [`CodeAction action]
 
 let completion
     (params : L.CompletionParams.t)
@@ -281,6 +282,96 @@ let inlay_hint (params : L.InlayHintParams.t) : L.InlayHint.t list option =
         code
       |> Option.some
 
+(* TODO: handle external links as well? *)
+let document_link (params : L.DocumentLinkParams.t) =
+  match params with
+  | { textDocument; _ } ->
+    let server = State.get () in
+    let links =
+      match Hashtbl.find_opt server.codes textDocument with
+      | Some tree ->
+        begin
+          tree.code
+          |> List.filter_map
+            (
+              fun node ->
+                match Range.(node.value) with
+                | Code.Group (Squares, [{ value = Text addr; _ }])
+                | Code.Group (Parens, [{ value = Text addr; _ }])
+                | Code.Group (Braces, [{ value = Text addr; _ }]) ->
+                  (* TODO: Need to analyse syn *)
+                  let range = (LspShims.Loc.lsp_range_of_range node.loc) in
+                  let iri = (Iri_scheme.user_iri ~host: server.config.host addr) in
+                  let* target = Hashtbl.find_opt server.resolver iri in
+                  let* { frontmatter; _ } = F.get_article iri in
+                  let* tooltip = Option.map PT.string_of_content frontmatter.title in
+                  let link =
+                    L.DocumentLink.create
+                      ~range
+                      ~target: target.uri
+                      ~tooltip
+                      ()
+                  in
+                  Some link
+                | _ ->
+                  None
+            )
+        end
+      | None ->
+        []
+    in
+    Some links
+
+(* I don't understand this request...*)
+let document_link_resolve (params : L.DocumentLink.t) =
+  match params with
+  | link ->
+    link
+
+let workspace_symbol (_params : L.WorkspaceSymbolParams.t) =
+  (* let _s = L.WorkspaceSymbol.create ~name: "test" () in *)
+  let server = State.get () in
+  let symbols =
+    server.codes
+    |> Hashtbl.to_seq
+    |> Seq.map
+      (
+        fun ((ident : L.TextDocumentIdentifier.t), _) ->
+          let location =
+            L.Location.{
+              range = L.Range.{
+                end_ = { character = 0; line = 0; };
+                start = { character = 0; line = 0; };
+              };
+              uri = ident.uri
+            }
+          in
+          let iri =
+            ident.uri
+            |> Lsp.Uri.to_path
+            |> String.split_on_char '/'
+            |> List.rev
+            |> List.hd
+            |> Filename.chop_extension
+            |> Iri_scheme.user_iri ~host: server.config.host
+          in
+          let title =
+            match F.get_article iri with
+            | None -> "untitled"
+            | Some { frontmatter; _ } ->
+              begin
+                match frontmatter.title with
+                | None -> "untitled"
+                | Some content ->
+                  PT.string_of_content content
+              end
+          in
+          L.SymbolInformation.create ~kind: File ~location ~name: title ()
+      )
+    |> List.of_seq
+  in
+  Some symbols
+
 module Request = struct
   type 'resp t = 'resp Lsp.Client_request.t
   type packed = Lsp_Request.packed
@@ -306,6 +397,12 @@ module Request = struct
         Semantic_tokens.on_delta_request params
       | SemanticTokensFull params ->
         Semantic_tokens.on_full_request params
+      | TextDocumentLink params ->
+        document_link params
+      | TextDocumentLinkResolve params ->
+        document_link_resolve params
+      | WorkspaceSymbol params ->
+        workspace_symbol params
       | _ ->
         raise @@ LspError (UnknownRequest mthd)
 

@@ -12,7 +12,6 @@ module L = Lsp.Types
 val check : Base.server -> L.DocumentUri.t -> unit
 
 val build_once :
-  env: Forester_frontend.Forest_reader.env ->
   Base.server ->
   unit ->
   unit
