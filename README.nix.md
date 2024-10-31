@@ -25,3 +25,7 @@ Forester can also be used with `nix`. To run `forester`, use `nix run sourcehut:
     };
 }
 ```
+
+We also maintain a nix binary cache with [cachix](https://www.cachix.org/)
+See this the [forester cachix page](https://app.cachix.org/cache/forester)
+for information about how to set it up.
