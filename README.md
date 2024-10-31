@@ -4,6 +4,8 @@ SPDX-FileCopyrightText: 2024 The Forester Project Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
+[![builds.sr.ht status](https://builds.sr.ht/~jonsterling/ocaml-forester.svg)](https://builds.sr.ht/~jonsterling/ocaml-forester?)
+
 This is the source repository for the
 [forester](https://sr.ht/~jonsterling/forester/) tool, which is implemented in
 the OCaml programming language. Please see [this
