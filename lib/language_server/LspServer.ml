@@ -206,14 +206,18 @@ let hover
   =
   let server = State.get () in
   let host = server.config.host in
-  let* tree = Hashtbl.find_opt server.codes { uri = textDocument.uri } in
-  let* addr_at_cursor = Analysis.addr_at ~position tree.code in
-  let iri_under_cursor = Iri_scheme.user_iri ~host addr_at_cursor in
   let content =
-    match F.get_article iri_under_cursor with
-    | None -> Format.asprintf "extracted iri %a" pp_iri iri_under_cursor
-    | Some { mainmatter; _ } ->
-      PT.string_of_content mainmatter
+    match Hashtbl.find_opt server.codes { uri = textDocument.uri } with
+    | None -> "code of current tree is not stored. this is a bug"
+    | Some tree ->
+      match Analysis.addr_at ~position tree.code with
+      | None -> Format.asprintf "character: %i, line: %i." position.character position.line;
+      | Some addr_at_cursor ->
+        let iri_under_cursor = Iri_scheme.user_iri ~host addr_at_cursor in
+        match F.get_article iri_under_cursor with
+        | None -> Format.asprintf "extracted iri %a" pp_iri iri_under_cursor
+        | Some { mainmatter; _ } ->
+          PT.string_of_content mainmatter
   in
   Some
     (
