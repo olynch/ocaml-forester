@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+#
+# SPDX-License-Identifier: CC0-1.0
+
+image: archlinux
+packages:
+  - reuse
+  - docker-buildx
+sources:
+  - https://git.sr.ht/~jonsterling/ocaml-forester
+tasks:
+  - check: |
+      cd ocaml-forester
+      reuse --root . lint
