@@ -5,7 +5,6 @@
 image: archlinux
 packages:
   - reuse
-  - docker-buildx
 sources:
   - https://git.sr.ht/~jonsterling/ocaml-forester
 tasks:
