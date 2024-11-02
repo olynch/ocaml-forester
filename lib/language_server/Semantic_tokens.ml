@@ -10,10 +10,7 @@ open Forester_compiler
 
 module L = Lsp.Types
 
-module State = Base.State
-
 module Token_type = struct
-
   type t = L.SemanticTokenTypes.t
   let legend : L.SemanticTokenTypes.t list =
     [
@@ -236,15 +233,13 @@ let semantic_tokens code =
       );
     }
 
-let get_doc_and_tokenize (textDocument : L.TextDocumentIdentifier.t) =
+let tokenize_document (textDocument : L.TextDocumentIdentifier.t) =
   let server = State.get () in
-  let doc = Hashtbl.find_opt server.codes { uri = textDocument.uri } in
+  let doc = Hashtbl.find_opt server.index.codes { uri = textDocument.uri } in
   match doc with
   | None -> None
   | Some tree ->
-    let res = semantic_tokens tree.code in
-    Eio.traceln "";
-    res
+    semantic_tokens tree.code
 
 let on_full_request
     : L.SemanticTokensParams.t ->
@@ -252,7 +247,7 @@ let on_full_request
   = fun
       { textDocument; _ }
     ->
-    (get_doc_and_tokenize textDocument)
+    (tokenize_document textDocument)
 
 let on_delta_request
     : L.SemanticTokensDeltaParams.t ->
@@ -266,4 +261,4 @@ let on_delta_request
     ->
     Option.map
       (fun tokens -> (`SemanticTokens tokens))
-      (get_doc_and_tokenize textDocument)
+      (tokenize_document textDocument)

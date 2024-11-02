@@ -5,8 +5,15 @@
  *
  *)
 
+open Forester_core
 open Forester_compiler
+open Forester_frontend
+
 module L = Lsp.Types
+module F = Analysis.F
+module PT = Analysis.PT
+
+let (let*) = Option.bind
 
 let kind
     : Syn.node -> L.CompletionItemKind.t option
@@ -85,3 +92,94 @@ let make
         )
     | Resolver.P.Xmlns _ ->
       None
+
+let compute
+    (params : L.CompletionParams.t)
+  =
+  match params with
+  | {
+    context;
+    _;
+  } ->
+    let triggerCharacter =
+      match context with
+      | Some { triggerCharacter; _ } ->
+        triggerCharacter
+      | None -> None
+    in
+    let server = State.get () in
+    let addr_items () =
+      server.index.codes
+      |> Hashtbl.to_seq_values
+      |> List.of_seq
+      |> List.filter_map
+        (
+          fun (tree : Code.tree) ->
+            let* addr = tree.addr in
+            let* { frontmatter; mainmatter; _ } =
+              (F.get_article @@ Iri_scheme.user_iri ~host: server.config.host addr)
+            in
+            let documentation =
+              try
+                let render = PT.string_of_content in
+                let title = frontmatter.title in
+                let taxon = frontmatter.taxon in
+                let content =
+                  Format.asprintf
+                    {|%s
+%s
+%s
+|}
+                    (Option.fold ~none: "" ~some: (fun s -> Format.asprintf "# %s" (render s)) title)
+                    (Option.fold ~none: "" ~some: (fun s -> Format.asprintf "taxon: %s" (render s)) taxon)
+                    (render mainmatter)
+                in
+                Some (`String content)
+              with
+                | _ ->
+                  Some (`String "computation of my value crashed")
+            in
+            let insertText =
+              match triggerCharacter with
+              | Some "{" -> addr ^ "}"
+              | Some "(" -> addr ^ ")"
+              | Some "[" -> addr ^ "]"
+              | _ -> addr
+            in
+            Some (L.CompletionItem.create ?documentation ~label: addr ~insertText ())
+        )
+    in
+    let trees = server.index.codes |> Hashtbl.to_seq_values |> List.of_seq in
+    let scope_items () =
+      let units, _expanded = Forest_reader.expand ~host: server.config.host trees in
+      units
+      |> Expand.Unit_map.to_list
+      |> List.map snd
+      |> List.concat_map
+        (
+          fun trie ->
+            let open Yuujinchou in
+            trie
+            |> Trie.to_seq
+            |> List.of_seq
+            |> List.filter_map make
+        )
+      |> List.append
+        (
+          Expand.builtins
+          |> List.map (fun (a, b) -> (a, (Resolver.P.Term [Range.locate_opt None b], ())))
+          |> List.filter_map make
+        )
+    in
+    let items =
+      match triggerCharacter with
+      | Some "(" -> addr_items ()
+      | Some "{" -> addr_items ()
+      | Some "\\" -> scope_items ()
+      | _ -> []
+    in
+    Some
+      (
+        `CompletionList
+          (L.CompletionList.create ~isIncomplete: false ~items ())
+      )

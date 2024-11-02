@@ -248,7 +248,6 @@ let lsp ~env config =
   Forester_lsp.start
     ~env
     ~config
-    ~source: None
 
 let lsp_cmd ~env =
   let man =

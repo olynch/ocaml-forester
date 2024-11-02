@@ -5,13 +5,13 @@
  *
  *)
 
+open Forester_core
 open Forester_compiler
 
 module Analysis = Analysis
 module Semantic_tokens = Semantic_tokens
 module L = Lsp.Types
 module RPC = Jsonrpc
-module Base = Base
 module Server = LspServer
 
 open Server
@@ -64,11 +64,11 @@ let server_capabilities =
       ~allCommitCharacters: ["}"; ")"; ]
       ()
   in
-  let semanticTokensProvider =
-    let full = `Full (L.SemanticTokensOptions.create_full ~delta: false ()) in
-    `SemanticTokensOptions
-      (L.SemanticTokensOptions.create ~legend: Semantic_tokens.legend ~full ())
-  in
+  (* let semanticTokensProvider = *)
+  (*   let full = `Full (L.SemanticTokensOptions.create_full ~delta: false ()) in *)
+  (*   `SemanticTokensOptions *)
+  (*     (L.SemanticTokensOptions.create ~legend: Semantic_tokens.legend ~full ()) *)
+  (* in *)
   let documentLinkProvider =
     L.DocumentLinkOptions.create
       ~resolveProvider: true
@@ -96,7 +96,7 @@ let server_capabilities =
     ~positionEncoding
     ~completionProvider
     ~definitionProvider
-    ~semanticTokensProvider
+    (* ~semanticTokensProvider *)
     ~documentLinkProvider
     ~workspaceSymbolProvider
     ()
@@ -139,10 +139,41 @@ let initialize () =
       in
       match notif with
       | Initialized ->
-        (* let root = get_root init_params in *)
-        (* Eio.traceln "Root: %s" (Option.value root ~default: "<no-root>"); *)
-        (* set_root root; *)
-        ();
+        let server = State.get () in
+        Forester_frontend.Forest_scanner.scan_directories @@
+          List.map
+            (fun dir -> EP.(Eio.Stdenv.fs server.env / dir))
+            server.config.trees
+        |> Seq.iter
+          (
+            fun path ->
+              (* HACK: using realpath. This is required here because later on,
+                 the client will send notifications using the absolute path of
+                 a file.*)
+              let native = EP.native_exn path |> Unix.realpath in
+              let uri = Lsp.Uri.of_path native in
+              match (EP.split path) with
+              | Some (_, basename) ->
+                let addr = Filename.chop_extension basename in
+                Hashtbl.add
+                  server.index.resolver
+                  (Iri_scheme.user_iri ~host: server.config.host addr)
+                  L.TextDocumentIdentifier.{ uri };
+                State.Graph.add_vertex server.import_graph uri;
+                Analysis.parse_from (`Eio_path path)
+                |> Result.fold
+                  ~ok: (
+                    fun code ->
+                      Hashtbl.add
+                        server.index.codes
+                        { uri }
+                        { code = code; source_path = Some native; addr = Some addr }
+                  )
+                  ~error: (
+                    fun _ -> ()
+                  )
+              | None -> ()
+          );
         Eio.traceln "Initialized!"
       | _ ->
         raise @@ LspError (HandshakeError "Initialization must complete with an initialized notification.")
@@ -187,24 +218,28 @@ let rec event_loop () =
   | None ->
     Eio.traceln "Recieved an invalid message. Shutting down...@."
 
-let start ~env ~source ~config =
+let start ~env ~(config : Forester_frontend.Config.Forest_config.t) =
   let lsp_io = LspEio.init env in
   let codes = Hashtbl.create 1000 in
   let resolver = Hashtbl.create 1000 in
+  let import_graph = State.Graph.create () in
   let init =
-    Base.{
+    State.{
       env;
       lsp_io;
       config;
-      source;
-      codes;
-      resolver;
+      index =
+      {
+        codes;
+        resolver;
+        documents = Hashtbl.create 10;
+      };
+      import_graph;
+      did_initial_build = false;
       units = Expand.Env.empty;
-      documents = Hashtbl.create 10;
       should_shutdown = false;
     }
   in
-  Analysis.build_once init ();
   Server.run ~init @@
     fun () ->
       begin

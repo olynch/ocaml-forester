@@ -8,6 +8,7 @@
    algaeff
    repr
    unix
+   ocamlgraph
    forester.prelude
    forester.core
    forester.compiler
@@ -16,6 +17,7 @@
    lsp
    asai
    eio
+   eio.core
    eio_main
    eio.unix
    jsonrpc

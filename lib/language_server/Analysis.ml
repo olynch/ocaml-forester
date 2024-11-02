@@ -5,10 +5,11 @@
  *
  *)
 
+(* This module will probably end up containing a complete replacement of the batch compiler pipeline*)
+
 open Forester_prelude
 open Forester_core
 open Forester_compiler
-open Forester_frontend
 
 module L = Lsp.Types
 module T = Types
@@ -16,6 +17,7 @@ module EP = Eio.Path
 module G = Forester_forest.Forest_graphs.Make ()
 module F = Forester_forest.Forest.Make(G)
 module FU = Forester_forest.Forest_util.Make(F)
+module PT = Forester_forest.Plain_text_client.Make(F)(struct let route _ = "todo" end)
 
 module Code_set = Set.Make(struct
   type t = Code.tree
@@ -23,65 +25,18 @@ module Code_set = Set.Make(struct
   let compare = compare
 end)
 
-let path_of_dir ~env dir =
-  EP.(Eio.Stdenv.fs env / dir)
-
-let paths_of_dirs ~env =
-  List.map (path_of_dir ~env)
-
-let build_once (state : Base.server) () =
-  let tree_dirs = (paths_of_dirs ~env: state.env state.config.trees) in
-  Eio.traceln "Planting forest";
-  let parsed_trees =
-    Forester_frontend.Forester.parse_trees_in_dirs
-      ~dev: true
-      tree_dirs
-  in
-  parsed_trees
-  |> List.iter
-    (
-      fun
-          (Code.{ source_path; addr; _ } as code)
-        ->
-        match source_path with
-        | Some p ->
-          let uri = Lsp.Uri.of_path p in
-          Hashtbl.add state.codes L.TextDocumentIdentifier.{ uri } code;
-          begin
-            match addr with
-            | Some a ->
-              Hashtbl.add
-                state.resolver
-                (Iri_scheme.user_iri ~host: state.config.host a)
-                L.TextDocumentIdentifier.{ uri }
-            | None -> ()
-          end
-        | None ->
-          ()
-    );
-  try
-    let articles, _ =
-      Forester_frontend.Forest_reader.read_trees
-        ~env: state.env
-        ~host: state.config.host
-        parsed_trees
-    in
-    let@ article = List.iter @~ articles in
-    F.plant_resource @@ T.Article article
-  with
-    | _ -> ()
-
 let parse_path path = Parse.parse_string @@ EP.load path
 
 let parse_from = function
   | `String s -> Parse.parse_string s
   | `Eio_path p -> parse_path p
-  | `Uri(uri, cache: L.TextDocumentIdentifier.t * _) ->
+  | `Uri uri ->
     begin
-      match Hashtbl.find_opt cache uri with
+      let server = State.get () in
+      match Hashtbl.find_opt server.index.documents uri with
       | Some doc -> Parse.parse_string (Lsp.Text_document.text doc)
       | None ->
-        Error (Reporter.fatalf Internal_error "Could not find %s in the internal document store. This is a bug!" (Lsp.Uri.to_path uri.uri))
+        Error (Asai.Diagnostic.of_text Error Reporter.Message.Parse_error (Asai.Diagnostic.text "parse error"))
     end
   | `Iri (env, iri) ->
     match F.get_article iri with
@@ -96,78 +51,146 @@ let parse_from = function
           pp_iri
           iri
 
-let dependencies (code : Code.t) host : iri Range.located list =
-  let rec analyse_deps (node : Code.node Range.located) =
-    match Range.(node.value) with
+module Dependencies = struct
+  module Env = Algaeff.Reader.Make(struct type t = string end)
+
+  let rec analyse_tree roots import_graph (v_opt : State.Graph.vertex option) code =
+    let roots =
+      Option.fold
+        ~none: roots
+        ~some: (fun x -> x :: roots)
+        v_opt
+    in
+    analyse_code roots import_graph code;
+    let@ uri = Option.iter @~ v_opt in
+    State.Graph.add_vertex import_graph uri
+
+  and analyse_code roots import_graph (code : Code.t) =
+    List.iter (analyse_node roots import_graph) code
+
+  and analyse_node roots import_graph (node : Code.node Asai.Range.located) =
+    (* The key difference to Import_graph is that is we have not yet parsed all
+       files when this is run, so when we encounter a dependency we parse from
+       filesystem and analyse the result.*)
+    let server = State.get () in
+    let host = server.config.host in
+    match node.value with
     | Import (_, dep) ->
-      [Range.{ loc = node.loc; value = (Iri_scheme.user_iri ~host dep) }]
-    | Subtree (_, code)
-    | Scope code
-    | Namespace (_, code)
-    | Group (_, code)
-    | Math (_, code)
-    | Let (_, _, code)
-    | Fun (_, code)
-    | Def (_, _, code) ->
-      List.concat_map analyse_deps code
-    | Object { methods; _ } | Patch { methods; _ } ->
-      let@ code = List.concat_map @~ methods in
-      List.concat_map analyse_deps (snd code)
-    | _ ->
-      []
-  in
-  List.concat_map
-    analyse_deps
-    code
-
-(* Does no IO*)
-let get_dependencies (server : Base.server) code =
-  let rec go c acc =
-    let immediate_deps = dependencies c server.config.host in
-    List.fold_left
-      (
-        fun acc' d ->
-          match Hashtbl.find_opt server.resolver Range.(d.value) with
-          | None ->
-            Reporter.emitf ?loc: d.loc Resource_not_found "Could not find tree %a" pp_iri d.value;
-            acc'
-          | Some uri ->
+      begin
+        let dep_iri = Iri_scheme.user_iri ~host dep in
+        begin
+          match Hashtbl.find_opt server.index.resolver dep_iri with
+          | Some dep_uri ->
             begin
-              match Hashtbl.find_opt server.codes uri with
-              | None ->
-                Reporter.emitf ?loc: d.loc Resource_not_found "Could not find tree %s" @@ Lsp.Uri.to_path uri.uri;
-                acc'
-              | Some tree -> go tree.code (Code_set.add tree acc')
-            end
-      )
-      acc
-      immediate_deps
-  in
-  go code Code_set.empty
+              (* let path = *)
+              (*   EP.(server.env#fs / Lsp.Uri.to_path dep_uri.uri) *)
+              (* in *)
+              match parse_from (`Uri dep_uri) with
+              | Ok code ->
+                Eio.traceln "parsed %s" (Lsp.Uri.to_string dep_uri.uri);
+                analyse_code [dep_uri.uri] import_graph code
+              | Error _ ->
+                Eio.traceln "failed to parse"
+            end;
+            let@ addr = List.iter @~ roots in
+            State.Graph.add_edge
+              import_graph
+              dep_uri.uri
+              addr;
+            Eio.traceln "added edge";
+          | None -> Eio.traceln "could not resolve"
+        end
+      end
+    | Subtree (addr, code) ->
+      let iri = Option.map (Iri_scheme.user_iri ~host) addr in
+      let uri = Option.bind iri (Hashtbl.find_opt server.index.resolver) in
+      begin
+        match uri with
+        | None -> ()
+        | Some uri ->
+          analyse_tree
+            roots
+            import_graph
+            (Some uri.uri)
+            code
+      end
+    | Scope code | Namespace (_, code) | Group (_, code) | Math (_, code) | Let (_, _, code) | Fun (_, code) | Def (_, _, code) ->
+      analyse_code roots import_graph code
+    | Object { methods; _ } | Patch { methods; _ } ->
+      let@ _, code = List.iter @~ methods in
+      analyse_code roots import_graph code
+    | Dx_prop (rel, args) ->
+      analyse_code roots import_graph rel;
+      List.iter (analyse_code roots import_graph) args
+    | Dx_sequent (concl, premises) ->
+      analyse_code roots import_graph concl;
+      List.iter (analyse_code roots import_graph) premises
+    | Dx_query (_, positives, negatives) ->
+      List.iter (analyse_code roots import_graph) positives;
+      List.iter (analyse_code roots import_graph) negatives
+    | Text _ | Hash_ident _ | Xml_ident _ | Verbatim _ | Ident _ | Open _ | Put _ | Default _ | Get _ | Decl_xmlns _ | Call _ | Alloc _ | Dx_var _ | Dx_const_content _ | Dx_const_iri _ | Comment _ | Error _ ->
+      ()
+end
 
-let check (server : Base.server) uri =
-  let res = parse_from (`Uri (L.TextDocumentIdentifier.{ uri = uri }, server.documents)) in
-  match res with
-  | Ok code ->
-    let str_path = (Lsp.Uri.to_path uri) in
-    let addr =
-      String.split_on_char '/' str_path |> List.rev
-      |> List.hd
-      |> Filename.chop_extension
-      |> Option.some
-    in
-    let tree = Code.{ source_path = Some str_path; addr; code } in
-    Hashtbl.replace server.codes { uri } tree;
-    let trans_deps = get_dependencies server code in
-    let trees = trans_deps |> Code_set.to_list in
-    let _units, _expanded_trees =
-      Forest_reader.expand
-        ~host: server.config.host
-        (tree :: trees)
-    in
-    ()
-  | Error diagnostic ->
-    Reporter.emit_diagnostic diagnostic
+let update_graph (uri : Lsp.Uri.t) code : unit =
+  let server = State.get () in
+  Dependencies.analyse_tree [] server.import_graph (Some uri) code
+
+let check uri =
+  let server = State.get () in
+  (* TODO: As it stands, any error during evaluation will get reported to the
+     uri currently being checked. This is the wrong behavior.*)
+  Reporter.lsp_run Publish.publish_diagnostics uri @@
+    fun () ->
+      begin
+        match parse_from (`Uri (L.TextDocumentIdentifier.{ uri })) with
+        | Ok code ->
+          let path = uri |> Lsp.Uri.to_path in
+          let addr =
+            path
+            |> String.split_on_char '/'
+            |> List.rev
+            |> List.hd
+            |> Filename.chop_extension
+          in
+          let tree = Forester_compiler.Code.{ source_path = Some path; addr = Some addr; code } in
+          Hashtbl.add server.index.codes { uri } tree;
+          update_graph uri tree.code;
+          let import_closure = State.Graph.Op.transitive_reduction server.import_graph in
+          (* TODO: cache env somewhere to reuse it for completion, definition, etc. *)
+          let _env, expanded_trees =
+            let task (uri : Lsp.Uri.t) (units, trees) =
+              match Hashtbl.find_opt server.index.codes { uri } with
+              | None -> units, trees
+              | Some tree ->
+                Reporter.ignore @@
+                  fun () ->
+                    let units, syn = Forester_compiler.Expand.expand_tree units tree in
+                    let addr = Util.uri_to_addr (Lsp.Uri.to_path uri) in
+                    units, (addr, tree.source_path, syn) :: trees
+            in
+            State.Graph.topo_fold
+              task
+              import_closure
+              (Forester_compiler.Expand.Env.empty, [])
+          in
+          let host = server.config.host in
+          let articles =
+            List.fold_left
+              (
+                fun acc (addr, source_path, syn) ->
+                  let iri = Iri_scheme.user_iri ~host addr in
+                  let result = Forester_compiler.Eval.eval_tree ~host ~iri ~source_path syn in
+                  result.main :: acc
+              )
+              []
+              expanded_trees
+          in
+          let@ article = List.iter @~ articles in
+          F.plant_resource @@ T.Article article
+        | Error _ ->
+          ()
+      end
 
 let extract_addr (node : Code.node Range.located) : string option =
   match node.value with
@@ -178,16 +201,6 @@ let extract_addr (node : Code.node Range.located) : string option =
   | Import (_, addr) ->
     Some addr
   | Verbatim _ | Math (_, _) | Ident _ | Hash_ident _ | Xml_ident _ | Subtree (_, _) | Let (_, _, _) | Open _ | Scope _ | Put (_, _) | Default (_, _) | Get _ | Fun (_, _) | Object _ | Patch _ | Call (_, _) | Def (_, _, _) | Decl_xmlns (_, _) | Alloc _ | Namespace (_, _) | _ -> None
-
-let _ =
-  assert (
-    extract_addr @@
-      Range.{
-        loc = None;
-        value = Group (Parens, [{ value = Text "foo"; loc = None }])
-      }
-    = Some "foo"
-  )
 
 let rec flatten (tree : Code.t) : Code.t =
   tree
