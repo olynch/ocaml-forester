@@ -9,7 +9,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 This is the source repository for the
 [forester](https://sr.ht/~jonsterling/forester/) tool, which is implemented in
 the OCaml programming language. Please see [this
-page](https://www.jonmsterling.com/jms-005P.xml) for more information.
+page](https://www.forester-notes.org) for more information.
 
 
 ### System Requirements
