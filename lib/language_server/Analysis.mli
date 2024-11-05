@@ -29,6 +29,7 @@ val parse_from :
   ] ->
   (Forester_compiler.Code.t, Reporter.Message.t Asai.Diagnostic.t) result
 
+val check_syntax : L.DocumentUri.t -> unit
 val check : L.DocumentUri.t -> unit
 
 val extract_addr :

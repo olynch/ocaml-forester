@@ -136,6 +136,12 @@ let update_graph (uri : Lsp.Uri.t) code : unit =
   let server = State.get () in
   Dependencies.analyse_tree [] server.import_graph (Some uri) code
 
+let check_syntax uri =
+  match parse_from (`Uri (L.TextDocumentIdentifier.{ uri })) with
+  | Ok _ ->
+    Publish.publish_diagnostics uri []
+  | Error diag -> Publish.publish_diagnostics uri [diag]
+
 let check uri =
   let server = State.get () in
   (* TODO: As it stands, any error during evaluation will get reported to the

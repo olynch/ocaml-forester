@@ -102,6 +102,8 @@ module Request = struct
         inlay_hint params
       | TextDocumentDefinition params ->
         definitions params
+      | DocumentSymbol params ->
+        Document_symbols.compute params
       (* | SemanticTokensDelta params -> *)
       (*   Semantic_tokens.on_delta_request params *)
       (* | SemanticTokensFull params -> *)
@@ -150,6 +152,7 @@ module Notification = struct
       | TextDocumentDidOpen ({ textDocument = { uri; _ } } as params) ->
         let text_document = Lsp.Text_document.make ~position_encoding: `UTF16 params in
         Hashtbl.replace server.index.documents { uri } text_document;
+        Analysis.check_syntax uri;
         Analysis.check uri
       | DidSaveTextDocument { textDocument; _; } ->
         begin
@@ -167,9 +170,8 @@ module Notification = struct
                 contentChanges
             in
             Hashtbl.replace server.index.documents { uri } new_doc;
-            Reporter.lsp_run Publish.publish_diagnostics uri @@
-              fun () ->
-                Analysis.check uri
+            Analysis.check_syntax uri;
+            Analysis.check uri
           | None ->
             Reporter.lsp_run Publish.publish_diagnostics uri @@
               fun () ->

@@ -78,6 +78,9 @@ let server_capabilities =
   let workspaceSymbolProvider =
     `WorkspaceSymbolOptions (L.WorkspaceSymbolOptions.create ())
   in
+  let documentSymbolProvider =
+    `DocumentSymbolOptions (L.DocumentSymbolOptions.create ())
+  in
   (* [NOTE: Position Encodings]
      For various historical reasons, the spec states that we are _required_ to support UTF-16.
      This causes more trouble than it's worth, so we always select UTF-8 as our encoding, even
@@ -97,6 +100,7 @@ let server_capabilities =
     ~completionProvider
     ~definitionProvider
     (* ~semanticTokensProvider *)
+    ~documentSymbolProvider
     ~documentLinkProvider
     ~workspaceSymbolProvider
     ()
