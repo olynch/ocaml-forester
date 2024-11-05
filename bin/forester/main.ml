@@ -265,6 +265,44 @@ let lsp_cmd ~env =
       $ arg_config
     )
 
+let start_server ~env =
+  Lwt_eio.with_event_loop ~clock:env#clock @@ fun _ ->
+  Lwt_eio.run_lwt @@ fun () -> Dream.serve @@ Dream.router [
+    Dream.get "/" @@ Dream.from_filesystem "output" "index.xml";
+    Dream.get "/**" @@ Dream.static "output";
+  ]
+
+let builder ~env config =
+  let buf = Eio.Buf_read.of_flow env#stdin ~max_size:1000 in
+  while true do
+    let _ = build ~env config false false in
+    let _ = Eio.Buf_read.line buf in
+    ()
+  done
+
+let preview ~env config =
+  let _ = print_endline "Started preview server. Press Enter to rebuild." in
+  builder ~env config
+  (* Fiber.both *)
+  (*   (fun () -> builder ~env config) *)
+  (*   (fun () -> start_server ~env) *)
+
+let preview_cmd ~env =
+  let man =
+    [
+      `S Manpage.s_description;
+      `P "The $(tname) command starts the forester preview server.";
+    ]
+  in
+  let doc = "Start the preview server" in
+  let info = Cmd.info "preview" ~version ~doc ~man in
+  Cmd.v
+    info
+    Term.(
+      const (preview ~env)
+      $ arg_config
+    )
+
 let cmd ~env =
   let doc = "a tool for tending mathematical forests" in
   let man =
@@ -285,6 +323,7 @@ let cmd ~env =
       init_cmd ~env;
       query_cmd ~env;
       lsp_cmd ~env;
+      preview_cmd ~env;
     ]
 
 let () =

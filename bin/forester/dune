@@ -23,4 +23,7 @@
    eio.unix
    bwd
    eio_main
-   fmt))
+   fmt
+   dream
+   lwt
+   lwt_eio))
