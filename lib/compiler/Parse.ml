@@ -197,8 +197,6 @@ let parse_lexbuf lexbuf =
   with
     | Grammar.Error ->
       Error (Asai.Diagnostic.of_text ~loc: (Range.of_lexbuf lexbuf) Error Forester_core.Reporter.Message.Parse_error (Asai.Diagnostic.text "failed to parse"))
-(* | exn -> *)
-(*   Error (Asai.Diagnostic.of_text ~loc: (Range.of_lexbuf lexbuf) Error Forester_core.Reporter.Message.Parse_error (Asai.Diagnostic.text "failed to parse")) *)
 
 let parse_channel filename ch =
   let lexbuf = Lexing.from_channel ch in
