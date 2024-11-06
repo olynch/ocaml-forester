@@ -306,41 +306,38 @@ and expand_ident loc path =
       match TeX_cs.parse name with
       | None ->
         let extra_remarks = create_suggestions path in
-        Reporter.emitf
+        Reporter.fatalf
           ?loc
           ~extra_remarks
           Resolution_error
           "path %a could not be resolved"
           Sc.pp_path
-          path;
-        []
+          path
       | Some (cs, rest) ->
         let rest = match rest with "" -> [] | _ -> [Range.{ value = Syn.Text rest; loc }] in
         Range.{ value = Syn.TeX_cs cs; loc } :: rest
     end
   | None, _ ->
     let extra_remarks = create_suggestions path in
-    Reporter.emitf
+    Reporter.fatalf
       ?loc
       ~extra_remarks
       Resolution_error
       "path %a could not be resolved"
       Sc.pp_path
-      path;
-    []
+      path
   | Some (Term x, ()), _ ->
     let relocate Range.{ value; _ } = Range.{ value; loc } in
     List.map relocate x
   | Some (Xmlns { xmlns; prefix }, ()), _ ->
-    Reporter.emitf
+    Reporter.fatalf
       ?loc
       Resolution_error
       "path %a resolved to xmlns:%s=\"%s\" instead of term"
       Sc.pp_path
       path
       xmlns
-      prefix;
-    []
+      prefix
 
 and expand_xml_ident loc (prefix, uname) =
   match prefix with
@@ -350,12 +347,11 @@ and expand_xml_ident loc (prefix, uname) =
     | Some (Xmlns { xmlns; prefix }, ()) ->
       { xmlns = Some xmlns; prefix = prefix; uname }
     | _ ->
-      Reporter.emitf
+      Reporter.fatalf
         ?loc
         Resolution_error
         "expected path `%s` to resolve to xmlns"
-        prefix;
-      { xmlns = None; prefix = ""; uname = "" }
+        prefix
 
 and expand_tree_inner (tree : Code.tree) : Syn.tree =
   let trace f =
