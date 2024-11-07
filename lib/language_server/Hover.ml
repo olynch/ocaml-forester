@@ -25,13 +25,14 @@ let compute
     match Hashtbl.find_opt server.index.codes { uri = textDocument.uri } with
     | None -> "code of current tree is not stored. this is a bug"
     | Some tree ->
+      (* TODO: use node_at and provide hover for things other than links.*)
       match Analysis.addr_at ~position tree.code with
       | None -> Format.asprintf "character: %i, line: %i." position.character position.line;
       | Some addr_at_cursor ->
         let iri_under_cursor = Iri_scheme.user_iri ~host addr_at_cursor in
         match F.get_article iri_under_cursor with
         | None ->
-          Format.asprintf "Could not get article %a. This is a bug." pp_iri iri_under_cursor
+          Format.asprintf "Could not get article %a." pp_iri iri_under_cursor
         | Some { mainmatter; frontmatter; _ } ->
           let main = PT.string_of_content mainmatter in
           if main = "" then (Format.asprintf "%a" T.(pp_frontmatter pp_content) frontmatter)

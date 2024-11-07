@@ -9,10 +9,10 @@ open Forester_core
 open Forester_compiler
 
 module Analysis = Analysis
-module Semantic_tokens = Semantic_tokens
 module L = Lsp.Types
 module RPC = Jsonrpc
 module Server = LspServer
+module EP = Eio.Path
 
 open Server
 
@@ -64,11 +64,6 @@ let server_capabilities =
       ~allCommitCharacters: ["}"; ")"; ]
       ()
   in
-  (* let semanticTokensProvider = *)
-  (*   let full = `Full (L.SemanticTokensOptions.create_full ~delta: false ()) in *)
-  (*   `SemanticTokensOptions *)
-  (*     (L.SemanticTokensOptions.create ~legend: Semantic_tokens.legend ~full ()) *)
-  (* in *)
   let documentLinkProvider =
     L.DocumentLinkOptions.create
       ~resolveProvider: true
@@ -99,7 +94,6 @@ let server_capabilities =
     ~positionEncoding
     ~completionProvider
     ~definitionProvider
-    (* ~semanticTokensProvider *)
     ~documentSymbolProvider
     ~documentLinkProvider
     ~workspaceSymbolProvider
@@ -144,6 +138,7 @@ let initialize () =
       match notif with
       | Initialized ->
         let server = State.get () in
+        (* Upon initalization, try to parse the entire forest and cache the code*)
         Forester_frontend.Forest_scanner.scan_directories @@
           List.map
             (fun dir -> EP.(Eio.Stdenv.fs server.env / dir))
@@ -151,7 +146,7 @@ let initialize () =
         |> Seq.iter
           (
             fun path ->
-              (* HACK: using realpath. This is required here because later on,
+              (* WARNING: using realpath. This is necessary because later on,
                  the client will send notifications using the absolute path of
                  a file.*)
               let native = EP.native_exn path |> Unix.realpath in

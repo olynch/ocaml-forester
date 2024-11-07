@@ -19,17 +19,34 @@ module F = Forester_forest.Forest.Make(G)
 module FU = Forester_forest.Forest_util.Make(F)
 module PT = Forester_forest.Plain_text_client.Make(F)(struct let route _ = "todo" end)
 
+type diagnostic = Reporter.Message.t Asai.Diagnostic.t
+
 module Code_set = Set.Make(struct
   type t = Code.tree
   (* TODO: no polymorphic compare*)
   let compare = compare
 end)
 
+type analysis_error =
+  | Should_be_present of ([`In_code_store | `In_article_store] * Lsp.Uri.t)
+
+exception Analysis_error of analysis_error
+
+let () =
+  Printexc.register_printer @@
+    function
+    | Analysis_error (Should_be_present (`In_code_store, uri)) ->
+      Some (Format.asprintf "Lsp Error: Could not find %s in code store" (Lsp.Uri.to_string uri))
+    | Analysis_error (Should_be_present (`In_article_store, uri)) ->
+      Some (Format.asprintf "Lsp Error: Could not find %s in article store" (Lsp.Uri.to_string uri))
+    | _ -> None
+
 let parse_path path = Parse.parse_string @@ EP.load path
 
 let parse_from = function
   | `String s -> Parse.parse_string s
   | `Eio_path p -> parse_path p
+  | `Text_document d -> Parse.parse_string (Lsp.Text_document.text d)
   | `Uri uri ->
     begin
       let server = State.get () in
@@ -82,22 +99,25 @@ module Dependencies = struct
           match Hashtbl.find_opt server.index.resolver dep_iri with
           | Some dep_uri ->
             begin
-              (* let path = *)
-              (*   EP.(server.env#fs / Lsp.Uri.to_path dep_uri.uri) *)
-              (* in *)
               match parse_from (`Uri dep_uri) with
               | Ok code ->
                 Eio.traceln "parsed %s" (Lsp.Uri.to_string dep_uri.uri);
                 analyse_code [dep_uri.uri] import_graph code
-              | Error _ ->
-                Eio.traceln "failed to parse"
+              | Error diag ->
+                let _ =
+                  match diag with
+                  | _ ->
+                    ()
+                in
+                Eio.traceln "failed to parse %s. " (Lsp.Uri.to_string dep_uri.uri)
             end;
             let@ addr = List.iter @~ roots in
             State.Graph.add_edge
               import_graph
               dep_uri.uri
               addr;
-            Eio.traceln "added edge";
+            Eio.traceln
+              "added edge";
           | None -> Eio.traceln "could not resolve"
         end
       end
@@ -136,67 +156,106 @@ let update_graph (uri : Lsp.Uri.t) code : unit =
   let server = State.get () in
   Dependencies.analyse_tree [] server.import_graph (Some uri) code
 
-let check_syntax uri =
-  match parse_from (`Uri (L.TextDocumentIdentifier.{ uri })) with
-  | Ok _ ->
-    Publish.publish_diagnostics uri []
-  | Error diag -> Publish.publish_diagnostics uri [diag]
+let syntax_diagnostics source =
+  let ok = fun _ -> [] in
+  let error = (fun diag -> [diag]) in
+  Result.fold ~ok ~error (parse_from source)
 
-let check uri =
+(*  TODO: version of this function that only expands one tree *)
+let expand () =
+  let server = State.get () in
+  let import_closure = State.Graph.Op.transitive_reduction server.import_graph in
+  let diagnostics : (Lsp.Uri.t, diagnostic) Hashtbl.t = Hashtbl.create 100 in
+  let task (uri : Lsp.Uri.t) (units, trees) =
+    match Hashtbl.find_opt server.index.codes { uri } with
+    | None ->
+      Eio.traceln "errorrrrroro";
+      units, trees
+    (* raise (Analysis_error (Should_be_present (`In_code_store, uri))) *)
+    | Some tree ->
+      try
+        let push_diagnostic (d : diagnostic) =
+          Hashtbl.add diagnostics uri d
+        in
+        let emit = push_diagnostic in
+        let fatal diag = push_diagnostic diag; units, trees in
+        Reporter.run ~emit ~fatal @@
+          fun () ->
+            let units, syn = Forester_compiler.Expand.expand_tree units tree in
+            let addr = Util.uri_to_addr (Lsp.Uri.to_path uri) in
+            units, (addr, tree.source_path, syn) :: trees
+      with
+        | _ ->
+          Eio.traceln "erroror";
+          units, trees
+  in
+  let env, expanded_trees =
+    State.Graph.topo_fold
+      task
+      import_closure
+      (Forester_compiler.Expand.Env.empty, [])
+  in
+  diagnostics, env, expanded_trees
+
+let eval (addr, source_path, syn) =
+  let server = State.get () in
+  let host = server.config.host in
+  let iri = Iri_scheme.user_iri ~host addr in
+  let uri = Hashtbl.find_opt server.index.resolver iri in
+  let diagnostics : (Lsp.Uri.t, diagnostic list) Hashtbl.t = Hashtbl.create 100 in
+  let push_diagnostic (d : diagnostic) =
+    Option.fold
+      ~none: ()
+      ~some: (
+        fun (uri : L.TextDocumentIdentifier.t) ->
+          match Hashtbl.find_opt diagnostics uri.uri with
+          | None -> ()
+          | Some diags -> Hashtbl.replace diagnostics uri.uri (d :: diags)
+      )
+      uri
+  in
+  let emit = push_diagnostic in
+  let fatal diag =
+    push_diagnostic diag;
+    Forester_compiler.Eval.{
+      main =
+      {
+        frontmatter = T.default_frontmatter ();
+        mainmatter = T.Content [];
+        backmatter = T.Content []
+      };
+      side = [];
+      jobs = []
+    }
+  in
+  let evaluated =
+    Reporter.run ~emit ~fatal @@
+      fun () ->
+        Forester_compiler.Eval.eval_tree ~host ~iri ~source_path syn
+  in
+  diagnostics, evaluated
+
+(* NOTE: This should always get run after `check_syntax`, so the code should be
+   part of the index.*)
+let check_semantics uri =
   let server = State.get () in
   (* TODO: As it stands, any error during evaluation will get reported to the
      uri currently being checked. This is the wrong behavior.*)
-  Reporter.lsp_run Publish.publish_diagnostics uri @@
-    fun () ->
-      begin
-        match parse_from (`Uri (L.TextDocumentIdentifier.{ uri })) with
-        | Ok code ->
-          let path = uri |> Lsp.Uri.to_path in
-          let addr =
-            path
-            |> String.split_on_char '/'
-            |> List.rev
-            |> List.hd
-            |> Filename.chop_extension
-          in
-          let tree = Forester_compiler.Code.{ source_path = Some path; addr = Some addr; code } in
-          Hashtbl.add server.index.codes { uri } tree;
-          update_graph uri tree.code;
-          let import_closure = State.Graph.Op.transitive_reduction server.import_graph in
-          (* TODO: cache env somewhere to reuse it for completion, definition, etc. *)
-          let _env, expanded_trees =
-            let task (uri : Lsp.Uri.t) (units, trees) =
-              match Hashtbl.find_opt server.index.codes { uri } with
-              | None -> units, trees
-              | Some tree ->
-                Reporter.ignore @@
-                  fun () ->
-                    let units, syn = Forester_compiler.Expand.expand_tree units tree in
-                    let addr = Util.uri_to_addr (Lsp.Uri.to_path uri) in
-                    units, (addr, tree.source_path, syn) :: trees
-            in
-            State.Graph.topo_fold
-              task
-              import_closure
-              (Forester_compiler.Expand.Env.empty, [])
-          in
-          let host = server.config.host in
-          let articles =
-            List.fold_left
-              (
-                fun acc (addr, source_path, syn) ->
-                  let iri = Iri_scheme.user_iri ~host addr in
-                  let result = Forester_compiler.Eval.eval_tree ~host ~iri ~source_path syn in
-                  result.main :: acc
-              )
-              []
-              expanded_trees
-          in
-          let@ article = List.iter @~ articles in
-          F.plant_resource @@ T.Article article
-        | Error _ ->
-          ()
-      end
+  match Hashtbl.find_opt server.index.codes { uri } with
+  | None ->
+    raise (Analysis_error (Should_be_present (`In_code_store, uri)))
+  | Some tree ->
+    update_graph uri tree.code;
+    let _diagnostics, _env, expanded_trees = expand () in
+    List.iter
+      (
+        fun (a, b, c) ->
+          let diagnostics, evaluated = eval (a, b, c) in
+          F.plant_resource @@
+            T.Article evaluated.main;
+          Hashtbl.iter (fun uri diagnostics -> Publish.publish_diagnostics uri diagnostics) diagnostics
+      )
+      expanded_trees
 
 let extract_addr (node : Code.node Range.located) : string option =
   match node.value with

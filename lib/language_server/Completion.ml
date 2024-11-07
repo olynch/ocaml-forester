@@ -7,7 +7,6 @@
 
 open Forester_core
 open Forester_compiler
-open Forester_frontend
 
 module L = Lsp.Types
 module F = Analysis.F
@@ -120,24 +119,17 @@ let compute
               (F.get_article @@ Iri_scheme.user_iri ~host: server.config.host addr)
             in
             let documentation =
-              try
-                let render = PT.string_of_content in
-                let title = frontmatter.title in
-                let taxon = frontmatter.taxon in
-                let content =
-                  Format.asprintf
-                    {|%s
-%s
-%s
-|}
-                    (Option.fold ~none: "" ~some: (fun s -> Format.asprintf "# %s" (render s)) title)
-                    (Option.fold ~none: "" ~some: (fun s -> Format.asprintf "taxon: %s" (render s)) taxon)
-                    (render mainmatter)
-                in
-                Some (`String content)
-              with
-                | _ ->
-                  Some (`String "computation of my value crashed")
+              let render = PT.string_of_content in
+              let title = frontmatter.title in
+              let taxon = frontmatter.taxon in
+              let content =
+                Format.asprintf
+                  {|%s\n %s\n %s\n |}
+                  (Option.fold ~none: "" ~some: (fun s -> Format.asprintf "# %s" (render s)) title)
+                  (Option.fold ~none: "" ~some: (fun s -> Format.asprintf "taxon: %s" (render s)) taxon)
+                  (render mainmatter)
+              in
+              Some (`String content)
             in
             let insertText =
               match triggerCharacter with
@@ -149,9 +141,9 @@ let compute
             Some (L.CompletionItem.create ?documentation ~label: addr ~insertText ())
         )
     in
-    let trees = server.index.codes |> Hashtbl.to_seq_values |> List.of_seq in
     let scope_items () =
-      let units, _expanded = Forest_reader.expand ~host: server.config.host trees in
+      (* let import_closure = State.Graph.Op.transitive_closure server.import_graph in *)
+      let _, units, _expanded = Analysis.expand () in
       units
       |> Expand.Unit_map.to_list
       |> List.map snd

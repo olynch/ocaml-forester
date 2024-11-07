@@ -13,7 +13,6 @@ module PT = Analysis.PT
 
 let (let*) = Option.bind
 
-(* TODO: handle external links as well? *)
 let compute (params : L.DocumentSymbolParams.t) =
   match params with
   | { textDocument; _ } ->
@@ -28,6 +27,7 @@ let compute (params : L.DocumentSymbolParams.t) =
                 Asai.Range.{ loc; value }
               ->
               let open Code in
+              let range = LspShims.Loc.lsp_range_of_range loc in
               match value with
               | Subtree (addr, _) ->
                 let name =
@@ -36,7 +36,27 @@ let compute (params : L.DocumentSymbolParams.t) =
                   | None -> "anonymous"
                 in
                 let range = LspShims.Loc.lsp_range_of_range loc in
+                (* TODO: What should the symbol kind of a subtree be? *)
                 Some (L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Namespace ())
+              | Object { self; _ } ->
+                let name =
+                  match self with
+                  | Some path -> Format.asprintf "\\%a" Forester_compiler.Resolver.Scope.pp_path path
+                  | None -> "anonymous"
+                in
+                Some (L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Object ())
+              | Def (name, _, _) ->
+                let name = Format.asprintf "\\%a" Forester_compiler.Resolver.Scope.pp_path name in
+                Some
+                  (
+                    L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Function ()
+                  )
+              | Namespace (name, _) ->
+                let name = Format.asprintf "\\%a" Forester_compiler.Resolver.Scope.pp_path name in
+                Some
+                  (
+                    L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Function ()
+                  )
               | Text _
               | Verbatim _
               | Group (_, _)
@@ -51,14 +71,11 @@ let compute (params : L.DocumentSymbolParams.t) =
               | Default (_, _)
               | Get _
               | Fun (_, _)
-              | Object _
               | Patch _
               | Call (_, _)
               | Import (_, _)
-              | Def (_, _, _)
               | Decl_xmlns (_, _)
               | Alloc _
-              | Namespace (_, _)
               | Dx_sequent (_, _)
               | Dx_query (_, _, _)
               | Dx_prop (_, _)

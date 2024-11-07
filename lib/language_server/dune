@@ -30,8 +30,3 @@
  (preprocess
   (pps ppx_deriving.show ppx_repr ppx_yojson_conv))
  (public_name forester.language_server))
-
-;(env
-; (dev
-;  (flags
-;   (:standard -w -66-32-33-27-26))))

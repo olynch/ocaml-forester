@@ -7,21 +7,10 @@
 
 open Forester_core
 
-module T = Forester_core.Types
-module EP = Eio.Path
 module L = Lsp.Types
 module RPC = Jsonrpc
-module Broadcast = Lsp.Server_notification
-module Lsp_Diagnostic = Lsp.Types.Diagnostic
 module Lsp_Request = Lsp.Client_request
 module Lsp_Notification = Lsp.Client_notification
-
-module F = Analysis.F
-module PT = Analysis.PT
-
-let (let*) = Option.bind
-
-type eio_path = Eio.Fs.dir_ty EP.t
 
 type diagnostic = Reporter.Message.t Asai.Diagnostic.t
 
@@ -79,41 +68,21 @@ module Request = struct
   type 'resp t = 'resp Lsp.Client_request.t
   type packed = Lsp_Request.packed
 
-  let hover = Hover.compute
-  let completion = Completion.compute
-  let inlay_hint = Inlay_hint.compute
-  let definitions = Definitions.compute
-  let document_link = Document_link.compute
-
   let dispatch : type resp. string -> resp t -> resp = fun mthd ->
       function
       | Initialize _ ->
         let err = "Server can only recieve a single initialization request." in
         raise @@ LspError (HandshakeError err)
-      | Shutdown ->
-        initiate_shutdown ()
-      | CodeAction params ->
-        code_action params
-      | TextDocumentHover params ->
-        hover params
-      | TextDocumentCompletion params ->
-        completion params
-      | InlayHint params ->
-        inlay_hint params
-      | TextDocumentDefinition params ->
-        definitions params
-      | DocumentSymbol params ->
-        Document_symbols.compute params
-      (* | SemanticTokensDelta params -> *)
-      (*   Semantic_tokens.on_delta_request params *)
-      (* | SemanticTokensFull params -> *)
-      (*   Semantic_tokens.on_full_request params *)
-      | TextDocumentLink params ->
-        document_link params
-      | TextDocumentLinkResolve params ->
-        document_link_resolve params
-      | WorkspaceSymbol params ->
-        Workspace_symbols.compute params
+      | Shutdown -> initiate_shutdown ()
+      | CodeAction params -> code_action params
+      | TextDocumentHover params -> Hover.compute params
+      | TextDocumentCompletion params -> Completion.compute params
+      | InlayHint params -> Inlay_hint.compute params
+      | TextDocumentDefinition params -> Definitions.compute params
+      | DocumentSymbol params -> Document_symbols.compute params
+      | TextDocumentLink params -> Document_link.compute params
+      | TextDocumentLinkResolve params -> document_link_resolve params
+      | WorkspaceSymbol params -> Workspace_symbols.compute params
       | _ ->
         raise @@ LspError (UnknownRequest mthd)
 
@@ -147,36 +116,12 @@ module Notification = struct
   type t = Lsp.Client_notification.t
 
   let dispatch : string -> t -> unit = fun mthd ->
-      let server = State.get () in
       function
-      | TextDocumentDidOpen ({ textDocument = { uri; _ } } as params) ->
-        let text_document = Lsp.Text_document.make ~position_encoding: `UTF16 params in
-        Hashtbl.replace server.index.documents { uri } text_document;
-        Analysis.check_syntax uri;
-        Analysis.check uri
-      | DidSaveTextDocument { textDocument; _; } ->
-        begin
-          match Hashtbl.find_opt server.index.documents textDocument with
-          (* ocaml-lsp does *this* here: https://github.com/ocaml/ocaml-lsp/blob/8b47925eb44f907b8ec41a44c1b2a55447f1b439/ocaml-lsp-server/src/ocaml_lsp_server.ml#L757 *)
-          | _ -> ()
-        end
-      | TextDocumentDidChange { textDocument = { uri; _ }; contentChanges } ->
-        begin
-          match Hashtbl.find_opt server.index.documents { uri } with
-          | Some doc ->
-            let new_doc =
-              Lsp.Text_document.apply_content_changes
-                doc
-                contentChanges
-            in
-            Hashtbl.replace server.index.documents { uri } new_doc;
-            Analysis.check_syntax uri;
-            Analysis.check uri
-          | None ->
-            Reporter.lsp_run Publish.publish_diagnostics uri @@
-              fun () ->
-                Reporter.fatalf Internal_error "%s" "could not find document at %s" (uri |> Lsp.Uri.to_path)
-        end
+      | TextDocumentDidOpen params -> Did_open.compute params
+      | TextDocumentDidChange params -> Did_change.compute params
+      | ChangeConfiguration params -> Change_configuration.compute params
+      | DidSaveTextDocument _ -> ()
+      | TextDocumentDidClose _ -> ()
       | _ ->
         raise @@ LspError (UnknownNotification mthd)
 

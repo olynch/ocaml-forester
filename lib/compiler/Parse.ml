@@ -109,14 +109,9 @@ let parse
       = fun checkpoint supplier ->
         match checkpoint with
         | I.InputNeeded _env ->
-          (* In this phase we push and pop delimiters onto the stack.*)
-          let token, start, end_ = supplier () in
-          (* NOTE: Should we be storing the checkpoints?
-             The reason would be that we might want to resume parsing from an
-             unclosed delimiter, and putting an error node where the unclosed
-             delimiter was found, and we might only find out that the delimiter
-             was not closed upon encountering EOF
-           *)
+          (* If the current token is an opening delimiter, save the
+             token and its position on the stack.*)
+          let token, _, _ = supplier () in
           let start_position = lexbuf.lex_start_p in
           let end_position = lexbuf.lex_curr_p in
           if is_opening_delim token then
@@ -141,19 +136,15 @@ let parse
           run checkpoint supplier
         | I.HandlingError env ->
           if not stop_on_err then
-            (* TODO: emit error node *)
+            (* TODO: Don't error out here *)
             Error
               (
                 Asai.Diagnostic.of_text
                   Error
-                  Forester_core.Reporter.Message.Parse_error
+                  Reporter.Message.Parse_error
                   (Asai.Diagnostic.text "")
               )
           else
-            (* let err *)
-            (*   = *)
-            (*   get_parse_error env *)
-            (* in *)
             let range_of_last_unclosed =
               Option.map snd @@ Stack.top_opt delim_stack
             in
@@ -191,21 +182,14 @@ let parse
     let supplier = I.lexer_lexbuf_to_supplier lexer lexbuf in
     run initial_checkpoint supplier
 
-let parse_lexbuf lexbuf =
-  try
-    parse lexbuf
-  with
-    | Grammar.Error ->
-      Error (Asai.Diagnostic.of_text ~loc: (Range.of_lexbuf lexbuf) Error Forester_core.Reporter.Message.Parse_error (Asai.Diagnostic.text "failed to parse"))
-
 let parse_channel filename ch =
   let lexbuf = Lexing.from_channel ch in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  parse_lexbuf lexbuf
+  parse lexbuf
 
 let parse_string str =
   let lexbuf = Lexing.from_string str in
-  parse_lexbuf lexbuf
+  parse lexbuf
 
 let parse_file filename =
   let@ () = Reporter.tracef "when parsing file `%s`" filename in
