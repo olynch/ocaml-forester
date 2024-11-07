@@ -41,17 +41,22 @@ let () =
       Some (Format.asprintf "Lsp Error: Could not find %s in article store" (Lsp.Uri.to_string uri))
     | _ -> None
 
-let parse_path path = Parse.parse_string @@ EP.load path
+let parse_path path =
+  let content = EP.load path in
+  let path = EP.native_exn path |> Unix.realpath in
+  Parse.parse ~source: (`File path) (Lexing.from_string content)
 
 let parse_from = function
-  | `String s -> Parse.parse_string s
+  | `String s -> Parse.parse_string ?source: None s
   | `Eio_path p -> parse_path p
-  | `Text_document d -> Parse.parse_string (Lsp.Text_document.text d)
+  | `Text_document d ->
+    let source = Lsp.Text_document.documentUri d |> Lsp.Uri.to_string in
+    Parse.parse_string ~source: (`File source) (Lsp.Text_document.text d)
   | `Uri uri ->
     begin
       let server = State.get () in
       match Hashtbl.find_opt server.index.documents uri with
-      | Some doc -> Parse.parse_string (Lsp.Text_document.text doc)
+      | Some doc -> Parse.parse_string ~source: (`File (Lsp.Uri.to_path uri.uri)) (Lsp.Text_document.text doc)
       | None ->
         Error (Asai.Diagnostic.of_text Error Reporter.Message.Parse_error (Asai.Diagnostic.text "parse error"))
     end
@@ -61,12 +66,7 @@ let parse_from = function
       let p = EP.(env#fs / str) in
       parse_path p
     | _ ->
-      Result.error @@
-        Reporter.diagnosticf
-          (Tree_not_found iri)
-          "could not find tree %a "
-          pp_iri
-          iri
+      Result.error @@ Reporter.diagnosticf (Tree_not_found iri) "could not find tree %a." pp_iri iri
 
 module Dependencies = struct
   module Env = Algaeff.Reader.Make(struct type t = string end)

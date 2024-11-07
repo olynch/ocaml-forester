@@ -97,9 +97,10 @@ let is_closing_delim = function
 
 let parse
     : ?stop_on_err: bool ->
+    ?source: [`File of string | `String of Range.string_source] ->
     lexbuf ->
     (Code.t, Reporter.Message.t Asai.Diagnostic.t) Result.t
-  = fun ?(stop_on_err = true) lexbuf ->
+  = fun ?(stop_on_err = true) ?source lexbuf ->
     let initial_checkpoint = (Grammar.Incremental.main lexbuf.lex_curr_p) in
     let delim_stack = Stack.create () in
     let rec run
@@ -140,6 +141,7 @@ let parse
             Error
               (
                 Asai.Diagnostic.of_text
+                  ~loc: (Range.of_lexbuf ?source lexbuf)
                   Error
                   Reporter.Message.Parse_error
                   (Asai.Diagnostic.text "")
@@ -153,8 +155,8 @@ let parse
               | Some (`Range (start_pos, _)) ->
                 Range.make
                   (start_pos, Range.of_lex_position @@ Lexing.lexeme_start_p lexbuf)
-              | Some (`End_of_file _) -> Range.of_lexbuf lexbuf
-              | None -> Range.of_lexbuf lexbuf
+              | Some (`End_of_file _) -> Range.of_lexbuf ?source lexbuf
+              | None -> Range.of_lexbuf ?source lexbuf
             in
             let extra_remarks =
               if Option.is_some range_of_last_unclosed then
@@ -180,16 +182,29 @@ let parse
           assert false
     in
     let supplier = I.lexer_lexbuf_to_supplier lexer lexbuf in
-    run initial_checkpoint supplier
+    try
+      run initial_checkpoint supplier
+    with
+      | Lexer.SyntaxError lexeme ->
+        let loc = Range.of_lexbuf ?source lexbuf in
+        Error
+          (
+            Asai.Diagnostic.(
+              of_loctext
+                Error
+                Reporter.Message.Parse_error
+                (loctext ~loc Format.(sprintf "syntax error, unexpected %S" lexeme))
+            )
+          )
 
 let parse_channel filename ch =
   let lexbuf = Lexing.from_channel ch in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  parse lexbuf
+  parse ~source: (`File filename) lexbuf
 
-let parse_string str =
+let parse_string ?source str =
   let lexbuf = Lexing.from_string str in
-  parse lexbuf
+  parse ?source lexbuf
 
 let parse_file filename =
   let@ () = Reporter.tracef "when parsing file `%s`" filename in

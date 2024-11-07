@@ -31,6 +31,10 @@
   algaeff
   base64
   iri
+  eio
+  eio.core
+  eio.unix
+  fmt
   multihash
   multihash-digestif
   multicodec

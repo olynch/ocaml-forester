@@ -14,12 +14,9 @@
   let set_mode mode = drop_mode(); push_mode mode
   let push_verbatim_mode herald = push_mode @@ Verbatim (herald, Buffer.create 2000)
 
-  let raise_err ?msg lexbuf =
-    let loc = Asai.Range.of_lexbuf lexbuf in
-    Forester_core.Reporter.fatalf
-      ~loc
-      Forester_core.Reporter.Message.Parse_error
-      "unrecognized token `%s`.@ %a" (String.escaped @@ Lexing.lexeme lexbuf) Format.(pp_print_option pp_print_string) msg
+  exception SyntaxError of string
+
+  let raise_err lexbuf = raise @@ SyntaxError (Lexing.lexeme lexbuf)
 }
 
 let digit = ['0'-'9']
@@ -57,7 +54,7 @@ rule token = parse
   | wschar+ as str { [Grammar.WHITESPACE str] }
   | newline as str { Lexing.new_line lexbuf; [Grammar.WHITESPACE str] }
   | eof { [Grammar.EOF] }
-  | _ { raise_err ?msg:None lexbuf }
+  | _ { raise_err lexbuf }
 
 and ident_init = parse
   | "verb" (verbatim_herald as herald) '|' { drop_mode (); push_verbatim_mode herald; [] }
