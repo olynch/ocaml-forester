@@ -11,7 +11,7 @@ open Forester_compiler
 module Analysis = Analysis
 module L = Lsp.Types
 module RPC = Jsonrpc
-module Server = LspServer
+module Server = Lsp_server
 module EP = Eio.Path
 
 open Server

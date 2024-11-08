@@ -53,7 +53,6 @@ let should_shutdown () =
 let initiate_shutdown () =
   State.modify @@ fun st -> { st with should_shutdown = true }
 
-(* [TODO: Reed M, 12/12/2022] No code actions for now. *)
 let code_action (_params : L.CodeActionParams.t) : L.CodeActionResult.t =
   let action = L.CodeAction.create ~title: "transclude new tree" () in
   Some [`CodeAction action]

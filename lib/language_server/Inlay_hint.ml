@@ -38,7 +38,7 @@ let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
               Some
                 (
                   L.InlayHint.create
-                    ~position: (LspShims.Loc.lsp_pos_of_pos pos)
+                    ~position: (Lsp_shims.Loc.lsp_pos_of_pos pos)
                     ~label: (`String content)
                     ()
                 )

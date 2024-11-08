@@ -127,7 +127,7 @@ let tokens =
       fun
           Range.{ loc; value }
         ->
-        let (L.Range.{ start; end_ }) = LspShims.Loc.lsp_range_of_range loc in
+        let (L.Range.{ start; end_ }) = Lsp_shims.Loc.lsp_range_of_range loc in
         (* Multiline tokens not supported*)
         if start.line <> end_.line then
           None

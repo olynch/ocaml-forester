@@ -255,8 +255,8 @@ let contains = fun
       begin
         match Range.view loc with
         | `Range (start, end_) ->
-          let start_pos = LspShims.Loc.lsp_pos_of_pos start in
-          let end_pos = LspShims.Loc.lsp_pos_of_pos end_ in
+          let start_pos = Lsp_shims.Loc.lsp_pos_of_pos start in
+          let end_pos = Lsp_shims.Loc.lsp_pos_of_pos end_ in
           let at_or_after_start =
             cursor_line < end_pos.line
             || (cursor_line = start_pos.line && start_pos.character <= cursor_character)

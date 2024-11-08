@@ -27,7 +27,7 @@ let compute (params : L.DocumentSymbolParams.t) =
                 Asai.Range.{ loc; value }
               ->
               let open Code in
-              let range = LspShims.Loc.lsp_range_of_range loc in
+              let range = Lsp_shims.Loc.lsp_range_of_range loc in
               match value with
               | Subtree (addr, _) ->
                 let name =
@@ -35,7 +35,7 @@ let compute (params : L.DocumentSymbolParams.t) =
                   | Some addr -> addr
                   | None -> "anonymous"
                 in
-                let range = LspShims.Loc.lsp_range_of_range loc in
+                let range = Lsp_shims.Loc.lsp_range_of_range loc in
                 (* TODO: What should the symbol kind of a subtree be? *)
                 Some (L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Namespace ())
               | Object { self; _ } ->

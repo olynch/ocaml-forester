@@ -20,14 +20,14 @@ let send packet =
   LspEio.send server.lsp_io packet
 
 let render_lsp_related_info (uri : L.DocumentUri.t) (message : Asai.Diagnostic.loctext) : L.DiagnosticRelatedInformation.t =
-  let range = LspShims.Loc.lsp_range_of_range message.loc in
+  let range = Lsp_shims.Loc.lsp_range_of_range message.loc in
   let location = L.Location.create ~uri ~range in
   let message = Asai.Diagnostic.string_of_text message.value in
   L.DiagnosticRelatedInformation.create ~location ~message
 
 let render_lsp_diagnostic (uri : L.DocumentUri.t) (diag : diagnostic) : Lsp_Diagnostic.t =
-  let range = LspShims.Loc.lsp_range_of_range diag.explanation.loc in
-  let severity = LspShims.Diagnostic.lsp_severity_of_severity @@ diag.severity in
+  let range = Lsp_shims.Loc.lsp_range_of_range diag.explanation.loc in
+  let severity = Lsp_shims.Diagnostic.lsp_severity_of_severity @@ diag.severity in
   let code = `String (Reporter.Message.short_code diag.message) in
   let source =
     match Hashtbl.find_opt (State.get ()).index.documents { uri } with

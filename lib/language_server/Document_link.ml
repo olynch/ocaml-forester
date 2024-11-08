@@ -32,7 +32,7 @@ let compute (params : L.DocumentLinkParams.t) =
                 | Code.Group (Parens, [{ value = Text addr; _ }])
                 | Code.Group (Braces, [{ value = Text addr; _ }]) ->
                   (* TODO: Need to analyse syn *)
-                  let range = (LspShims.Loc.lsp_range_of_range node.loc) in
+                  let range = (Lsp_shims.Loc.lsp_range_of_range node.loc) in
                   let iri = (Iri_scheme.user_iri ~host: server.config.host addr) in
                   let* target = Hashtbl.find_opt server.index.resolver iri in
                   let* { frontmatter; _ } = F.get_article iri in
