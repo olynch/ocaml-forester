@@ -68,7 +68,7 @@ module Request = struct
   type 'resp t = 'resp Lsp.Client_request.t
   type packed = Lsp_Request.packed
 
-  let dispatch : type resp. string -> resp t -> resp = fun mthd ->
+  let dispatch : type resp. string -> resp Lsp.Client_request.t -> resp = fun mthd ->
       function
       | Initialize _ ->
         let err = "Server can only recieve a single initialization request." in
@@ -86,6 +86,7 @@ module Request = struct
       | TextDocumentPrepareCallHierarchy params -> Call_hierarchy.compute params
       | CallHierarchyIncomingCalls params -> Call_hierarchy.incoming params
       | CallHierarchyOutgoingCalls params -> Call_hierarchy.outgoing params
+      | TextDocumentCodeLens params -> Code_lens.compute params
       | _ ->
         raise @@ LspError (UnknownRequest mthd)
 
