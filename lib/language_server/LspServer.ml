@@ -83,6 +83,9 @@ module Request = struct
       | TextDocumentLink params -> Document_link.compute params
       | TextDocumentLinkResolve params -> document_link_resolve params
       | WorkspaceSymbol params -> Workspace_symbols.compute params
+      | TextDocumentPrepareCallHierarchy params -> Call_hierarchy.compute params
+      | CallHierarchyIncomingCalls params -> Call_hierarchy.incoming params
+      | CallHierarchyOutgoingCalls params -> Call_hierarchy.outgoing params
       | _ ->
         raise @@ LspError (UnknownRequest mthd)
 
