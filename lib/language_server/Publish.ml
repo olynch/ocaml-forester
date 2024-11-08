@@ -50,7 +50,7 @@ let broadcast notif =
   let msg = Broadcast.to_jsonrpc notif in
   send (RPC.Packet.Notification msg)
 
-let publish_diagnostics (uri : Lsp.Uri.t) (diagnostics : diagnostic list) =
+let to_uri (uri : Lsp.Uri.t) (diagnostics : diagnostic list) =
   let diagnostics = List.map (render_lsp_diagnostic uri) diagnostics in
   let params = L.PublishDiagnosticsParams.create ~uri ~diagnostics () in
   broadcast (PublishDiagnostics params)

@@ -52,6 +52,11 @@ val extract_addr :
   Forester_compiler.Code.node Forester_core.Range.located ->
   string option
 
+val node_at :
+  position: Lsp.Types.Position.t ->
+  Forester_compiler.Code.t ->
+  Forester_compiler.Code.node Range.located option
+
 val addr_at :
   position: Lsp.Types.Position.t ->
   Forester_compiler.Code.t ->

@@ -174,7 +174,7 @@ let parse
                     ~extra_remarks
                     Error
                     Forester_core.Reporter.Message.Parse_error
-                    (loctext ~loc Format.(sprintf "syntax error, unexpected %s" (Lexing.lexeme lexbuf)))
+                    (loctext ~loc Format.(sprintf "syntax error, unexpected %S" (Lexing.lexeme lexbuf)))
                 )
               )
         | I.Accepted code -> Ok code

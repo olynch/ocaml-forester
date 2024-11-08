@@ -21,26 +21,6 @@ module PT = Forester_forest.Plain_text_client.Make(F)(struct let route _ = "todo
 
 type diagnostic = Reporter.Message.t Asai.Diagnostic.t
 
-module Code_set = Set.Make(struct
-  type t = Code.tree
-  (* TODO: no polymorphic compare*)
-  let compare = compare
-end)
-
-type analysis_error =
-  | Should_be_present of ([`In_code_store | `In_article_store] * Lsp.Uri.t)
-
-exception Analysis_error of analysis_error
-
-let () =
-  Printexc.register_printer @@
-    function
-    | Analysis_error (Should_be_present (`In_code_store, uri)) ->
-      Some (Format.asprintf "Lsp Error: Could not find %s in code store" (Lsp.Uri.to_string uri))
-    | Analysis_error (Should_be_present (`In_article_store, uri)) ->
-      Some (Format.asprintf "Lsp Error: Could not find %s in article store" (Lsp.Uri.to_string uri))
-    | _ -> None
-
 let parse_path path =
   let content = EP.load path in
   let path = EP.native_exn path |> Unix.realpath in
@@ -101,14 +81,9 @@ module Dependencies = struct
             begin
               match parse_from (`Uri dep_uri) with
               | Ok code ->
-                Eio.traceln "parsed %s" (Lsp.Uri.to_string dep_uri.uri);
                 analyse_code [dep_uri.uri] import_graph code
-              | Error diag ->
-                let _ =
-                  match diag with
-                  | _ ->
-                    ()
-                in
+              | Error _ ->
+                (* TODO: accumulate diagnostic and report *)
                 Eio.traceln "failed to parse %s. " (Lsp.Uri.to_string dep_uri.uri)
             end;
             let@ addr = List.iter @~ roots in
@@ -116,9 +91,7 @@ module Dependencies = struct
               import_graph
               dep_uri.uri
               addr;
-            Eio.traceln
-              "added edge";
-          | None -> Eio.traceln "could not resolve"
+          | None -> Eio.traceln "could not resolve %a" pp_iri dep_iri
         end
       end
     | Subtree (addr, code) ->
@@ -169,9 +142,7 @@ let expand () =
   let task (uri : Lsp.Uri.t) (units, trees) =
     match Hashtbl.find_opt server.index.codes { uri } with
     | None ->
-      Eio.traceln "errorrrrroro";
       units, trees
-    (* raise (Analysis_error (Should_be_present (`In_code_store, uri))) *)
     | Some tree ->
       try
         let push_diagnostic (d : diagnostic) =
@@ -186,7 +157,6 @@ let expand () =
             units, (addr, tree.source_path, syn) :: trees
       with
         | _ ->
-          Eio.traceln "erroror";
           units, trees
   in
   let env, expanded_trees =
@@ -242,18 +212,17 @@ let check_semantics uri =
   (* TODO: As it stands, any error during evaluation will get reported to the
      uri currently being checked. This is the wrong behavior.*)
   match Hashtbl.find_opt server.index.codes { uri } with
-  | None ->
-    raise (Analysis_error (Should_be_present (`In_code_store, uri)))
+  | None -> ()
   | Some tree ->
     update_graph uri tree.code;
     let _diagnostics, _env, expanded_trees = expand () in
     List.iter
       (
-        fun (a, b, c) ->
-          let diagnostics, evaluated = eval (a, b, c) in
+        fun (addr, source_path, syn) ->
+          let diagnostics, evaluated = eval (addr, source_path, syn) in
           F.plant_resource @@
             T.Article evaluated.main;
-          Hashtbl.iter (fun uri diagnostics -> Publish.publish_diagnostics uri diagnostics) diagnostics
+          Hashtbl.iter (fun uri diagnostics -> Publish.to_uri uri diagnostics) diagnostics
       )
       expanded_trees
 
