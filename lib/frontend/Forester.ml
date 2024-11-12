@@ -120,6 +120,7 @@ let parse_trees_in_dirs ~dev ?(ignore_malformed = false) dirs =
       if ignore_malformed then None
       else
         begin
+          (* FIXME: This assumes we are running the function inside the tty reporter! *)
           Reporter.Tty.display diagnostic;
           None
         end
