@@ -31,24 +31,6 @@ let lexer =
   | Ident_fragments -> Lexer.ident_fragments lexbuf
   | Verbatim (herald, buffer) -> Lexer.verbatim herald buffer lexbuf
 
-(*  NOTE:
-    I am unsure if we should ever fail during lexing. I propose: We should
-    introduce an `Error` syntax node so that the parse tree is capable of
-    representing arbitrary erroneous input. We never want this during batch
-    compilation, but always want this for the IDE. Depending on the context in
-    which the parser is running, we can immediately fail when encountering
-    such a node, or continue. This is what the `I.AboutToReduce` state is for.
-  *)
-
-type _error =
-  | Unclosed of Range.position * string * Range.position * string
-  | Expecting of Range.position * string
-
-let position_of_error = function
-  | Unclosed (pos, _, _, _)
-  | Expecting (pos, _) ->
-    pos
-
 let get_parse_error env =
   let open Asai in
   match I.stack env with
@@ -185,6 +167,11 @@ let parse
     try
       run initial_checkpoint supplier
     with
+      (* NOTE: This should be the only exception we ever need to catch here:
+         The parser is driven manually, so we are responsible for creating the
+         diagnostics. This means we should not use `fatalf`! This also means
+         that we can safely use the returned diagnostic without worrying that
+         there might be an unhandled Asai effect. *)
       | Lexer.SyntaxError lexeme ->
         let loc = Range.of_lexbuf ?source lexbuf in
         Error
