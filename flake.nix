@@ -1,4 +1,8 @@
 {
+  nixConfig = {
+    extra-substituters = [ "https://forester.cachix.org" ];
+    extra-trusted-public-keys = [ "forester.cachix.org-1:pErGVVci7kZWxxcbQ/To8Lvqp6nVTeyPf0efJxbrQDM=" ];
+  };
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
