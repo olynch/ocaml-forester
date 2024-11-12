@@ -29,3 +29,8 @@ sig
     val numbered_sym : Symbol.t
   end
 end
+
+val expand_dg :
+  exports Unit_map.t ->
+  Code.tree ->
+  Reporter.Message.t Asai.Diagnostic.t list * (exports Unit_map.t * Syn.t)

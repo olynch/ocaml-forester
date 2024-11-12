@@ -446,3 +446,18 @@ let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
   let tree = expand_tree_inner tree in
   let units = U.get () in
   units, tree
+
+(* TODO: Handle multiple expansion errors *)
+let expand_dg
+    units
+    tree
+  =
+  let diagnostics = ref [] in
+  let push d = diagnostics := d :: !diagnostics in
+  let res =
+    Reporter.run
+      ~emit: push
+      ~fatal: (fun d -> push d; Unit_map.empty, []) @@
+      fun () -> expand_tree units tree
+  in
+  !diagnostics, res

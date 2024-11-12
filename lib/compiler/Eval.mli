@@ -14,3 +14,4 @@ type result = {
 }
 
 val eval_tree : host: string -> iri: iri -> source_path: string option -> Syn.tree -> result
+val eval_dg : host: string -> iri: iri -> source_path: string option -> Syn.tree -> Reporter.Message.t Asai.Diagnostic.t list * result

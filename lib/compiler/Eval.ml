@@ -228,7 +228,7 @@ and eval_node node : V.t =
     emit_content_node ~loc @@ Prim (p, T.Content content)
   | Fun (xs, body) ->
     let env = Lex_env.read () in
-    focus_clo env xs body
+    focus_clo ?loc env xs body
   | Ref ->
     begin
       match eval_pop_arg ~loc |> extract_iri with
@@ -729,3 +729,29 @@ let eval_tree ~host ~iri ~source_path (tree : Syn.tree) : result =
   let side = Emitted_trees.get () in
   let jobs = Jobs.get () in
   { main; side; jobs }
+
+(* TODO: Handle multiple evaluation errors *)
+let eval_dg ~host ~iri ~source_path (tree : Syn.tree) =
+  let diagnostics = ref [] in
+  let push d = diagnostics := d :: !diagnostics in
+  let res =
+    Reporter.run
+      ~emit: push
+      ~fatal: (
+        fun d ->
+          push d;
+          {
+            main =
+            {
+              frontmatter = T.default_frontmatter ();
+              mainmatter = T.Content [];
+              backmatter = T.Content [];
+            };
+            side = [];
+            jobs = []
+          }
+      ) @@
+      fun () ->
+        eval_tree ~host ~iri ~source_path tree
+  in
+  !diagnostics, res
