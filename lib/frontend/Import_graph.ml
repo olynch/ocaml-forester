@@ -9,7 +9,9 @@ open Forester_core
 open Forester_compiler
 
 module Gph = Graph.Imperative.Digraph.Concrete(String)
+module Op = Graph.Oper.I(Gph)
 include Gph
+include Op
 
 module Topo = Graph.Topological.Make(Gph)
 let topo_fold = Topo.fold
