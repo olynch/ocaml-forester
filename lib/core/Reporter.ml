@@ -25,6 +25,7 @@ module Message = struct
     | Profiling
     | External_error
     | Resource_not_found
+    | Broken_link
     | IO_error
     | Log
   [@@deriving show]
@@ -48,6 +49,7 @@ module Message = struct
     | External_error -> Error
     | Log -> Info
     | Resource_not_found -> Error
+    | Broken_link -> Warning
     | IO_error -> Error
 
   let short_code : t -> string =

@@ -110,6 +110,9 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
         | T.Asset _ -> ""
       in
       route_resource_iri ~suffix iri
+    | None when Iri.scheme iri = Iri_scheme.scheme ->
+      Reporter.emitf Broken_link "Could not find route link to resource %a" pp_iri iri;
+      Iri.to_uri iri
     | None ->
       Iri.to_uri iri
 
@@ -305,7 +308,8 @@ module Make (Params: Params) (F: Forest.S) () : S = struct
     | Some nodes -> nodes
     | None ->
       match F.get_content_of_transclusion transclusion with
-      | None -> Reporter.fatalf Resource_not_found "Could not find tree %a" pp_iri transclusion.href
+      | None ->
+        Reporter.fatalf Resource_not_found "Could not find tree %a" pp_iri transclusion.href
       | Some content ->
         let nodes = render_content content in
         Hashtbl.add transclusion_cache transclusion nodes;
