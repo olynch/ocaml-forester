@@ -7,6 +7,7 @@
 open Forester_prelude
 open Forester_core
 
+module T = Types
 module Dl = Datalog_engine
 
 module type S = sig
@@ -57,8 +58,13 @@ module Make () : S = struct
     | Query.Paths -> get_preorder
 
   let register_iri iri =
-    let vtx : Vertex.t = Iri_vertex iri in
+    let vtx : Vertex.t = T.Iri_vertex iri in
     Dl.db_add_fact dl_db @@ Dl.mk_literal Builtin_relation.is_node [Dl.mk_const vtx];
+    begin
+      let@ host = Option.iter @~ Iri.host iri in
+      let host_vtx = T.Content_vertex (T.Content [T.Text host]) in
+      Dl.db_add_fact dl_db @@ Dl.mk_literal Builtin_relation.in_host [Dl.mk_const vtx; Dl.mk_const host_vtx];
+    end;
     Hashtbl.clear rel_preorder_table;
     all_vertices_ref := Vertex_set.add vtx !all_vertices_ref;
     let@ gph = Seq.iter @~ Hashtbl.to_seq_values rel_graph_table in

@@ -429,6 +429,7 @@ let builtins =
     ["rel"; "is-person"], Syn.Text Builtin_relation.is_person;
     ["rel"; "is-node"], Syn.Text Builtin_relation.is_node;
     ["rel"; "in-bundle-closure"], Syn.Text Builtin_relation.in_bundle_closure;
+    ["rel"; "in-host"], Syn.Text Builtin_relation.in_host;
     ["execute"], Syn.Dx_execute;
     ["route-asset"], Syn.Route_asset;
     ["publish-query"], Syn.Publish_results_of_query
