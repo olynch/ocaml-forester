@@ -52,6 +52,7 @@ module Eval_runner = struct
   let plus o1 o2 = { articles = o1.articles @ o2.articles; jobs = o1.jobs @ o2.jobs }
 
   let eval { host } (addr, source_path, syn) =
+    let@ () = Reporter.easy_run in
     let iri = Iri_scheme.user_iri ~host addr in
     let result = Eval.eval_tree ~host ~iri ~source_path syn in
     { articles = result.main :: result.side; jobs = result.jobs }
