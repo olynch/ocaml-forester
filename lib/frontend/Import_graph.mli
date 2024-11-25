@@ -8,7 +8,7 @@ open Forester_core
 open Forester_compiler
 
 type t
-val create : ?size:int -> unit -> t
+val create : ?size: int -> unit -> t
 val add_vertex : t -> string -> unit
 val add_edge : t -> string -> string -> unit
 val transitive_reduction : ?reflexive: bool -> t -> t

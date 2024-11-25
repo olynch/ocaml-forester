@@ -28,8 +28,7 @@ val parse_from :
   | `Iri of < fs: [> Eio.Fs.dir_ty] EP.t; .. > * iri
   | `Text_document of Lsp.Text_document.t
   | `String of string
-  | `Uri of L.TextDocumentIdentifier.t
-  ] ->
+  | `Uri of L.TextDocumentIdentifier.t] ->
   (Forester_compiler.Code.t, Reporter.Message.t Asai.Diagnostic.t) result
 
 val syntax_diagnostics :
@@ -37,14 +36,14 @@ val syntax_diagnostics :
   | `Iri of < fs: [> Eio.Fs.dir_ty] EP.t; .. > * iri
   | `Text_document of Lsp.Text_document.t
   | `String of string
-  | `Uri of L.TextDocumentIdentifier.t
-  ] -> Reporter.Message.t Asai.Diagnostic.t list
+  | `Uri of L.TextDocumentIdentifier.t] ->
+  Reporter.Message.t Asai.Diagnostic.t list
 
-val expand : 
-  unit -> 
-  (L.DocumentUri.t, diagnostic) Hashtbl.t *
-  Forester_compiler.Expand.Env.t *
-  (string * string option * Forester_compiler__.Syn.t) list
+val expand :
+  unit ->
+  (L.DocumentUri.t, diagnostic) Hashtbl.t
+  * Forester_compiler.Expand.Env.t
+  * (string * string option * Forester_compiler__.Syn.t) list
 
 val check_semantics : L.DocumentUri.t -> unit
 
