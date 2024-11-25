@@ -30,12 +30,11 @@ end
 module Make (Graphs: Forest_graphs.S) : S = struct
   type article = T.content T.article
 
-  module Dci = Datalog_engine
   module Dx = Datalog_expr
 
   let execute_datalog_script script =
     let@ sequent = List.iter @~ script in
-    Dci.db_add Graphs.dl_db (Datalog_eval.eval_sequent sequent)
+    Datalog_engine.db_add Graphs.dl_db (Datalog_eval.eval_sequent sequent)
 
   let () = execute_datalog_script Builtin_relation.axioms
 
