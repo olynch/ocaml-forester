@@ -30,7 +30,10 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         pkgsDyn = pkgs;
-        pkgsStatic = pkgs.pkgsStatic;
+        pkgsStatic = import nixpkgs {
+          localSystem = nixpkgs.lib.systems.examples.gnu64;
+          crossSystem = nixpkgs.lib.systems.examples.musl64;
+        };
         on = opam-nix.lib.${system};
         devPackagesQuery = {
           ocaml-lsp-server = "*";
@@ -40,8 +43,7 @@
         query = devPackagesQuery // {
           ocaml-system = "*";
         };
-        mkScopes = pkgs: rec {
-          isStatic = pkgs.stdenv.hostPlatform.isStatic;
+        mkScopes = pkgs: isStatic: rec {
           scope = on.buildDuneProject { inherit pkgs; } package ./. query;
           overlay = final: prev: {
             # You can add overrides here
@@ -49,16 +51,20 @@
               doNixSupport = false;
             } // (if isStatic then {
               DUNE_PROFILE = "static";
+              buildInputs = [ pkgs.pkgsStatic.openssl pkgs.pkgsStatic.libev ] ++ prev.${package}.buildInputs;
             } else {}));
             ocamlgraph = prev.ocamlgraph.overrideAttrs (_: {
               buildPhase = ''dune build -p ocamlgraph -j $NIX_BUILD_CORES'';
+            });
+            conf-gmp = prev.conf-gmp.overrideAttrs (_: {
+              nativeBuildInputs = [ pkgs.pkgsBuildHost.stdenv.cc ];
             });
           };
           scope' = scope.overrideScope overlay;
           main = scope'.${package};
         };
-        scopes = mkScopes pkgs;
-        scopesStatic = mkScopes pkgsStatic;
+        scopes = mkScopes pkgs false;
+        scopesStatic = mkScopes pkgsStatic true;
         devPackages = builtins.attrValues (pkgs.lib.getAttrs (builtins.attrNames devPackagesQuery) scopes.scope');
       in
       {
