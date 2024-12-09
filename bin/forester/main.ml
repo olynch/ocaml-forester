@@ -265,27 +265,32 @@ let lsp_cmd ~env =
       $ arg_config
     )
 
-let start_server ~env =
+let port_config =
+  let doc = "the port to run the preview server on (default 8000)" in
+  Arg.(value & opt int 8000 & info ["port"] ~docv: "PORT" ~doc)
+
+let start_server ~env port =
   Lwt_eio.with_event_loop ~clock:env#clock @@ fun _ ->
-  Lwt_eio.run_lwt @@ fun () -> Dream.serve @@ Dream.router [
+  Lwt_eio.run_lwt @@ fun () -> Dream.serve ~port:port @@ Dream.router [
     Dream.get "/" @@ Dream.from_filesystem "output" "index.xml";
     Dream.get "/**" @@ Dream.static "output";
   ]
 
 let builder ~env config =
+  let@ () = Forester_core.Reporter.easy_run in
   let buf = Eio.Buf_read.of_flow env#stdin ~max_size:1000 in
   while true do
+    Reporter.emitf Log "Rebuilding";
     let _ = build ~env config false false in
     let _ = Eio.Buf_read.line buf in
     ()
   done
 
-let preview ~env config =
-  let _ = print_endline "Started preview server. Press Enter to rebuild." in
-  builder ~env config
-  (* Fiber.both *)
-  (*   (fun () -> builder ~env config) *)
-  (*   (fun () -> start_server ~env) *)
+let preview ~env config port =
+  Reporter.emitf Log "Started preview server on localhost:%d; press enter to rebuild" port;
+  Fiber.both
+    (fun () -> builder ~env config)
+    (fun () -> start_server ~env port)
 
 let preview_cmd ~env =
   let man =
@@ -301,6 +306,7 @@ let preview_cmd ~env =
     Term.(
       const (preview ~env)
       $ arg_config
+      $ port_config
     )
 
 let cmd ~env =
