@@ -11,7 +11,7 @@ module Unit_map = Map.Make(String)
 module R = Resolver
 module Sc = R.Scope
 
-type exports = R.P.data Trie.Untagged.t
+type exports = (R.P.data, Asai.Range.t option) Trie.t
 
 module Env = struct
   type t = exports Unit_map.t
@@ -74,22 +74,18 @@ let create_suggestions path =
   in
   let extra_remarks =
     if List.length suggestions > 0 then
-      let (path, data, distance) = List.hd suggestions in
+      let (path, data, _) = List.hd suggestions in
       let location_hint =
         match data with
         | R.P.Term ({ loc = Some loc; _ } :: _) ->
           begin
             match Range.view loc with
-            | `End_of_file pos -> []
-            | `Range (pos, _) ->
-              match pos with
-              | { source; offset; start_of_line; line_num } ->
-                begin
-                  match Range.title source with
-                  | Some string ->
-                    [Asai.Diagnostic.loctextf "defined in %s" string]
-                  | _ -> []
-                end
+            | `End_of_file { source; _ }
+            | `Range ({ source; _ }, _) ->
+              match Range.title source with
+              | Some string ->
+                [Asai.Diagnostic.loctextf "defined in %s" string]
+              | _ -> []
           end
         | _ -> []
       in
@@ -105,13 +101,13 @@ module Builtins = struct
     sym,
     fun () ->
       Sc.include_singleton path @@
-        Term [Range.locate_opt None (Syn.Sym sym)]
+        (Term [Range.locate_opt None (Syn.Sym sym)], None)
 
   let register_builtins builtins =
     Sc.include_subtree [] @@
     Yuujinchou.Trie.of_seq @@
     let@ path, node = Seq.map @~ List.to_seq builtins in
-    path, (R.P.Term [Range.locate_opt None node], ())
+    path, (R.P.Term [Range.locate_opt None node], None)
 
   module Transclude = struct
     let expanded_sym, alloc_expanded = create_sym ["transclude"; "expanded"]
@@ -207,7 +203,7 @@ let rec expand : Code.t -> Syn.t = function
       let var = Range.{ value = Syn.Var sym; loc } in
       begin
         let@ self = Option.iter @~ self in
-        Sc.import_singleton self @@ R.P.Term [var]
+        Sc.import_singleton self @@ (R.P.Term [var], loc)
       end;
       sym, List.map expand_method methods
     in
@@ -221,8 +217,8 @@ let rec expand : Code.t -> Syn.t = function
       let super_var = Range.locate_opt None @@ Syn.Var super_sym in
       begin
         let@ self = Option.iter @~ self in
-        Sc.import_singleton self @@ Term [self_var];
-        Sc.import_singleton (self @ ["super"]) @@ Term [super_var]
+        Sc.import_singleton self @@ (Term [self_var], loc);
+        Sc.import_singleton (self @ ["super"]) @@ (Term [super_var], loc)
       end;
       self_sym, super_sym, List.map expand_method methods
     in
@@ -254,23 +250,24 @@ let rec expand : Code.t -> Syn.t = function
   | { value = Let (a, bs, def); loc } :: rest ->
     let lam = expand_lambda loc (bs, def) in
     let@ () = Sc.section [] in
-    Sc.import_singleton a @@ Term [lam];
+    Sc.import_singleton a @@ (Term [lam], loc);
     expand rest
   | { value = Def (path, xs, body); loc } :: rest ->
     let lam = expand_lambda loc (xs, body) in
-    Sc.include_singleton path @@ Term [lam];
+    Sc.include_singleton path @@ (Term [lam], loc);
     expand rest
-  | { value = Decl_xmlns (prefix, xmlns); _ } :: rest ->
+  | { value = Decl_xmlns (prefix, xmlns); loc } :: rest ->
     let path = ["xmlns"; prefix] in
-    Sc.include_singleton path @@ Xmlns { prefix; xmlns };
+    Sc.include_singleton path @@ (Xmlns { prefix; xmlns }, loc);
     expand rest
   | { value = Alloc path; loc } :: rest ->
     let symbol = Symbol.named path in
-    Sc.include_singleton path @@ Term [Range.locate_opt loc (Syn.Sym symbol)];
+    Sc.include_singleton path @@ (Term [Range.locate_opt loc (Syn.Sym symbol)], loc);
     expand rest
-  | { value = Comment _; loc } :: rest ->
+  | { value = Comment _; _ } :: rest ->
     expand rest
   | { value = Error _; loc } :: rest ->
+    Reporter.emitf ?loc Parse_error "";
     expand rest
 
 and expand_method (key, body) =
@@ -282,20 +279,20 @@ and expand_lambda loc (xs, body) =
     let@ strategy, x = List.map @~ xs in
     let sym = Symbol.named x in
     let var = Range.locate_opt None @@ Syn.Var sym in
-    Sc.import_singleton x @@ Term [var];
+    Sc.import_singleton x @@ (Term [var], loc);
     strategy, sym
   in
   Range.{ value = Syn.Fun (syms, expand body); loc }
 
 and get_xml_attrs acc = function
-  | { value = Group (Squares, [{ value = Text key; loc = loc1 }]); _ } :: { value = Group (Braces, value); loc = loc2 } :: rest ->
+  | { value = Group (Squares, [{ value = Text key; loc = loc1 }]); _ } :: { value = Group (Braces, value); _ } :: rest ->
     let qname = expand_xml_ident loc1 @@ Forester_xml_names.split_xml_qname key in
     let value = expand value in
     get_xml_attrs (acc @ [qname, value]) rest
   | rest -> acc, rest
 
 and get_arg_opt : Code.t -> _ = function
-  | { value = Group (Braces, arg); loc } :: rest ->
+  | { value = Group (Braces, arg); _ } :: rest ->
     Some (expand arg), rest
   | rest -> None, rest
 
@@ -326,10 +323,10 @@ and expand_ident loc path =
       "path %a could not be resolved"
       Sc.pp_path
       path
-  | Some (Term x, ()), _ ->
+  | Some (Term x, _), _ ->
     let relocate Range.{ value; _ } = Range.{ value; loc } in
     List.map relocate x
-  | Some (Xmlns { xmlns; prefix }, ()), _ ->
+  | Some (Xmlns { xmlns; prefix }, _), _ ->
     Reporter.fatalf
       ?loc
       Resolution_error
@@ -344,7 +341,7 @@ and expand_xml_ident loc (prefix, uname) =
   | None -> { xmlns = None; prefix = ""; uname }
   | Some prefix ->
     match Sc.resolve ["xmlns"; prefix] with
-    | Some (Xmlns { xmlns; prefix }, ()) ->
+    | Some (Xmlns { xmlns; prefix }, loc) ->
       { xmlns = Some xmlns; prefix = prefix; uname }
     | _ ->
       Reporter.fatalf
@@ -421,6 +418,7 @@ let builtins =
     ["rel"; "has-taxon"], Syn.Text Builtin_relation.has_taxon;
     ["rel"; "has-author"], Syn.Text Builtin_relation.has_author;
     ["rel"; "has-direct-contributor"], Syn.Text Builtin_relation.has_direct_contributor;
+    ["rel"; "imports"], Syn.Text Builtin_relation.imports;
     ["rel"; "transcludes"], Syn.Text Builtin_relation.transcludes;
     ["rel"; "transcludes"; "transitive-closure"], Syn.Text Builtin_relation.transcludes_tc;
     ["rel"; "transcludes"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transcludes_rtc;
@@ -435,30 +433,49 @@ let builtins =
     ["publish-query"], Syn.Publish_results_of_query
   ]
 
-let expand_tree (units : exports Unit_map.t) (tree : Code.tree) =
-  let@ () = U.run ~init: units in
-  let@ () = Sc.easy_run in
-  Builtins.register_builtins builtins;
-  Builtins.Transclude.alloc_expanded ();
-  Builtins.Transclude.alloc_show_heading ();
-  Builtins.Transclude.alloc_toc ();
-  Builtins.Transclude.alloc_numbered ();
-  Builtins.Transclude.alloc_show_metadata ();
-  let tree = expand_tree_inner tree in
-  let units = U.get () in
-  units, tree
-
-(* TODO: Handle multiple expansion errors *)
-let expand_dg
-    units
-    tree
-  =
-  let diagnostics = ref [] in
-  let push d = diagnostics := d :: !diagnostics in
-  let res =
-    Reporter.run
-      ~emit: push
-      ~fatal: (fun d -> push d; Unit_map.empty, []) @@
-      fun () -> expand_tree units tree
-  in
-  !diagnostics, res
+let expand_tree
+    : ?quit_on_error: bool ->
+    Env.t ->
+    Code.tree ->
+    Reporter.diagnostic list
+    * exports Unit_map.t
+    * Syn.tree
+  = fun
+      ?(quit_on_error = true)
+      units
+      tree
+    ->
+    let diagnostics = ref [] in
+    let push d = diagnostics := d :: !diagnostics in
+    let units, syn =
+      Reporter.run
+        ~emit: push
+        ~fatal: (
+          fun d ->
+            push d;
+            if quit_on_error then
+              begin
+                match d with
+                | { severity; message; explanation; backtrace; extra_remarks } ->
+                  (* Logs.debug (fun m -> m "%a\n%s" (Format.pp_print_option Asai.Range.dump) explanation.loc (Asai.Diagnostic.string_of_text explanation.value)); *)
+                  Reporter.Tty.display d;
+                  exit 1
+              end
+            else
+              Unit_map.empty,
+              []
+        ) @@
+        fun () ->
+          let@ () = U.run ~init: units in
+          let@ () = Sc.easy_run in
+          Builtins.register_builtins builtins;
+          Builtins.Transclude.alloc_expanded ();
+          Builtins.Transclude.alloc_show_heading ();
+          Builtins.Transclude.alloc_toc ();
+          Builtins.Transclude.alloc_numbered ();
+          Builtins.Transclude.alloc_show_metadata ();
+          let tree = expand_tree_inner tree in
+          let units = U.get () in
+          units, tree
+    in
+    !diagnostics, units, syn

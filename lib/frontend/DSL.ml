@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-open Forester_core
 module X = Forester_core.Types
 
 let txt str = X.Text str
@@ -31,7 +30,6 @@ let img href = X.(Img (Remote href))
 let content c = X.Content c
 
 let xml_elt (prefix, uname) content =
-  let open Forester_compiler in
   let prefix = Option.value ~default: "" prefix in
   let qname = X.{ prefix; uname; xmlns = None } in
   X.Xml_elt

@@ -5,7 +5,8 @@
  *
  *)
 
-open Forester_core
+(* open Forester_core *)
+(* open Forester_frontend *)
 
 module L = Lsp.Types
 
@@ -17,16 +18,17 @@ let compute
   =
   match params with
   | {
-    position;
     textDocument;
     _;
   } ->
-    let server = State.get () in
-    let codes = server.index.codes in
-    let* { code; _ } = Hashtbl.find_opt codes { uri = textDocument.uri } in
-    let* addr = Analysis.addr_at ~position code in
-    let iri = Iri_scheme.user_iri ~host: server.config.host addr in
-    let* uri = Hashtbl.find_opt server.index.resolver iri in
+    (* let server = State.get () in *)
+    (* let host = server.config.host in *)
+    (* let codes = server.parsed in *)
+    (* let resolver = Compiler.make_resolver ~host: server.config.host codes in *)
+    (* let* { code; _ } = Compiler.resolve ~host textDocument.uri codes in *)
+    (* let* addr = Analysis.addr_at ~position code in *)
+    (* let iri = Iri_scheme.user_iri ~host: server.config.host addr in *)
+    (* let* uri = Hashtbl.find_opt resolver iri in *)
     let range = L.Range.create ~start: { character = 1; line = 0 } ~end_: { character = 1; line = 0 } in
     Some
-      (`Location [L.Location.{ uri = uri.uri; range }])
+      (`Location [L.Location.{ uri = textDocument.uri; range }])

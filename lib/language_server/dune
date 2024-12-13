@@ -14,11 +14,11 @@
    forester.compiler
    forester.frontend
    forester.forest
+   forester.human_datetime
    lsp
    asai
    eio
    eio.core
-   eio_main
    eio.unix
    jsonrpc
    yojson
@@ -26,6 +26,8 @@
    iri
    yuujinchou
    fmt
+   str
+   logs
    )
  (preprocess
   (pps ppx_deriving.show ppx_repr ppx_yojson_conv))

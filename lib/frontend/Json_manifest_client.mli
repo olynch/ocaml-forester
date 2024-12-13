@@ -6,10 +6,11 @@
 
 open Forester_core
 
-module Make (_: sig val route : Iri.t -> string end) (_: Forest.S) : sig
+module Make (_: sig val route : Iri.t -> string val forest : Compiler.state end) : sig
   val render_trees :
     dev: bool ->
     host: string ->
+    forest: Compiler.state ->
     Types.content Types.article list ->
     Yojson.Basic.t
 end

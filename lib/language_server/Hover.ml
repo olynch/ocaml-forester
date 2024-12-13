@@ -6,11 +6,14 @@
  *)
 
 open Forester_core
+open Forester_forest
+open Forester_frontend
 
 module L = Lsp.Types
-module F = Analysis.F
-module PT = Analysis.PT
+(* module F = Analysis.F *)
+(* module PT = Analysis.PT *)
 module T = Types
+
 let compute
     ({
       position;
@@ -19,10 +22,15 @@ let compute
     }: L.HoverParams.t)
     : L.Hover.t option
   =
-  let server = State.get () in
-  let host = server.config.host in
+  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let config = Compiler.get_config forest in
+  let module PT = Plain_text_client.Make(struct
+    let route = Iri.to_uri
+    let forest = forest
+  end) in
+  let host = config.host in
   let content =
-    match Hashtbl.find_opt server.index.codes { uri = textDocument.uri } with
+    match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
     | None -> "code of current tree is not stored. this is a bug"
     | Some tree ->
       (* TODO: use node_at and provide hover for things other than links.*)
@@ -30,7 +38,7 @@ let compute
       | None -> Format.asprintf "character: %i, line: %i." position.character position.line;
       | Some addr_at_cursor ->
         let iri_under_cursor = Iri_scheme.user_iri ~host addr_at_cursor in
-        match F.get_article iri_under_cursor with
+        match Compiler.get_article iri_under_cursor forest with
         | None ->
           Format.asprintf "Could not get article %a." pp_iri iri_under_cursor
         | Some { mainmatter; frontmatter; _ } ->

@@ -1,7 +1,9 @@
 {
   nixConfig = {
     extra-substituters = [ "https://forester.cachix.org" ];
-    extra-trusted-public-keys = [ "forester.cachix.org-1:pErGVVci7kZWxxcbQ/To8Lvqp6nVTeyPf0efJxbrQDM=" ];
+    extra-trusted-public-keys = [
+      "forester.cachix.org-1:pErGVVci7kZWxxcbQ/To8Lvqp6nVTeyPf0efJxbrQDM="
+    ];
   };
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -29,8 +31,8 @@
         devPackagesQuery = {
           ocaml-base-compiler = "5.2.0";
           ocaml-lsp-server = "*";
-          ocamlformat = "*";
-          memtrace = "*";
+          odoc = "*";
+          odig = "*";
         };
         query = devPackagesQuery // { };
         scope = on.buildOpamProject' { repos = [ "${opam-repository}" ]; } ./. query;

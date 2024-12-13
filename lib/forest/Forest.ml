@@ -6,251 +6,156 @@
 
 open Forester_prelude
 open Forester_core
+open Forester_compiler
 
 module T = Types
 module Q = Query
 
+module Tbl = Hashtbl.Make(struct
+  type t = iri
+  let equal = Iri.equal ~normalize: true
+  let hash iri = Iri.normalize iri |> Hashtbl.hash
+end)
+
+include Tbl
+
 type resource = T.content T.resource
 
-module type S = sig
-  val plant_resource : resource -> unit
-
-  val get_resource : Iri.t -> resource option
-  val get_article : Iri.t -> T.content T.article option
-  val get_all_resources : unit -> resource Seq.t
-
-  val get_expanded_title : ?scope: iri -> ?flags: T.title_flags -> T.content T.frontmatter -> T.content
-  val get_content_of_transclusion : T.content T.transclusion -> T.content option
-  val get_title_or_content_of_vertex : ?not_found: (iri -> T.content option) -> modifier: T.modifier -> T.content T.vertex -> T.content option
-
-  val run_datalog_query : (string, Vertex.t) Datalog_expr.query -> Vertex_set.t
-  val run_query : T.query -> Vertex_set.t
+module type P = sig
+  val resources : (iri, resource) Hashtbl.t option
 end
 
-module Make (Graphs: Forest_graphs.S) : S = struct
-  type article = T.content T.article
+let iri_for_resource = function
+  | T.Article article -> article.frontmatter.iri
+  | T.Asset asset -> Some asset.iri
 
-  module Dx = Datalog_expr
+type article = T.content T.article
 
-  let execute_datalog_script script =
-    let@ sequent = List.iter @~ script in
-    Datalog_engine.db_add Graphs.dl_db (Datalog_eval.eval_sequent sequent)
+module Dx = Datalog_expr
 
-  let () = execute_datalog_script Builtin_relation.axioms
+type env = (module Forest_graphs.S)
 
-  let run_datalog_query =
-    Datalog_eval.run_query Graphs.dl_db
+let legacy_query_engine : env -> (module Legacy_query_engine.S) = fun env ->
+    let module Graphs = (val env) in
+    (module Legacy_query_engine.Make(Graphs))
 
-  let resources : (Iri.t, resource) Hashtbl.t =
-    Hashtbl.create 1000
+let execute_datalog_script graphs script =
+  let module Graphs = (val graphs : Forest_graphs.S) in
+  let@ sequent = List.iter @~ script in
+  Datalog_engine.db_add Graphs.dl_db (Datalog_eval.eval_sequent sequent)
 
-  let add_edge rel ~source ~target =
-    let premises = [] in
-    let conclusion =
-      let args = [Dx.Const source; Dx.Const target] in
-      Dx.{ rel; args }
-    in
-    execute_datalog_script [{ conclusion; premises }];
-    Graphs.add_edge rel ~source ~target
+(* let () = execute_datalog_script Builtin_relation.axioms *)
 
-  let rec analyse_content_node (scope : Iri.t) (node : 'a T.content_node) : unit =
-    match node with
-    | Text _ | CDATA _ | Route_of_iri _ | Iri _ | Results_of_query _ | Results_of_datalog_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
-    | Transclude transclusion ->
-      analyse_transclusion scope transclusion
-    | Xml_elt elt ->
-      begin
-        let@ attr = List.iter @~ elt.attrs in
-        analyse_content scope attr.value
-      end;
-      analyse_content scope elt.content
-    | Section section ->
-      analyse_section scope section
-    | Link link ->
-      add_edge Builtin_relation.links_to ~source: (Iri_vertex scope) ~target: (Iri_vertex link.href);
-      analyse_content scope link.content
-    | Prim (_, content) ->
-      analyse_content scope content
-    | KaTeX (_, content) ->
-      analyse_content scope content
-    | Artefact artefact ->
-      analyse_artefact scope artefact
-    | Datalog_script script ->
-      execute_datalog_script script
+let run_datalog_query
+    : env -> (string, Vertex.t) Dx.query -> Vertex_set.t
+  = fun graphs q ->
+    let module Graphs = (val graphs) in
+    Datalog_eval.run_query Graphs.dl_db q
 
-  and analyse_artefact scope artefact =
-    analyse_content scope artefact.content
+let add_edge graphs rel ~source ~target =
+  let module Graphs = (val graphs : Forest_graphs.S) in
+  let premises = [] in
+  let conclusion =
+    let args = [Dx.Const source; Dx.Const target] in
+    Dx.{ rel; args }
+  in
+  execute_datalog_script graphs [{ conclusion; premises }];
+  Graphs.add_edge rel ~source ~target
 
-  and analyse_transclusion (scope : Iri.t) (transclusion : T.content T.transclusion) : unit =
-    match transclusion.target with
-    | Full _ | Mainmatter ->
-      add_edge Builtin_relation.transcludes ~source: (Iri_vertex scope) ~target: (Iri_vertex transclusion.href)
-    | Title _ | Taxon -> ()
-
-  and analyse_content (scope : Iri.t) (content : T.content) : unit =
-    T.extract_content content |> List.iter @@ analyse_content_node scope
-
-  and analyse_attribution (scope : Iri.t) (attr : _ T.attribution) =
-    let rel =
-      match attr.role with
-      | Author -> Builtin_relation.has_author
-      | Contributor -> Builtin_relation.has_direct_contributor
-    in
-    add_edge rel ~source: (Iri_vertex scope) ~target: attr.vertex;
-    analyse_vertex scope attr.vertex
-
-  and analyse_vertex scope = function
-    | Iri_vertex _ -> ()
-    | Content_vertex content -> analyse_content scope content
-
-  and analyse_tag (scope : Iri.t) (tag : _ T.vertex) =
-    analyse_vertex scope tag;
-    add_edge Builtin_relation.has_tag ~source: (Iri_vertex scope) ~target: tag
-
-  and analyse_taxon (scope : Iri.t) (taxon_opt : T.content option) =
-    let@ taxon = Option.iter @~ taxon_opt in
-    analyse_content scope taxon;
-    add_edge Builtin_relation.has_taxon ~source: (Iri_vertex scope) ~target: (Content_vertex taxon)
-
-  and analyse_attributions (scope : Iri.t) (attrs : _ T.attribution list) =
-    attrs |> List.iter @@ analyse_attribution scope
-
-  and analyse_tags (scope : Iri.t) (tags : _ T.vertex list) =
-    tags |> List.iter @@ analyse_tag scope
-
-  and analyse_frontmatter (fm : T.content T.frontmatter) : unit =
-    let@ scope = Option.iter @~ fm.iri in
-    Option.iter (analyse_content scope) fm.title;
-    analyse_taxon scope fm.taxon;
-    analyse_attributions scope fm.attributions;
-    analyse_tags scope fm.tags;
-    analyse_metas scope fm.metas
-
-  and analyse_metas (scope : Iri.t) (metas : (string * T.content) list) : unit =
-    metas |> List.iter @@ analyse_meta scope
-
-  and analyse_meta (scope : Iri.t) (_, content) : unit =
-    analyse_content scope content
-
-  and analyse_section (scope : Iri.t) (section : T.content T.section) : unit =
+let rec analyse_content_node graphs (scope : Iri.t) (node : 'a T.content_node) : unit =
+  match node with
+  | Text _ | CDATA _ | Route_of_iri _ | Iri _ | Results_of_query _ | Results_of_datalog_query _ | TeX_cs _ | Img _ | Contextual_number _ -> ()
+  | Transclude transclusion ->
+    analyse_transclusion graphs scope transclusion
+  | Xml_elt elt ->
     begin
-      let@ target = Option.iter @~ section.frontmatter.iri in
-      add_edge Builtin_relation.transcludes ~source: (Iri_vertex scope) ~target: (Iri_vertex target)
+      let@ attr = List.iter @~ elt.attrs in
+      analyse_content graphs scope attr.value
     end;
-    analyse_frontmatter section.frontmatter;
-    analyse_content (Option.value ~default: scope section.frontmatter.iri) section.mainmatter
+    analyse_content graphs scope elt.content
+  | Section section ->
+    analyse_section graphs scope section
+  | Link link ->
+    add_edge graphs Builtin_relation.links_to ~source: (Iri_vertex scope) ~target: (Iri_vertex link.href);
+    analyse_content graphs scope link.content
+  | Prim (_, content) ->
+    analyse_content graphs scope content
+  | KaTeX (_, content) ->
+    analyse_content graphs scope content
+  | Artefact artefact ->
+    analyse_artefact graphs scope artefact
+  | Datalog_script script ->
+    execute_datalog_script graphs script
 
-  let analyse_article (article : article) : unit =
-    analyse_frontmatter article.frontmatter;
-    let@ scope = Option.iter @~ article.frontmatter.iri in
-    analyse_content scope article.mainmatter;
-    analyse_content scope article.backmatter
+and analyse_artefact graphs scope artefact =
+  analyse_content graphs scope artefact.content
 
-  let analyse_resource = function
-    | T.Article article -> analyse_article article
-    | T.Asset _ -> ()
+and analyse_transclusion graphs (scope : Iri.t) (transclusion : T.content T.transclusion) : unit =
+  match transclusion.target with
+  | Full _ | Mainmatter ->
+    add_edge graphs Builtin_relation.transcludes ~source: (Iri_vertex scope) ~target: (Iri_vertex transclusion.href)
+  | Title _ | Taxon -> ()
 
-  let iri_for_resource = function
-    | T.Article article -> article.frontmatter.iri
-    | T.Asset asset -> Some asset.iri
+and analyse_content (graphs : env) (scope : Iri.t) (content : T.content) : unit =
+  T.extract_content content |> List.iter @@ (analyse_content_node graphs scope)
 
-  let plant_resource resource =
-    analyse_resource resource;
-    let@ iri = Option.iter @~ iri_for_resource resource in
-    let iri = Iri.normalize iri in
-    match Hashtbl.mem resources iri with
-    | false ->
-      Graphs.register_iri iri;
-      Hashtbl.add resources iri resource
-    | true ->
-      ()
+and analyse_attribution graphs (scope : Iri.t) (attr : _ T.attribution) =
+  let rel =
+    match attr.role with
+    | Author -> Builtin_relation.has_author
+    | Contributor -> Builtin_relation.has_direct_contributor
+  in
+  add_edge graphs rel ~source: (Iri_vertex scope) ~target: attr.vertex;
+  analyse_vertex graphs scope attr.vertex
 
-  let get_resource iri =
-    let iri = Iri.normalize iri in
-    Hashtbl.find_opt resources iri
+and analyse_vertex graphs scope vtx =
+  match vtx with
+  | Iri_vertex _ -> ()
+  | Content_vertex content -> analyse_content graphs scope content
 
-  let get_all_resources () =
-    Hashtbl.to_seq_values resources
+and analyse_tag graphs (scope : Iri.t) (tag : _ T.vertex) =
+  analyse_vertex graphs scope tag;
+  add_edge graphs Builtin_relation.has_tag ~source: (Iri_vertex scope) ~target: tag
 
-  let get_article iri =
-    let@ resource = Option.bind @@ get_resource iri in
-    match resource with
-    | Article article -> Some article
-    | _ -> None
+and analyse_taxon graphs (scope : Iri.t) (taxon_opt : T.content option) =
+  let@ taxon = Option.iter @~ taxon_opt in
+  analyse_content graphs scope taxon;
+  add_edge graphs Builtin_relation.has_taxon ~source: (Iri_vertex scope) ~target: (Content_vertex taxon)
 
-  let get_article_exn addr =
-    match get_article addr with
-    | Some article -> article
-    | None ->
-      Reporter.fatalf
-        ~extra_remarks: [Asai.Diagnostic.loctextf "the tree %a is either missing, or failed to evaluate." pp_iri addr]
-        Resource_not_found
-        "Could not find tree %a"
-        pp_iri
-        addr
+and analyse_attributions graphs (scope : Iri.t) (attrs : _ T.attribution list) =
+  attrs |> List.iter @@ analyse_attribution graphs scope
 
-  module Legacy_query_engine = Legacy_query_engine.Make(Graphs)
-  include Legacy_query_engine
+and analyse_tags graphs (scope : Iri.t) (tags : _ T.vertex list) =
+  tags |> List.iter @@ analyse_tag graphs scope
 
-  let section_symbol = "§"
+and analyse_frontmatter graphs (fm : T.content T.frontmatter) : unit =
+  let@ scope = Option.iter @~ fm.iri in
+  Option.iter (analyse_content graphs scope) fm.title;
+  analyse_taxon graphs scope fm.taxon;
+  analyse_attributions graphs scope fm.attributions;
+  analyse_tags graphs scope fm.tags;
+  analyse_metas graphs scope fm.metas
 
-  let rec get_expanded_title ?scope ?(flags = T.{ empty_when_untitled = false }) (frontmatter : _ T.frontmatter) =
-    let short_title =
-      match frontmatter.title with
-      | Some content -> content
-      | None when not flags.empty_when_untitled ->
-        begin
-          match frontmatter.iri with
-          | Some iri -> T.Content [T.Iri iri]
-          | _ -> T.Content [T.Text "Untitled"]
-        end
-      | _ -> T.Content []
-    in
-    Option.value ~default: short_title @@
-      match frontmatter.designated_parent with
-      | Some parent_iri when not (scope = frontmatter.designated_parent) ->
-        let@ parent = Option.map @~ get_article parent_iri in
-        let parent_title = get_expanded_title parent.frontmatter in
-        let parent_link = T.Link { href = parent_iri; content = parent_title } in
-        let chevron = T.Text " › " in
-        T.map_content (fun xs -> parent_link :: chevron :: xs) short_title
-      | _ -> None
+and analyse_metas graphs (scope : Iri.t) (metas : (string * T.content) list) : unit =
+  metas |> List.iter @@ analyse_meta graphs scope
 
-  let get_title_or_content_of_vertex ?(not_found = fun _ -> None) ~modifier vertex =
-    let@ content =
-      Option.map @~
-        match vertex with
-        | T.Content_vertex content -> Some content
-        | T.Iri_vertex iri ->
-          begin
-            match get_article iri with
-            | Some article -> article.frontmatter.title
-            | None -> not_found iri
-          end
-    in
-    T.apply_modifier_to_content modifier content
+and analyse_meta graphs (scope : Iri.t) (_, content) : unit =
+  analyse_content graphs scope content
 
-  let get_content_of_transclusion (transclusion : T.content T.transclusion) =
-    let@ content =
-      Option.map @~
-        match transclusion.target with
-        | Full flags ->
-          let@ article = Option.map @~ get_article transclusion.href in
-          T.Content [T.Section (T.article_to_section article ~flags)]
-        | Mainmatter ->
-          let@ article = Option.map @~ get_article transclusion.href in
-          article.mainmatter
-        | Title flags ->
-          Option.some @@
-            begin
-              match get_article transclusion.href with
-              | None -> T.Content [T.Iri transclusion.href]
-              | Some article -> get_expanded_title ~flags article.frontmatter
-            end
-        | Taxon ->
-          let@ article = Option.map @~ get_article transclusion.href in
-          let default = T.Content [T.Text section_symbol] in
-          Option.value ~default article.frontmatter.taxon
-    in
-    T.apply_modifier_to_content transclusion.modifier content
-end
+and analyse_section graphs (scope : Iri.t) (section : T.content T.section) : unit =
+  begin
+    let@ target = Option.iter @~ section.frontmatter.iri in
+    add_edge graphs Builtin_relation.transcludes ~source: (Iri_vertex scope) ~target: (Iri_vertex target)
+  end;
+  analyse_frontmatter graphs section.frontmatter;
+  analyse_content graphs (Option.value ~default: scope section.frontmatter.iri) section.mainmatter
+
+let analyse_article graphs (article : article) : unit =
+  analyse_frontmatter graphs article.frontmatter;
+  let@ scope = Option.iter @~ article.frontmatter.iri in
+  analyse_content graphs scope article.mainmatter;
+  analyse_content graphs scope article.backmatter
+
+let analyse_resource graphs = function
+  | T.Article article -> analyse_article graphs article
+  | T.Asset _ -> ()

@@ -7,10 +7,10 @@
 
 open Forester_core
 open Forester_compiler
+open Forester_forest
+open Forester_frontend
 
 module L = Lsp.Types
-module F = Analysis.F
-module PT = Analysis.PT
 
 let (let*) = Option.bind
 
@@ -72,7 +72,7 @@ let insert_text path = String.concat "/" path
 
 let make
     : Yuujinchou.Trie.path
-    * (Resolver.P.data * unit) ->
+    * (Resolver.P.data * Asai.Range.t option) ->
     L.CompletionItem.t option
   = fun (path, (data, _)) ->
     match data with
@@ -106,17 +106,22 @@ let compute
         triggerCharacter
       | None -> None
     in
-    let server = State.get () in
+    let Lsp_state.{ forest; _ } = Lsp_state.get () in
+    let config = Compiler.get_config forest in
+    let module PT = Plain_text_client.Make(struct
+      let route = Iri.to_uri
+      let forest = forest
+    end) in
     let addr_items () =
-      server.index.codes
-      |> Hashtbl.to_seq_values
-      |> List.of_seq
-      |> List.filter_map
+      forest
+      |> Compiler.parsed
+      |> Forest.to_seq_values
+      |> Seq.filter_map
         (
           fun (tree : Code.tree) ->
             let* addr = tree.addr in
             let* { frontmatter; mainmatter; _ } =
-              (F.get_article @@ Iri_scheme.user_iri ~host: server.config.host addr)
+              (Compiler.get_article (Iri_scheme.user_iri ~host: config.host addr) forest)
             in
             let documentation =
               let render = PT.string_of_content in
@@ -140,10 +145,13 @@ let compute
             in
             Some (L.CompletionItem.create ?documentation ~label: addr ~insertText ())
         )
+      |> List.of_seq
     in
     let scope_items () =
-      (* let import_closure = State.Graph.Op.transitive_closure server.import_graph in *)
-      let _, units, _expanded = Analysis.expand () in
+      (* TODO: If the selected item is not in scope in the current tree, auto-import it.
+         reference: https://github.com/rust-lang/rust-analyzer/blob/fc98e0657abf3ce07eed513e38274c89bbb2f8ad/crates/ide-assists/src/handlers/auto_import.rs#L15
+         *)
+      let units = Compiler.units forest in
       units
       |> Expand.Unit_map.to_list
       |> List.map snd
@@ -159,7 +167,7 @@ let compute
       |> List.append
         (
           Expand.builtins
-          |> List.map (fun (a, b) -> (a, (Resolver.P.Term [Range.locate_opt None b], ())))
+          |> List.map (fun (a, b) -> (a, (Resolver.P.Term [Range.locate_opt None b], None)))
           |> List.filter_map make
         )
     in

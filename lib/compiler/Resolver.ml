@@ -9,7 +9,7 @@ module P = struct
     | Term of Syn.t
     | Xmlns of { xmlns: string; prefix: string }
 
-  type tag = unit
+  type tag = Asai.Range.t option
 
   type hook = unit (* for modifier hooks; unused here *)
   type context = unit (* for advanced printing and reporting; unused here *)
@@ -20,10 +20,10 @@ module Scope = struct
   type data = P.data
 
   let import_singleton x v =
-    import_singleton (x, (v, ()))
+    import_singleton (x, v)
 
   let include_singleton x v =
-    include_singleton (x, (v, ()))
+    include_singleton (x, v)
 
   let import_subtree ?modifier path subtree =
     import_subtree ?modifier (path, subtree)

@@ -8,6 +8,12 @@ open Forester_prelude
 open Eio
 let ( / ) = Eio.Path.( / )
 
+let path_of_dir ~env dir =
+  Path.(Eio.Stdenv.fs env / dir)
+
+let paths_of_dirs ~env =
+  List.map (path_of_dir ~env)
+
 module NullSink: Flow.Pi.SINK with type t = unit = struct
   type t = unit
   let single_write _ _ = 0

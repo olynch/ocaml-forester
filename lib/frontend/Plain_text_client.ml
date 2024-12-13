@@ -10,23 +10,28 @@ module T = Types
 
 module type Params = sig
   val route : iri -> string
+  val forest : Compiler.state
 end
 
-module Default_params: Params = struct
-  let route = Iri.to_uri
-end
+(* module Default_params: Params = struct *)
+(*   let route = Iri.to_uri *)
+(* end *)
 
 module type S = sig
   val string_of_content : Types.content -> string
   val pp_content : Format.formatter -> Types.content -> unit
 end
 
-module Make (F: Forest.S) (P: Params) : S = struct
+module Make (P: Params) : S = struct
+  let forest = P.forest
 
   let rec pp_content fmt = function
     | T.Content c -> c |> List.iter @@ pp_content_node fmt
 
-  and pp_content_node fmt : 'a T.content_node -> unit = function
+  and pp_content_node
+      fmt
+      : 'a T.content_node -> unit
+    = function
     | Text txt | CDATA txt -> Format.pp_print_string fmt txt
     | Iri iri -> pp_iri fmt iri
     | Route_of_iri iri -> Format.fprintf fmt "%s" (P.route iri)
@@ -41,7 +46,7 @@ module Make (F: Forest.S) (P: Params) : S = struct
     | Results_of_query _ | Results_of_datalog_query _ | Img _ | Artefact _ | Datalog_script _ -> ()
 
   and pp_transclusion fmt (transclusion : T.content T.transclusion) =
-    match F.get_content_of_transclusion transclusion with
+    match Compiler.get_content_of_transclusion transclusion forest with
     | None -> Format.fprintf fmt "<could not resolve transclusion of %a>" pp_iri transclusion.href
     | Some content -> pp_content fmt content
 

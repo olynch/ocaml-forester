@@ -26,9 +26,7 @@
   algaeff
   str
   unix
-  iri))
-
-(env
- (dev
-  (flags
-   (:standard -w -66-32-33-27-26))))
+  iri
+  lsp
+  pure-html
+  logs))

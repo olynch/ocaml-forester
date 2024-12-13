@@ -12,6 +12,7 @@
   forester.human_datetime
   forester.xml_names
   forester.core
+  forester.compiler
   datalog
   datalog.caml_interface
   ocamlgraph
@@ -19,7 +20,14 @@
   algaeff
   asai
   pure-html
-  iri))
+  unix
+  eio
+  eio.unix
+  iri
+  lsp
+  toml
+  logs
+  str))
 
 (env
  (dev

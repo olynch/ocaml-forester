@@ -125,7 +125,7 @@ let default_backmatter ~(iri : iri) : T.content =
       make_section "contributions" @@ Builtin_queries.contributions_datalog vtx
     ]
 
-type result = { main: T.content T.article; side: T.content T.article list; jobs: Job.job list }
+type result = { articles: T.content T.article list; jobs: Job.job Range.located list }
 
 module Tape = Tape_effect.Make ()
 module Lex_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
@@ -133,7 +133,7 @@ module Dyn_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
 module Host_env = Algaeff.Reader.Make(struct type t = string end)
 module Heap = Algaeff.State.Make(struct type t = V.obj Env.t end)
 module Emitted_trees = Algaeff.State.Make(struct type t = T.content T.article list end)
-module Jobs = Algaeff.State.Make(struct type t = Job.job list end)
+module Jobs = Algaeff.State.Make(struct type t = Job.job Range.located list end)
 module Frontmatter = Algaeff.State.Make(struct type t = T.content T.frontmatter end)
 
 let get_transclusion_flags ~loc =
@@ -154,7 +154,7 @@ let get_transclusion_flags ~loc =
     metadata_shown = override (get_bool S.show_metadata_sym) flags.metadata_shown;
   }
 
-let resolve_iri ~loc str =
+let resolve_iri ~loc: _ str =
   let base = let host = Host_env.read () in Iri_scheme.base_iri ~host in
   match Iri.of_string str with
   | iri -> Ok (Iri.resolve ~base iri)
@@ -188,7 +188,7 @@ let extract_vertex ~type_ (node : V.located) =
     let@ iri = Result.map @~ extract_iri node in
     T.Iri_vertex iri
 
-let extract_query_vertex_expr ~host ~type_ (node : V.located) =
+let extract_query_vertex_expr ~host: _ ~type_ (node : V.located) =
   match node.value with
   | Sym sym -> Query.Var (Query.F sym)
   | _ ->
@@ -248,7 +248,7 @@ and eval_node node : V.t =
         Reporter.fatalf ?loc Type_error "Expected valid RFC 3987 IRI in ref"
     end
   | Link { title; dest } ->
-    let host = Host_env.read () in
+    let _host = Host_env.read () in
     let dest = { node with value = dest } |> Range.map eval_tape in
     let href =
       match extract_iri dest with
@@ -387,7 +387,7 @@ and eval_node node : V.t =
       match query_arg.value with
       | V.Dx_query query ->
         let job = Job.Publish { name; query; format = Json_blob } in
-        Jobs.modify (List.cons job);
+        Jobs.modify (List.cons (Range.locate_opt loc job));
         process_tape ()
       | _ -> Reporter.fatalf ?loc: query_arg.loc Type_error "Expected datalog query expression"
     end
@@ -410,7 +410,7 @@ and eval_node node : V.t =
       T.Content [T.Artefact artefact]
     in
     let job = Job.LaTeX_to_svg { hash; source; content } in
-    Jobs.modify (List.cons job);
+    Jobs.modify (List.cons (Range.locate_opt loc job));
     let transclusion =
       let host = Host_env.read () in
       let href = Iri_scheme.hash_iri ~host hash in
@@ -420,7 +420,7 @@ and eval_node node : V.t =
     emit_content_node ~loc @@ T.Transclude transclusion
   | Route_asset ->
     let source_path = pop_text_arg ~loc in
-    let iri = Asset_router.iri_of_asset ~source_path in
+    let iri = Asset_router.iri_of_asset ?loc ~source_path () in
     let sequents =
       Option.value ~default: [] @@
         let fm = Frontmatter.get () in
@@ -531,7 +531,7 @@ and eval_node node : V.t =
     Frontmatter.modify (fun fm -> { fm with title = Some title });
     process_tape ()
   | Parent ->
-    let host = Host_env.read () in
+    let _host = Host_env.read () in
     let parent_arg = eval_pop_arg ~loc in
     let parent =
       match extract_iri parent_arg with
@@ -630,7 +630,7 @@ and eval_node node : V.t =
           match extract_iri arg with
           | Ok iri -> T.Iri_vertex iri
           | Error err ->
-            Reporter.fatalf ?loc: node.loc Type_error "Expected valid RFC 3987 IRI in datalog constant expression"
+            Reporter.fatalf ?loc: node.loc Type_error "Expected valid RFC 3987 IRI in datalog constant expression. %s" (Iri.string_of_error err)
         end
     in
     focus ?loc: node.loc @@ V.Dx_const const
@@ -716,42 +716,54 @@ and eval_tree_inner ~(iri : iri) (tree : Syn.tree) : T.content T.article =
   let backmatter = default_backmatter ~iri in
   T.{ frontmatter; mainmatter; backmatter }
 
-let eval_tree ~host ~iri ~source_path (tree : Syn.tree) : result =
-  let fm = T.default_frontmatter ~iri ?source_path () in
-  let@ () = Frontmatter.run ~init: fm in
-  let@ () = Emitted_trees.run ~init: [] in
-  let@ () = Jobs.run ~init: [] in
-  let@ () = Heap.run ~init: Env.empty in
-  let@ () = Lex_env.run ~env: Env.empty in
-  let@ () = Dyn_env.run ~env: Env.empty in
-  let@ () = Host_env.run ~env: host in
-  let main = eval_tree_inner ~iri tree in
-  let side = Emitted_trees.get () in
-  let jobs = Jobs.get () in
-  { main; side; jobs }
+let empty_result =
+  {
+    articles = [];
+    jobs = []
+  }
 
-(* TODO: Handle multiple evaluation errors *)
-let eval_dg ~host ~iri ~source_path (tree : Syn.tree) =
-  let diagnostics = ref [] in
-  let push d = diagnostics := d :: !diagnostics in
-  let res =
-    Reporter.run
-      ~emit: push
-      ~fatal: (
-        fun d ->
-          push d;
-          {
-            main =
-            {
-              frontmatter = T.default_frontmatter ();
-              mainmatter = T.Content [];
-              backmatter = T.Content [];
-            };
-            side = [];
-            jobs = []
-          }
-      ) @@
-      fun () ->
-        eval_tree ~host ~iri ~source_path tree
-  in
-  !diagnostics, res
+let eval_tree
+    : ?quit_on_failure: bool ->
+    host: string ->
+    iri: iri ->
+    source_path: string option ->
+    Syn.t ->
+    Reporter.Message.t Asai.Diagnostic.t list * result
+  = fun
+      ?(quit_on_failure = true)
+      ~host
+      ~iri
+      ~source_path
+      (tree : Syn.tree)
+    ->
+    let diagnostics = ref [] in
+    let push d = diagnostics := d :: !diagnostics in
+    let res =
+      Reporter.run
+        ~emit: push
+        ~fatal: (
+          fun d ->
+            push d;
+            if quit_on_failure then
+              begin
+                Reporter.Tty.display d ~debug: true;
+                exit 1
+              end
+            else
+              empty_result
+        ) @@
+        fun () ->
+          let fm = T.default_frontmatter ~iri ?source_path () in
+          let@ () = Frontmatter.run ~init: fm in
+          let@ () = Emitted_trees.run ~init: [] in
+          let@ () = Jobs.run ~init: [] in
+          let@ () = Heap.run ~init: Env.empty in
+          let@ () = Lex_env.run ~env: Env.empty in
+          let@ () = Dyn_env.run ~env: Env.empty in
+          let@ () = Host_env.run ~env: host in
+          let main = eval_tree_inner ~iri tree in
+          let side = Emitted_trees.get () in
+          let jobs = Jobs.get () in
+          { articles = main :: side; jobs }
+    in
+    !diagnostics, res

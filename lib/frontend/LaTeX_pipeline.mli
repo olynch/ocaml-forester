@@ -6,4 +6,4 @@
 
 type env = Eio_unix.Stdenv.base
 
-val latex_to_svg : env: env -> string -> string
+val latex_to_svg : env: env -> ?loc: Asai.Range.t -> string -> string

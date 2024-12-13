@@ -4,11 +4,20 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
+(** Bidirectional graphs, verices of type {!type: Forester_core.Vertex.t}*)
 module Forest_graph = Forest_graph
-module Forest_graphs = Forest_graphs
-module Forest = Forest
-module Forest_util = Forest_util
-module Legacy_xml_client = Legacy_xml_client
-module Plain_text_client = Plain_text_client
 
-module Json_manifest_client = Json_manifest_client
+(** The graph database that powers forester*)
+module Forest_graphs = Forest_graphs
+
+(** Functions for constructing import graphs*)
+module Imports = Imports
+
+(***)
+module Forest = Forest
+module Xml_forester = Xml_forester
+module Config = Config
+module Iri_util = Iri_util
+module Iri_resolver = Iri_resolver
+module State = State
+module Diagnostics = Diagnostics

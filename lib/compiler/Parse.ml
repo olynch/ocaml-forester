@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
+module EP = Eio.Path
+
 open Forester_prelude
 open Forester_core
 open Lexing
@@ -31,7 +33,7 @@ let lexer =
   | Ident_fragments -> Lexer.ident_fragments lexbuf
   | Verbatim (herald, buffer) -> Lexer.verbatim herald buffer lexbuf
 
-let get_parse_error env =
+let _get_parse_error env =
   let open Asai in
   match I.stack env with
   | lazy(Nil) -> Diagnostic.loctext "Did not expect text here."
@@ -43,7 +45,7 @@ let get_parse_error env =
     with
       | Not_found -> Diagnostic.loctext ~loc "invalid syntax (no specific message for this eror)"
 
-let get_range
+let _get_range
     : I.element option -> (position * position) option
   = fun el ->
     match el with
@@ -79,16 +81,16 @@ let is_closing_delim = function
 
 let parse
     : ?stop_on_err: bool ->
-    ?source: [`File of string | `String of Range.string_source] ->
+    source: [`File of string | `String of Range.string_source] ->
     lexbuf ->
-    (Code.t, Reporter.Message.t Asai.Diagnostic.t) Result.t
-  = fun ?(stop_on_err = true) ?source lexbuf ->
+    (Code.t, Reporter.diagnostic) Result.t
+  = fun ?(stop_on_err = true) ~source lexbuf ->
     let initial_checkpoint = (Grammar.Incremental.main lexbuf.lex_curr_p) in
     let delim_stack = Stack.create () in
     let rec run
         : _ I.checkpoint ->
         _ ->
-        (Code.t, Reporter.Message.t Asai.Diagnostic.t) Result.t
+        (Code.t, Reporter.diagnostic) Result.t
       = fun checkpoint supplier ->
         match checkpoint with
         | I.InputNeeded _env ->
@@ -117,13 +119,13 @@ let parse
         | I.AboutToReduce (_, _) ->
           let checkpoint = I.resume checkpoint ~strategy: `Simplified in
           run checkpoint supplier
-        | I.HandlingError env ->
+        | I.HandlingError _ ->
           if not stop_on_err then
             (* TODO: Don't error out here *)
             Error
               (
                 Asai.Diagnostic.of_text
-                  ~loc: (Range.of_lexbuf ?source lexbuf)
+                  ~loc: (Range.of_lexbuf ~source lexbuf)
                   Error
                   Reporter.Message.Parse_error
                   (Asai.Diagnostic.text "")
@@ -132,14 +134,7 @@ let parse
             let range_of_last_unclosed =
               Option.map snd @@ Stack.top_opt delim_stack
             in
-            let loc =
-              match Option.map Range.view range_of_last_unclosed with
-              | Some (`Range (start_pos, _)) ->
-                Range.make
-                  (start_pos, Range.of_lex_position @@ Lexing.lexeme_start_p lexbuf)
-              | Some (`End_of_file _) -> Range.of_lexbuf ?source lexbuf
-              | None -> Range.of_lexbuf ?source lexbuf
-            in
+            let loc = Range.of_lexbuf ~source lexbuf in
             let extra_remarks =
               if Option.is_some range_of_last_unclosed then
                 [
@@ -173,7 +168,7 @@ let parse
          that we can safely use the returned diagnostic without worrying that
          there might be an unhandled Asai effect. *)
       | Lexer.SyntaxError lexeme ->
-        let loc = Range.of_lexbuf ?source lexbuf in
+        let loc = Range.of_lexbuf ~source lexbuf in
         Error
           (
             Asai.Diagnostic.(
@@ -186,12 +181,18 @@ let parse
 
 let parse_channel filename ch =
   let lexbuf = Lexing.from_channel ch in
+  if filename = "" then assert false;
+  Logs.debug (fun m -> m "parsing %s" filename);
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
   parse ~source: (`File filename) lexbuf
 
-let parse_string ?source str =
-  let lexbuf = Lexing.from_string str in
-  parse ?source lexbuf
+let parse_document doc =
+  let uri = Lsp.Text_document.documentUri doc in
+  let path = Lsp.Uri.to_path uri in
+  let text = Lsp.Text_document.text doc in
+  let lexbuf = Lexing.from_string text in
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = path };
+  parse ~source: (`File path) lexbuf
 
 let parse_file filename =
   let@ () = Reporter.tracef "when parsing file `%s`" filename in

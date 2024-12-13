@@ -7,16 +7,16 @@
 
 open Forester_core
 open Forester_compiler
+open Forester_frontend
 open Forester_forest
 
 module T = Types
 module L = Lsp.Types
-module F = Analysis.F
-module PT = Analysis.PT
-module G = Analysis.G
 
 let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
-  let server = State.get () in
+  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let config = Compiler.get_config forest in
+  let module G = (val Compiler.graphs forest) in
   match params with
   | { item; _ } ->
     let vertex_to_item (v : _ T.vertex) =
@@ -28,7 +28,7 @@ let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
     in
     match item with
     | { uri; _ } ->
-      let iri = Util.path_to_iri ~host: server.config.host (Lsp.Uri.to_path uri) in
+      let iri = Util.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
       let vertex = T.Iri_vertex iri in
       let transclusion_graph = G.get_rel Query.Edges Builtin_relation.transcludes in
       let link_graph = G.get_rel Query.Edges Builtin_relation.links_to in
@@ -37,7 +37,9 @@ let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
       Some (link_items @ transclusion_items)
 
 let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
-  let server = State.get () in
+  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let config = Compiler.get_config forest in
+  let module G = (val Compiler.graphs forest) in
   Eio.traceln "computing outgoing calls";
   match params with
   | { item; _ } ->
@@ -50,7 +52,7 @@ let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
     in
     match item with
     | { uri; _ } ->
-      let iri = Util.path_to_iri ~host: server.config.host (Lsp.Uri.to_path uri) in
+      let iri = Util.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
       let vertex = T.Iri_vertex iri in
       let transclusion_graph = G.get_rel Query.Edges Builtin_relation.transcludes in
       let link_graph = G.get_rel Query.Edges Builtin_relation.links_to in
@@ -61,10 +63,10 @@ let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
       Some (link_items @ transclusion_items)
 
 let compute (params : L.CallHierarchyPrepareParams.t) =
-  let server = State.get () in
+  let Lsp_state.{ forest; _ } = Lsp_state.get () in
   match params with
   | { position; textDocument; _ } ->
-    match Hashtbl.find_opt server.index.codes { uri = textDocument.uri } with
+    match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
     | None -> None
     | Some tree ->
       let item =

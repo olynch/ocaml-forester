@@ -5,12 +5,12 @@
  *
  *)
 
+open Forester_frontend
 module L = Lsp.Types
 module RPC = Jsonrpc
 
 (* TODO: set up json conversions for forester config*)
 let compute (params : L.DidChangeConfigurationParams.t) =
-  let server = State.get () in
   match params with
   | { settings } ->
     begin
@@ -19,16 +19,17 @@ let compute (params : L.DidChangeConfigurationParams.t) =
         begin
           match List.assoc_opt "configuration_file" xs with
           | Some (`String f) ->
-            let config = Forester_frontend.Config.parse_forest_config_file f in
-            State.set { server with config = config }
+            let config = Forester_forest.Config.parse_forest_config_file f in
+            Lsp_state.modify (fun state -> { state with forest = Compiler.with_config config state.forest })
           | _ ->
-            RPC.Response.Error.raise
-              (
-                RPC.Response.Error.make
-                  ~code: InvalidRequest
-                  ~message: "invalid value for configuration_file"
-                  ()
-              )
+            Eio.traceln "invalid value for configuration_file"
+          (* RPC.Response.Error.raise *)
+          (*   ( *)
+          (*     RPC.Response.Error.make *)
+          (*       ~code: InvalidRequest *)
+          (*       ~message: "invalid value for configuration_file" *)
+          (*       () *)
+          (*   ) *)
         end
       | json -> Eio.traceln "unknown configuration value %a" Yojson.Safe.pp json
     end

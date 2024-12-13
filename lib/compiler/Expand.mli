@@ -3,12 +3,12 @@
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
-open Forester_prelude
+
 open Forester_core
 
-module Unit_map: Map.S
+module Unit_map: Map.S with type key = string
 
-type exports = Resolver.P.data Trie.Untagged.t
+type exports = (Resolver.P.data, Asai.Range.t option) Trie.t
 
 module Env: sig
   type t = exports Unit_map.t
@@ -16,7 +16,6 @@ module Env: sig
 end
 
 val builtins : (string list * Syn.node) list
-val expand_tree : Env.t -> Code.tree -> Env.t * Syn.tree
 
 module Builtins:
 sig
@@ -30,7 +29,8 @@ sig
   end
 end
 
-val expand_dg :
-  exports Unit_map.t ->
+val expand_tree :
+  ?quit_on_error: bool ->
+  Env.t ->
   Code.tree ->
-  Reporter.Message.t Asai.Diagnostic.t list * (exports Unit_map.t * Syn.t)
+  Reporter.diagnostic list * exports Unit_map.t * Syn.t

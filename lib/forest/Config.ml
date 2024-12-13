@@ -15,6 +15,7 @@ module Forest_config = struct
     assets: string list;
     foreign: string list;
     theme: string;
+    prefixes: string list;
   }
   [@@deriving show, repr]
 end
@@ -27,6 +28,7 @@ let default_forest_config : Forest_config.t =
     foreign = [];
     theme = "theme";
     home = None;
+    prefixes = [];
   }
 
 let parse_forest_config_file filename =
@@ -75,4 +77,8 @@ let parse_forest_config_file filename =
       Option.value ~default: default_forest_config.theme @@
         get tbl (forest |-- key "theme" |-- string)
     in
-    Forest_config.{ host; assets; trees; foreign; theme; home }
+    let prefixes =
+      Option.value ~default: default_forest_config.prefixes @@
+        get tbl (forest |-- key "prefixes" |-- array |-- strings)
+    in
+    Forest_config.{ host; assets; trees; foreign; theme; home; prefixes }

@@ -7,16 +7,19 @@
 
 open Forester_prelude
 open Forester_core
+open Forester_frontend
 
 module L = Lsp.Types
 module Lsp_Diagnostic = Lsp.Types.Diagnostic
 module Broadcast = Lsp.Server_notification
 module RPC = Jsonrpc
 
-type diagnostic = Reporter.Message.t Asai.Diagnostic.t
+type diagnostic = Reporter.diagnostic
+
+type table = (Lsp.Uri.t, diagnostic list) Hashtbl.t
 
 let send packet =
-  let server = State.get () in
+  let server = Lsp_state.get () in
   LspEio.send server.lsp_io packet
 
 let render_lsp_related_info (uri : L.DocumentUri.t) (message : Asai.Diagnostic.loctext) : L.DiagnosticRelatedInformation.t =
@@ -30,7 +33,8 @@ let render_lsp_diagnostic (uri : L.DocumentUri.t) (diag : diagnostic) : Lsp_Diag
   let severity = Lsp_shims.Diagnostic.lsp_severity_of_severity @@ diag.severity in
   let code = `String (Reporter.Message.short_code diag.message) in
   let source =
-    match Hashtbl.find_opt (State.get ()).index.documents { uri } with
+    let Lsp_state.{ forest; _ } = Lsp_state.get () in
+    match Hashtbl.find_opt (Compiler.documents forest) uri with
     | None -> None
     | Some doc ->
       Some (Lsp.Text_document.text doc)
@@ -50,7 +54,7 @@ let broadcast notif =
   let msg = Broadcast.to_jsonrpc notif in
   send (RPC.Packet.Notification msg)
 
-let to_uri (uri : Lsp.Uri.t) (diagnostics : diagnostic list) =
+let publish (uri : Lsp.Uri.t) (diagnostics : diagnostic list) =
   let diagnostics = List.map (render_lsp_diagnostic uri) diagnostics in
   let params = L.PublishDiagnosticsParams.create ~uri ~diagnostics () in
   broadcast (PublishDiagnostics params)

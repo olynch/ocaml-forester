@@ -21,8 +21,8 @@ let install ~host ~source_path ~content =
     Hashtbl.add router source_path iri;
     iri
 
-let iri_of_asset ~source_path =
+let iri_of_asset ?loc ~source_path () =
   match Hashtbl.find_opt router source_path with
   | Some iri -> iri
   | None ->
-    Reporter.fatalf Resource_not_found "Asset located at `%s' does not have a content address" source_path
+    Reporter.fatalf ?loc Resource_not_found "Asset located at `%s' does not have a content address" source_path

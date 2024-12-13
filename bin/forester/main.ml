@@ -8,15 +8,26 @@ open Eio.Std
 open Forester_prelude
 open Forester_core
 open Forester_frontend
+open Forester_forest
 open Cmdliner
 
 module EP = Eio.Path
 
-let path_of_dir ~env dir =
-  EP.(Eio.Stdenv.fs env / dir)
+let setup_logs style_renderer level =
+  Fmt_tty.setup_std_outputs ?style_renderer ();
+  Logs.set_level level;
+  Logs.set_reporter (Logs_fmt.reporter ());
+  ()
 
-let paths_of_dirs ~env =
-  List.map (path_of_dir ~env)
+let verbosity =
+  let env = Cmd.Env.info "PART_LOGS" in
+  Logs_cli.level ~env ~docs: Manpage.s_common_options ()
+
+let renderer =
+  let env = Cmd.Env.info "PART_FMT" in
+  Fmt_cli.style_renderer ~docs: Manpage.s_common_options ~env ()
+
+let arg_logs = Term.(const setup_logs $ renderer $ verbosity)
 
 let version =
   Format.asprintf "%s" @@
@@ -24,50 +35,41 @@ let version =
     | None -> "n/a"
     | Some v -> Build_info.V1.Version.to_string v
 
-let build ~env config_filename dev no_theme =
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let tree_dirs = paths_of_dirs ~env config.trees in
-  let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_paths = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev ~tree_dirs ~asset_dirs ~foreign_paths;
-  Forester.render_forest ~env ~dev ~host: config.host ~home: config.home;
-  let dirs_to_copy =
-    (if not no_theme then [config.theme] else []) @
-      []
-  in
+let build ~env _ config_filename dev no_theme =
+  let config = Config.parse_forest_config_file config_filename in
+  Logs.debug (fun m -> m "Parsed config file %s" config_filename);
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~config in
+  Compiler.(
+    forest
+    |> get_diagnostics
+    |> Diagnostics.iter (fun _ d -> List.iter Reporter.Tty.display d)
+  );
+  Forester.render_forest ~dev ~forest;
+  let dirs_to_copy = (if not no_theme then [config.theme] else []) in
   let@ dir_to_copy = List.iter @~ dirs_to_copy in
-  Forester.copy_contents_of_dir ~env @@ path_of_dir ~env dir_to_copy
+  Forester.copy_contents_of_dir ~env @@ Eio_util.path_of_dir ~env dir_to_copy
 
-let new_tree ~env config_filename dest_dir prefix template random =
+let new_tree ~env config_filename prefix template random =
   let@ () = Reporter.silence in
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let tree_dirs = paths_of_dirs ~env config.trees in
-  let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_paths = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_paths;
+  let config = Config.parse_forest_config_file config_filename in
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~config in
   let mode = if random then `Random else `Sequential in
-  let dest = path_of_dir ~env dest_dir in
-  let addr = Forester.create_tree ~env ~dest ~prefix ~template ~mode in
-  Format.printf "%s/%s.tree\n" dest_dir addr
+  let new_tree = Forester.create_tree ~env ~prefix ~template ~mode ~config ~forest in
+  Format.printf "%s.tree\n" new_tree
 
 let complete ~env config_filename title =
   let@ () = Reporter.silence in
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let tree_dirs = paths_of_dirs ~env config.trees in
-  let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_paths = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_paths;
-  let@ iri, title = Seq.iter @~ Forester.complete ~host: config.host title in
+  let config = Config.parse_forest_config_file config_filename in
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~config in
+  let@ iri, title = Seq.iter @~ Forester.complete ~forest title in
   Format.printf "%a, %s\n" pp_iri iri title
 
 let query_all ~env config_filename =
   let@ () = Reporter.silence in
-  let config = Forester_frontend.Config.parse_forest_config_file config_filename in
-  let tree_dirs = paths_of_dirs ~env config.trees in
-  let asset_dirs = paths_of_dirs ~env config.assets in
-  let foreign_paths = paths_of_dirs ~env config.foreign in
-  Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_paths;
-  Forester.json_manifest ~host: config.host ~home: config.home ~dev: true |> Format.printf "%s"
+  let config = Config.parse_forest_config_file config_filename in
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~config in
+  Format.printf "%s" @@
+    Forester.json_manifest ~dev: true ~forest
 
 let default_config_str =
   {|[forest]
@@ -166,6 +168,7 @@ let build_cmd ~env =
     info
     Term.(
       const (build ~env)
+      $ arg_logs
       $ arg_config
       $ arg_dev
       $ arg_no_theme
@@ -184,12 +187,6 @@ let new_tree_cmd ~env =
     Arg.opt (Arg.some Arg.string) None @@
     Arg.info ["template"] ~docv: "XXX" ~doc
   in
-  let arg_dest_dir =
-    let doc = "The directory in which to deposit created tree." in
-    Arg.required @@
-    Arg.opt (Arg.some Arg.dir) None @@
-    Arg.info ["dest"] ~docv: "DEST" ~doc
-  in
   let arg_random =
     let doc = "True if the new tree should have id assigned randomly rather than sequentially" in
     Arg.value @@ Arg.flag @@ Arg.info ["random"] ~doc
@@ -201,7 +198,6 @@ let new_tree_cmd ~env =
     Term.(
       const (new_tree ~env)
       $ arg_config
-      $ arg_dest_dir
       $ arg_prefix
       $ arg_template
       $ arg_random
@@ -243,7 +239,7 @@ let init_cmd ~env =
   let info = Cmd.info "init" ~version ~doc ~man in
   Cmd.v info Term.(const (init ~env) $ arg_dir)
 
-let lsp ~env config =
+let lsp ~env _ config =
   let config = Config.parse_forest_config_file config in
   Forester_lsp.start
     ~env
@@ -262,6 +258,58 @@ let lsp_cmd ~env =
     info
     Term.(
       const (lsp ~env)
+      $ arg_logs
+      $ arg_config
+    )
+
+let render ~env format addr config =
+  let config = Config.parse_forest_config_file config in
+  Forester_frontend.Forester.render_tree ~env ~format ~config addr
+
+let render_cmd ~env =
+  let open Cmdliner in
+  let man =
+    [
+      `S Manpage.s_description;
+      `P "The $(tname) renders a tree in the specified format.";
+    ]
+  in
+  let arg_addr =
+    let doc = "the tree to render" in
+    Arg.(
+      required @@
+      opt (some string) None @@
+      info ["addr"] ~docv: "XXX" ~doc
+    )
+  in
+  let arg_format =
+    Arg.(
+      value
+      & opt
+        (
+          Arg.enum
+            [
+              "html", Forester.HTML;
+              "json", JSON;
+              "xml", XML
+            ]
+        )
+        ~vopt: Forester.HTML
+        HTML
+      & info ["format"]
+    )
+  in
+  let doc
+    =
+    "Render a tree"
+  in
+  let info = Cmd.info "render" ~version ~doc ~man in
+  Cmd.v
+    info
+    Term.(
+      const (render ~env)
+      $ arg_format
+      $ arg_addr
       $ arg_config
     )
 
@@ -284,12 +332,14 @@ let cmd ~env =
       complete_cmd ~env;
       init_cmd ~env;
       query_cmd ~env;
+      render_cmd ~env;
       lsp_cmd ~env;
     ]
 
 let () =
   Random.self_init ();
   Printexc.record_backtrace true;
+  Logs.set_reporter (Logs_fmt.reporter ());
   let@ env = Eio_main.run in
   let@ () = Forester_core.Reporter.easy_run in
   exit @@ Cmd.eval ~catch: false @@ cmd ~env

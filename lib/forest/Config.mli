@@ -12,6 +12,7 @@ module Forest_config: sig
     assets: string list;
     foreign: string list;
     theme: string;
+    prefixes: string list;
   }
   [@@deriving show]
 end

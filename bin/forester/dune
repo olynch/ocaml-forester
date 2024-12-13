@@ -14,7 +14,11 @@
    forester.core
    forester.frontend
    forester.language_server
+   logs
+   logs.fmt
+   logs.cli
    forester.compiler
+   forester.forest
    cmdliner
    dune-build-info
    asai
@@ -23,4 +27,6 @@
    eio.unix
    bwd
    eio_main
-   fmt))
+   fmt
+   fmt.cli
+   fmt.tty))

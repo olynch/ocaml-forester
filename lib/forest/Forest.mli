@@ -6,21 +6,16 @@
 
 open Forester_core
 
-module T = Types
+module T = Forester_core.Types
+module Dx = Forester_core.Datalog_expr
 
-type resource = T.content T.resource
+val iri_for_resource : 'a T.resource -> Forester_core__.Base.iri option
 
-module type S = sig
-  val plant_resource : resource -> unit
-  val get_resource : iri -> resource option
-  val get_article : iri -> T.content T.article option
-  val get_all_resources : unit -> resource Seq.t
+type env = (module Forest_graphs.S)
 
-  val get_expanded_title : ?scope: iri -> ?flags: T.title_flags -> T.content T.frontmatter -> T.content
-  val get_content_of_transclusion : T.content T.transclusion -> T.content option
-  val get_title_or_content_of_vertex : ?not_found: (iri -> T.content option) -> modifier: T.modifier -> T.content T.vertex -> T.content option
-  val run_datalog_query : (string, Vertex.t) Datalog_expr.query -> Vertex_set.t
-  val run_query : T.query -> Vertex_set.t
-end
+include Hashtbl.S with type key = iri
 
-module Make (_: Forest_graphs.S) : S
+val legacy_query_engine : env -> (module Legacy_query_engine.S)
+
+val run_datalog_query :
+  (module Forest_graphs.S) -> (string, Forester_core.Vertex.t) Dx.query -> Forester_core.Vertex_set.t

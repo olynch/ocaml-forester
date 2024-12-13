@@ -8,10 +8,14 @@ open Forester_core
 module T := Types
 
 type result = {
-  main: T.content T.article;
-  side: T.content T.article list;
-  jobs: Job.job list
+  articles: T.content T.article list;
+  jobs: Job.job Range.located list
 }
 
-val eval_tree : host: string -> iri: iri -> source_path: string option -> Syn.tree -> result
-val eval_dg : host: string -> iri: iri -> source_path: string option -> Syn.tree -> Reporter.Message.t Asai.Diagnostic.t list * result
+val eval_tree :
+  ?quit_on_failure: bool ->
+  host: string ->
+  iri: iri ->
+  source_path: string option ->
+  Syn.tree ->
+  Reporter.diagnostic list * result

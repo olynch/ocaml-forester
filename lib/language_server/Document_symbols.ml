@@ -6,18 +6,19 @@
  *)
 
 open Forester_compiler
+open Forester_forest
 
 module L = Lsp.Types
-module F = Analysis.F
-module PT = Analysis.PT
 
 let (let*) = Option.bind
+
+let pp_path = Resolver.Scope.pp_path
 
 let compute (params : L.DocumentSymbolParams.t) =
   match params with
   | { textDocument; _ } ->
-    let server = State.get () in
-    match Hashtbl.find_opt server.index.codes textDocument with
+    let Lsp_state.{ forest; _ } = Lsp_state.get () in
+    match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
     | None -> None
     | Some { code; _ } ->
       let symbols =
@@ -28,6 +29,7 @@ let compute (params : L.DocumentSymbolParams.t) =
               ->
               let open Code in
               let range = Lsp_shims.Loc.lsp_range_of_range loc in
+              let selectionRange = range in
               match value with
               | Subtree (addr, _) ->
                 let name =
@@ -37,34 +39,58 @@ let compute (params : L.DocumentSymbolParams.t) =
                 in
                 let range = Lsp_shims.Loc.lsp_range_of_range loc in
                 (* TODO: What should the symbol kind of a subtree be? *)
-                Some (L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Namespace ())
+                Some (L.DocumentSymbol.create ~name ~range ~selectionRange ~kind: Namespace ())
               | Object { self; _ } ->
                 let name =
                   match self with
-                  | Some path -> Format.asprintf "\\%a" Forester_compiler.Resolver.Scope.pp_path path
+                  | Some path -> Format.asprintf "%a" pp_path path
                   | None -> "anonymous"
                 in
-                Some (L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Object ())
+                Some (L.DocumentSymbol.create ~name ~range ~selectionRange ~kind: Object ())
               | Def (name, _, _) ->
-                let name = Format.asprintf "\\%a" Forester_compiler.Resolver.Scope.pp_path name in
+                let name = Format.asprintf "%a" pp_path name in
                 Some
                   (
-                    L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Function ()
+                    L.DocumentSymbol.create ~name ~range ~selectionRange ~kind: Function ()
                   )
               | Namespace (name, _) ->
-                let name = Format.asprintf "\\%a" Forester_compiler.Resolver.Scope.pp_path name in
+                let name = Format.asprintf "%a" pp_path name in
                 Some
                   (
-                    L.DocumentSymbol.create ~name ~range ~selectionRange: range ~kind: Function ()
+                    L.DocumentSymbol.create ~name ~range ~selectionRange ~kind: Namespace ()
+                  )
+              | Ident path ->
+                let name = Format.asprintf "%a" pp_path path in
+                Some
+                  (
+                    L.DocumentSymbol.create ~name ~range ~selectionRange ~kind: Constructor ()
+                  )
+              | Let (path, _, _) ->
+                let name = Format.asprintf "%a" pp_path path in
+                Some
+                  (
+                    L.DocumentSymbol.create ~name ~range ~selectionRange ~kind: Constructor ()
+                  )
+              | Xml_ident (pfx, ident) ->
+                let name =
+                  match pfx with
+                  | None -> Format.asprintf "<%s>" ident
+                  | Some pfx ->
+                    Format.asprintf "<%s:%s>" pfx ident
+                in
+                Some
+                  (
+                    L.DocumentSymbol.create ~name ~range ~selectionRange ~kind: Constructor ()
+                  )
+              | Hash_ident _ ->
+                Some
+                  (
+                    L.DocumentSymbol.create ~name: "(hash)" ~range ~selectionRange ~kind: Constant ()
                   )
               | Text _
               | Verbatim _
               | Group (_, _)
               | Math (_, _)
-              | Ident _
-              | Hash_ident _
-              | Xml_ident (_, _)
-              | Let (_, _, _)
               | Open _
               | Scope _
               | Put (_, _)

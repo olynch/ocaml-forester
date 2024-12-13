@@ -34,13 +34,16 @@
   eio
   eio.core
   eio.unix
+  unix
   fmt
   multihash
   multihash-digestif
   multicodec
   multibase
+  logs
   cstruct
-  cid)
+  cid
+  lsp)
  (public_name forester.compiler))
 
 (env

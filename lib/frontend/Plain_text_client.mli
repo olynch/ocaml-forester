@@ -10,13 +10,12 @@ module T := Types
 
 module type Params = sig
   val route : iri -> string
+  val forest : Compiler.state
 end
-
-module Default_params: Params
 
 module type S = sig
   val string_of_content : Types.content -> string
   val pp_content : Format.formatter -> Types.content -> unit
 end
 
-module Make (_: Forest.S) (_: Params) : S
+module Make (_: Params) : S

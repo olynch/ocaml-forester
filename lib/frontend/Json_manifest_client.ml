@@ -9,14 +9,18 @@ open Forester_core
 
 module T = Types
 
-module Make (R: sig val route : Iri.t -> string end) (F: Forest.S) = struct
+module Make (R: sig val route : Iri.t -> string val forest : Compiler.state end) = struct
 
-  module PT = Plain_text_client.Make(F)(Plain_text_client.Default_params)
+  module PT = Plain_text_client.Make(R)
 
-  let render_tree ~dev ~host (doc : T.content T.article) =
+  let render_tree ~dev ~host ~forest (doc : T.content T.article) =
     let@ iri = Option.bind doc.frontmatter.iri in
     let route = R.route iri in
-    let title_string = String_util.sentence_case @@ PT.string_of_content @@ F.get_expanded_title doc.frontmatter in
+    let title_string =
+      String_util.sentence_case @@
+      PT.string_of_content @@
+      Compiler.get_expanded_title doc.frontmatter forest
+    in
     let title = `String title_string in
     let taxon =
       match doc.frontmatter.taxon with
@@ -29,7 +33,7 @@ module Make (R: sig val route : Iri.t -> string end) (F: Forest.S) = struct
       `List
         begin
           let@ tag = List.filter_map @~ doc.frontmatter.tags in
-          let@ content = Option.map @~ F.get_title_or_content_of_vertex ~modifier: Identity tag in
+          let@ content = Option.map @~ Compiler.get_title_or_content_of_vertex ~modifier: Identity tag forest in
           `String (PT.string_of_content content)
         end
     in
@@ -60,6 +64,6 @@ module Make (R: sig val route : Iri.t -> string end) (F: Forest.S) = struct
       in
       (Iri.to_string ~pctencode: false (Iri_scheme.relativise_iri ~host iri), `Assoc fm)
 
-  let render_trees ~(dev : bool) ~host (trees : T.content T.article list) : Yojson.Basic.t =
-    `Assoc (List.filter_map (render_tree ~host ~dev) trees)
+  let render_trees ~(dev : bool) ~host ~forest (trees : T.content T.article list) : Yojson.Basic.t =
+    `Assoc (List.filter_map (render_tree ~host ~dev ~forest) trees)
 end

@@ -5,7 +5,6 @@
  *)
 
 open Forester_prelude
-open Forester_core
 open Forester_compiler
 
 module Gph = Graph.Imperative.Digraph.Concrete(String)
@@ -15,6 +14,8 @@ include Op
 
 module Topo = Graph.Topological.Make(Gph)
 let topo_fold = Topo.fold
+
+let empty = Gph.create ~size: 0
 
 let build (trees : Code.tree list) =
   let import_graph = Gph.create () in
