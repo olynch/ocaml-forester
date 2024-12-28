@@ -51,10 +51,14 @@
         devShells.default = pkgs.mkShell {
           TOPIARY_LANGUAGE_DIR = "topiary";
           inputsFrom = [ main ];
-          buildInputs = devPackages ++ [
-            pkgs.topiary
-            pkgs.reuse
-          ];
+          buildInputs =
+            with pkgs;
+            devPackages
+            ++ [
+              topiary
+              reuse
+              watchexec
+            ];
         };
       }
     );
