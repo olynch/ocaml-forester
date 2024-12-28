@@ -2,21 +2,6 @@
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
-; (test
-;   (name Import_graph)
-;   (libraries 
-;     eio
-;     eio.core
-;     eio.unix
-;     eio_main
-;     forester.prelude
-;     forester.core
-;     forester.forest
-;     forester.frontend
-;     forester.compiler
-;     alcotest)
-;   (deps (glob_files_rec ./imports/*)))
-
 (tests
  (names parse DSL Expansion Import_graph)
  (preprocess
