@@ -18,7 +18,7 @@
 ;   (deps (glob_files_rec ./imports/*)))
 
 (tests
- (names parse DSL Compiler Expansion Import_graph)
+ (names parse DSL Expansion Import_graph)
  (preprocess
   (pps ppx_deriving.show))
  (deps
