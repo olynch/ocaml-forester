@@ -9,10 +9,6 @@ open Forester_core
 open Forester_compiler
 
 module L = Lsp.Types
-(* module G = Forester_forest.Forest_graphs.Make () *)
-(* module F = Forester_forest.Forest.Make(G)(struct let resources = None end) *)
-(* module FU = Forester_forest.Forest_util.Make(F) *)
-(* module PT = Forester_forest.Plain_text_client.Make(F)(struct let route _ = "todo" end) *)
 
 let extract_addr (node : Code.node Range.located) : string option =
   match node.value with

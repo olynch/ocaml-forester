@@ -9,7 +9,7 @@ open Forester_core
 type env = Eio_unix.Stdenv.base
 type dir = Eio.Fs.dir_ty Eio.Path.t
 
-type format = JSON | HTML | XML
+type format = HTML | JSON | XML | STRING
 
 val plant_assets :
   env:

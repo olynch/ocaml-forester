@@ -34,17 +34,15 @@ let init
     : env: Eio_unix.Stdenv.base -> config: Config.Forest_config.t -> state
   = fun ~env ~config ->
     let graphs = (module Forest_graphs.Make (): Forest_graphs.S) in
-    let parsed = Forest.create 100 in
-    let documents = Hashtbl.create 100 in
-    let expanded = Forest.create 100 in
-    let resources = Forest.create 100 in
+    let parsed = Forest.create 1000 in
+    let documents = Hashtbl.create 1000 in
+    let expanded = Forest.create 1000 in
+    let resources = Forest.create 1000 in
     let diagnostics = Diagnostics.create 100 in
     let units = Expand.Env.empty in
     {
-      (* import_graph = Forest_graph.create (); *)
       env;
       config;
-      (* resolver; *)
       units;
       documents;
       diagnostics;
@@ -82,17 +80,24 @@ let get_article
       None
     | Some (T.Article article) -> Some article
 
+(*  TODO: after my refactors, it is no longer clear when and how this should be
+    used. I think we need to find a definitive design for when to call
+    register_iri, and no longer use a name such as plant_resource. It seems to
+    me that this function conflates adding stuff to the hash table and dealing
+    with the graphs.*)
+
 let plant_resource
     : resource -> state -> unit
   = fun resource forest ->
-    (* TODO: Analyze resources*)
     let module Graphs = (val forest.graphs) in
+    Forest.analyse_resource forest.graphs resource;
     let resources = forest.resources in
     let@ iri = Option.iter @~ Forest.iri_for_resource resource in
     let iri = Iri.normalize iri in
+    Graphs.register_iri iri;
     match Forest.mem resources iri with
     | false ->
-      Graphs.register_iri iri;
+      (* Graphs.register_iri iri; *)
       Forest.add resources iri resource
     | true ->
       ()

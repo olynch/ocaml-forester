@@ -8,14 +8,5 @@ open Forester_core
 
 module T := Types
 
-module type Params = sig
-  val route : iri -> string
-  val forest : Compiler.state
-end
-
-module type S = sig
-  val string_of_content : Types.content -> string
-  val pp_content : Format.formatter -> Types.content -> unit
-end
-
-module Make (_: Params) : S
+val string_of_content : Compiler.state -> Types.content -> string
+val pp_content : Compiler.state -> Format.formatter -> Types.content -> unit

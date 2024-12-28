@@ -8,56 +8,39 @@ open Forester_core
 
 module T = Types
 
-module type Params = sig
-  val route : iri -> string
-  val forest : Compiler.state
-end
+let rec pp_content forest fmt = function
+  | T.Content c -> c |> List.iter @@ pp_content_node forest fmt
 
-(* module Default_params: Params = struct *)
-(*   let route = Iri.to_uri *)
-(* end *)
+and pp_content_node
+    forest
+    fmt
+    : 'a T.content_node -> unit
+  = function
+  | Text txt | CDATA txt -> Format.pp_print_string fmt txt
+  | Iri iri -> pp_iri fmt iri
+  | Route_of_iri iri -> Format.fprintf fmt "%s" (Iri.to_uri iri)
+  | KaTeX (_, content) -> pp_content forest fmt content
+  | TeX_cs cs -> Format.fprintf fmt "\\%a" TeX_cs.pp cs
+  | Xml_elt elt -> pp_content forest fmt elt.content
+  | Transclude trn -> pp_transclusion forest fmt trn
+  | Contextual_number addr -> Format.fprintf fmt "[%a]" pp_iri addr
+  | Section section -> pp_section forest fmt section
+  | Prim (_, content) -> pp_content forest fmt content
+  | Link link -> pp_link forest fmt link
+  | Results_of_query _ | Results_of_datalog_query _ | Img _ | Artefact _ | Datalog_script _ -> ()
 
-module type S = sig
-  val string_of_content : Types.content -> string
-  val pp_content : Format.formatter -> Types.content -> unit
-end
+and pp_transclusion forest fmt (transclusion : T.content T.transclusion) =
+  match Compiler.get_content_of_transclusion transclusion forest with
+  | None -> Format.fprintf fmt "<could not resolve transclusion of %a>" pp_iri transclusion.href
+  | Some content -> pp_content forest fmt content
 
-module Make (P: Params) : S = struct
-  let forest = P.forest
+and pp_link forest fmt (link : T.content T.link) =
+  pp_content forest fmt link.content
 
-  let rec pp_content fmt = function
-    | T.Content c -> c |> List.iter @@ pp_content_node fmt
+and pp_section forest fmt (section : T.content T.section) =
+  match section.frontmatter.title with
+  | None -> Format.fprintf fmt "<omitted content>"
+  | Some title -> Format.fprintf fmt "<omitted content: %a>" (pp_content forest) title
 
-  and pp_content_node
-      fmt
-      : 'a T.content_node -> unit
-    = function
-    | Text txt | CDATA txt -> Format.pp_print_string fmt txt
-    | Iri iri -> pp_iri fmt iri
-    | Route_of_iri iri -> Format.fprintf fmt "%s" (P.route iri)
-    | KaTeX (_, content) -> pp_content fmt content
-    | TeX_cs cs -> Format.fprintf fmt "\\%a" TeX_cs.pp cs
-    | Xml_elt elt -> pp_content fmt elt.content
-    | Transclude trn -> pp_transclusion fmt trn
-    | Contextual_number addr -> Format.fprintf fmt "[%a]" pp_iri addr
-    | Section section -> pp_section fmt section
-    | Prim (_, content) -> pp_content fmt content
-    | Link link -> pp_link fmt link
-    | Results_of_query _ | Results_of_datalog_query _ | Img _ | Artefact _ | Datalog_script _ -> ()
-
-  and pp_transclusion fmt (transclusion : T.content T.transclusion) =
-    match Compiler.get_content_of_transclusion transclusion forest with
-    | None -> Format.fprintf fmt "<could not resolve transclusion of %a>" pp_iri transclusion.href
-    | Some content -> pp_content fmt content
-
-  and pp_link fmt (link : T.content T.link) =
-    pp_content fmt link.content
-
-  and pp_section fmt (section : T.content T.section) =
-    match section.frontmatter.title with
-    | None -> Format.fprintf fmt "<omitted content>"
-    | Some title -> Format.fprintf fmt "<omitted content: %a>" pp_content title
-
-  let string_of_content =
-    Format.asprintf "%a" pp_content
-end
+let string_of_content forest =
+  Format.asprintf "%a" (pp_content forest)

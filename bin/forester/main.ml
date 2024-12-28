@@ -291,7 +291,8 @@ let render_cmd ~env =
             [
               "html", Forester.HTML;
               "json", JSON;
-              "xml", XML
+              "xml", XML;
+              "string", STRING
             ]
         )
         ~vopt: Forester.HTML

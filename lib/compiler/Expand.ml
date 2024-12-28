@@ -63,15 +63,16 @@ let suggestions
         | None -> None
     )
 
+let suggestions path visible =
+  suggestions ~cutoff: 2 (Bwd.of_list path) visible
+  |> Trie.to_seq
+  |> Seq.map (fun (path, (data, distance)) -> (path, data, distance))
+  |> List.of_seq
+  |> List.sort (fun (_, _, a) (_, _, b) -> Int.compare a b)
+
 let create_suggestions path =
   let visible = Sc.get_visible () in
-  let suggestions =
-    suggestions ~cutoff: 2 (Bwd.of_list path) visible
-    |> Trie.to_seq
-    |> Seq.map (fun (path, (data, distance)) -> (path, data, distance))
-    |> List.of_seq
-    |> List.sort (fun (_, _, a) (_, _, b) -> Int.compare a b)
-  in
+  let suggestions = suggestions path visible in
   let extra_remarks =
     if List.length suggestions > 0 then
       let (path, data, _) = List.hd suggestions in

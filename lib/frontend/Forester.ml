@@ -14,15 +14,13 @@ module EP = Eio.Path
 
 type env = Eio_unix.Stdenv.base
 type dir = Eio.Fs.dir_ty EP.t
-
-type format = JSON | HTML | XML
+type format = HTML | JSON | XML | STRING
 
 let (let*) = Option.bind
 
 let output_dir_name = "output"
 
 let create_tree ~env ~prefix ~template ~mode ~config ~forest =
-  let module FU = Forest_util.Make(struct let forest = forest end) in
   let addrs =
     let@ article = List.filter_map @~ Compiler.get_all_articles forest in
     let@ iri = Option.bind article.frontmatter.iri in
@@ -56,19 +54,13 @@ let create_tree ~env ~prefix ~template ~mode ~config ~forest =
   EP.native_exn path
 
 let complete ~forest prefix =
-  let module FU = Forest_util.Make(struct let forest = forest end) in
-  let module PT = Plain_text_client.Make(struct
-    let route = Iri.to_uri
-    let forest =
-      forest
-  end) in
   let config = Compiler.get_config forest in
   let@ article = Seq.filter_map @~ List.to_seq @@ Compiler.get_all_articles forest in
   let@ iri = Option.bind article.frontmatter.iri in
   let@ iri = Option.bind @@ Option_util.guard Iri_scheme.is_named_iri iri in
   let iri = Iri_scheme.relativise_iri ~host: config.host iri in
   let@ title = Option.bind article.frontmatter.title in
-  let title = Format.asprintf "%a" PT.pp_content title in
+  let title = Format.asprintf "%a" Render.(pp ~dev: true forest STRING) (Content title) in
   if String.starts_with ~prefix title then
     Some (iri, title)
   else
@@ -87,7 +79,6 @@ let copy_contents_of_dir ~env dir =
     Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir: output_dir_name
 
 let plant_assets ~env ~host ~asset_dirs ~forest =
-  (* Logs.debug (fun m -> m "Planting assets: %a" Format.(pp_print_list pp_print_string) (List.map Eio.Path.native_exn asset_dirs)); *)
   let paths = Dir_scanner.scan_directories asset_dirs in
   Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
   let@ source_path = Seq.iter @~ paths in
@@ -99,14 +90,13 @@ let plant_assets ~env ~host ~asset_dirs ~forest =
 
 let render_tree ~env ~format ~config addr : unit =
   let@ () = Reporter.silence in
+  let dev = true in
   let forest = Compiler.init ~env ~config in
-  (* let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in *)
   let asset_dirs = Eio_util.paths_of_dirs ~env config.assets in
   let config = Compiler.get_config forest in
   let addr = Iri_scheme.user_iri ~host: config.host addr in
   let host = config.host in
   plant_assets ~env ~host ~asset_dirs ~forest;
-  (* let router = Iri.of_tree_dirs ~host tree_dirs in *)
   Compiler.(
     forest
     |> build_import_graph_for ~addr
@@ -121,16 +111,16 @@ let render_tree ~env ~format ~config addr : unit =
       | T.Asset _ -> assert false
       | T.Article article ->
         match format with
-        | XML ->
-          let module X = Legacy_xml_client.Make(struct let forest = forest end)() in
-          let xml = X.render_article forest article in
-          Format.printf "%a" (Pure_html.pp_xml ~header: false) xml
-        | JSON ->
-          Format.printf "%a" (Repr.pp_json T.(article_t content_t)) article
-        | HTML ->
-          let module H = Htmx_client.Make(struct let forest = forest end)() in
-          let html = H.render_article forest article in
-          Format.printf "%a\n" Pure_html.pp html
+        (* NOTE: The STRING, HTML, etc. on the left and right are different
+           types. The left one is defined in this module, the right one is
+           defined in Render.
+           See https://github.com/dbuenzli/cmdliner/issues/199
+           This works for now.
+           *)
+        | STRING -> Format.printf "%s" (Render.render ~dev forest STRING (Article article))
+        | HTML -> Format.printf "%a" Pure_html.pp (Render.render ~dev forest HTML (Article article))
+        | JSON -> Format.printf "%a" Yojson.Safe.pp (Render.render ~dev forest JSON (Article article))
+        | XML -> Format.printf "%a" Pure_html.pp (Render.render ~dev forest XML (Article article))
   )
 
 let plant_raw_forest_from_dirs ~env ~(config : Config.Forest_config.t) : Compiler.state =
@@ -165,42 +155,50 @@ let plant_raw_forest_from_dirs ~env ~(config : Config.Forest_config.t) : Compile
   )
 
 let json_manifest ~dev ~(forest : Compiler.state) : string =
-  let config = Compiler.get_config forest in
-  let module FU = Forest_util.Make(struct let forest = forest end) in
-  let module P = struct let forest = forest end in
-  let module Client = Legacy_xml_client.Make(P)() in
-  let module R = Json_manifest_client.Make(struct let route = Iri.to_uri let forest = forest end) in
-  Yojson.Basic.to_string @@ R.render_trees ~dev ~host: config.host ~forest (Compiler.get_all_articles forest)
+  let render = Render.render ~dev forest JSON in
+  forest
+  |> Compiler.get_all_articles
+  |> List.map (fun tree -> render (Article tree))
+  |> List.map
+    (
+      function
+      | `Assoc [r, t] -> r, t
+      | _ -> assert false
+    )
+  |> (fun t -> `Assoc t)
+  |> Yojson.Safe.to_string
 
 let render_forest ~dev ~(forest : Compiler.state) : unit =
-  let module P = struct let forest = forest end in
-  let module Client = Legacy_xml_client.Make(P)() in
-  let module R = Json_manifest_client.Make(struct let route = Iri.to_uri let forest = forest end) in
   let@ () = Reporter.profile "Render forest" in
   let cwd = Eio.Stdenv.cwd (Compiler.get_env forest) in
-  let config = Compiler.get_config forest in
   let all_resources = forest |> Compiler.get_all_resources in
+  List.iter (fun t -> Compiler.plant_resource t forest) all_resources;
   Logs.debug (fun m -> m "rendering %i resources" (List.length all_resources));
   begin
-    let all_articles = List.filter_map (function T.Article article -> Some article | _ -> None) all_resources in
-    let json_string = Yojson.Basic.to_string @@ R.render_trees ~dev ~host: config.host ~forest all_articles in
+    let json_string = json_manifest ~dev ~forest in
     let json_path = EP.(cwd / output_dir_name / "forest.json") in
     Eio_util.ensure_context_of_path ~perm: 0o755 json_path;
     EP.save ~create: (`Or_truncate 0o644) json_path json_string
   end;
+  let module Graphs = (val Compiler.graphs forest) in
   begin
     let@ resource = Eio.Fiber.List.iter ~max_fibers: 20 @~ all_resources in
     let@ () = Reporter.easy_run in
     match resource with
     | T.Article article ->
-      let@ route = Option.iter @~ Option.map (fun iri -> Client.route iri forest) article.frontmatter.iri in
+      let@ route =
+        Option.iter @~
+          Option.map
+            (fun iri -> Legacy_xml_client.route forest iri)
+            article.frontmatter.iri
+      in
       let path = EP.(cwd / output_dir_name / route) in
       Eio_util.ensure_context_of_path ~perm: 0o755 path;
       let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) path in
       let@ writer = Eio.Buf_write.with_flow flow in
-      Client.pp_xml ~stylesheet: "default.xsl" forest (Eio.Buf_write.make_formatter writer) article
+      Render.pp_xml ~dev ~stylesheet: "default.xsl" ~forest (Eio.Buf_write.make_formatter writer) article
     | T.Asset asset ->
-      let route = Client.route asset.iri forest in
+      let route = Legacy_xml_client.route forest asset.iri in
       let dest = EP.(cwd / output_dir_name / route) in
       if Eio_util.file_exists dest then ()
       else
@@ -210,19 +208,19 @@ let render_forest ~dev ~(forest : Compiler.state) : unit =
         end
   end
 
-(* let _export ~forest : unit = *)
-(*   let@ () = Reporter.profile "Export forest" in *)
-(*   let local_resources = *)
-(*     let@ resource = List.filter @~ Compiler.get_all_resources forest in *)
-(*     match resource with *)
-(*     | T.Article { frontmatter = { iri = Some iri; _ }; _ } -> *)
-(*       Iri.host iri = Some forest.config.host *)
-(*     | T.Asset asset -> asset.host = forest.config.host *)
-(*     | _ -> false *)
-(*   in *)
-(*   let cwd = Eio.Stdenv.cwd forest.env in *)
-(*   let result = Repr.to_json_string ~minify: true (T.forest_t T.content_t) @@ local_resources in *)
-(*   let dir = Eio.Path.(cwd / "export") in *)
-(*   let filename = forest.config.host ^ ".json" in *)
-(*   Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir; *)
-(*   Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / filename) result *)
+let _export ~forest : unit =
+  let@ () = Reporter.profile "Export forest" in
+  let local_resources =
+    let@ resource = List.filter @~ Compiler.get_all_resources forest in
+    match resource with
+    | T.Article { frontmatter = { iri = Some iri; _ }; _ } ->
+      Iri.host iri = Some forest.config.host
+    | T.Asset asset -> asset.host = forest.config.host
+    | _ -> false
+  in
+  let cwd = Eio.Stdenv.cwd forest.env in
+  let result = Repr.to_json_string ~minify: true (T.forest_t T.content_t) @@ local_resources in
+  let dir = Eio.Path.(cwd / "export") in
+  let filename = forest.config.host ^ ".json" in
+  Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
+  Eio.Path.save ~create: (`Or_truncate 0o644) Eio.Path.(dir / filename) result

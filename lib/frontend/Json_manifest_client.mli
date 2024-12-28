@@ -5,12 +5,15 @@
  *)
 
 open Forester_core
+module T = Types
 
-module Make (_: sig val route : Iri.t -> string val forest : Compiler.state end) : sig
-  val render_trees :
-    dev: bool ->
-    host: string ->
-    forest: Compiler.state ->
-    Types.content Types.article list ->
-    Yojson.Basic.t
-end
+val render_tree :
+  dev: bool ->
+  forest: Compiler.state ->
+  T.content T.article ->
+  (string * Yojson.Safe.t) option
+
+val render_trees :
+  dev: bool ->
+  forest: Compiler.state ->
+  Yojson.Safe.t

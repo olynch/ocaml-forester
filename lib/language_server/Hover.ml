@@ -23,11 +23,8 @@ let compute
     : L.Hover.t option
   =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let render = Render.render ~dev: true forest STRING in
   let config = Compiler.get_config forest in
-  let module PT = Plain_text_client.Make(struct
-    let route = Iri.to_uri
-    let forest = forest
-  end) in
   let host = config.host in
   let content =
     match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
@@ -42,7 +39,7 @@ let compute
         | None ->
           Format.asprintf "Could not get article %a." pp_iri iri_under_cursor
         | Some { mainmatter; frontmatter; _ } ->
-          let main = PT.string_of_content mainmatter in
+          let main = render (Content mainmatter) in
           if main = "" then (Format.asprintf "%a" T.(pp_frontmatter pp_content) frontmatter)
           else main
   in

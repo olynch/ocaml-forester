@@ -16,6 +16,9 @@ type env = (module Forest_graphs.S)
 include Hashtbl.S with type key = iri
 
 val legacy_query_engine : env -> (module Legacy_query_engine.S)
+[@@@ocaml.deprecated "The legacy query engine is deprecated"]
+
+val analyse_resource : env -> T.content T.resource -> unit
 
 val run_datalog_query :
   (module Forest_graphs.S) -> (string, Forester_core.Vertex.t) Dx.query -> Forester_core.Vertex_set.t

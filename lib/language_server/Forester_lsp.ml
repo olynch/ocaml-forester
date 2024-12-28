@@ -193,7 +193,7 @@ let start ~env ~(config : Forester_forest.Config.Forest_config.t) =
     )
   in
   Server.run
-    ~init: { forest; lsp_io; should_shutdown = false } @@
+    ~init: { forest; lsp_io; should_shutdown = false; } @@
     fun () ->
       begin
         initialize ();

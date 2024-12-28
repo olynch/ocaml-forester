@@ -20,12 +20,9 @@ let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
     _;
   } ->
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
+    let render = Render.render forest STRING in
     let config = Compiler.get_config forest in
     let host = config.host in
-    let module PT = Plain_text_client.Make(struct
-      let route = Iri.to_uri
-      let forest = forest
-    end) in
     match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
     | None ->
       None
@@ -66,7 +63,7 @@ let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
                   | None -> None
                   | Some title ->
                     (* Eio.traceln "got title"; *)
-                    let content = " " ^ PT.string_of_content title in
+                    let content = " " ^ render ~dev: true (Content title) in
                     (* Eio.traceln "made content title"; *)
                     Some
                       (

@@ -18,11 +18,7 @@ let compute
   =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
   let config = Compiler.get_config forest in
-  let module PT = Plain_text_client.Make(struct
-    let route = Iri.to_uri
-    let forest =
-      forest
-  end) in
+  let render = Render.render ~dev: true forest STRING in
   let trees =
     forest
     |> Compiler.parsed
@@ -37,8 +33,7 @@ let compute
               begin
                 match frontmatter.title with
                 | None -> "untitled"
-                | Some content ->
-                  PT.string_of_content content
+                | Some content -> render (Content content)
               end
           in
           (* match Option.map (fun tree -> Code.(tree.source_path)) @@ *)

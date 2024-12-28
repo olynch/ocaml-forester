@@ -8,9 +8,7 @@ module T = Forester_core.Types
 
 module P = Pure_html
 module H = P.HTML
-module type S = sig
-  val route : Forester_core.iri -> string
-  val render_article : Compiler.state -> T.content T.article -> P.node
-end
-module type Params = sig val forest : Compiler.state end
-module Make: functor (_: Params) () -> S
+val route : Compiler.state -> Forester_core.iri -> string
+val render_article : Compiler.state -> T.content T.article -> P.node
+
+val render_content : Compiler.state -> T.content -> P.node list
