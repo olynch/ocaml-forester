@@ -1,0 +1,7 @@
+;;; SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+
+(env
+ (static
+  (link_flags (-ccopt -static))))
