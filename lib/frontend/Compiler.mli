@@ -98,4 +98,3 @@ val get_expanded_title :
   T.content T.frontmatter ->
   state ->
   T.content
-

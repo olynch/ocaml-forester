@@ -4,28 +4,153 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
+open Forester_prelude
 open Forester_core
 open Forester_compiler
 
-let emit _ = () (* ignore *)
+let t =
+  (module struct
+    type t = Code.t
+    let equal = ( = )
+    let pp = Code.pp
+  end: Alcotest.TESTABLE with type t = Code.t)
 
-let fatal _ = exit 1
+let diagnostic =
+  (module struct
+    type t = Reporter.diagnostic
+    let equal = ( = )
+    let pp fmt (d : t) =
+      Format.fprintf
+        fmt
+        "%a@. %s"
+        Reporter.Message.pp
+        d.message
+        (
+          Asai.Diagnostic.string_of_text
+            d.explanation.value
+        )
+  end: Alcotest.TESTABLE with type t = Reporter.diagnostic)
 
-let _ =
-  Reporter.run ~emit ~fatal @@
-    fun () ->
-      let good =
-        Result.get_ok @@
-          Parse.parse_string
-            {|
-    \title{Good}
-    \taxon{Test}
-    \author{Testy}
+let rec strip_loc : Code.t -> Code.t = fun nodes ->
+    List.map
+      (fun Range.{ value; _ } -> Range.{ value = strip_loc_node value; loc = None })
+      nodes
 
-    \p{
-      This should parse correctly.
-    }
-    |}
-      in
-      Format.printf "parse_good_result:\n%s\n\n" (Code.show good)
+and strip_loc_node : Code.node -> Code.node = fun node ->
+    let open Code in
+    match node with
+    | Group (d, t) -> Group (d, strip_loc t)
+    | Math (m, t) -> Math (m, strip_loc t)
+    | Namespace (p, t) -> Namespace (p, strip_loc t)
+    | Dx_const_content t -> Dx_const_content (strip_loc t)
+    | Dx_const_iri t -> Dx_const_iri (strip_loc t)
+    | Def (p, b, t) -> Def (p, b, strip_loc t)
+    | Dx_sequent (t, ts) -> Dx_sequent (strip_loc t, List.map strip_loc ts)
+    | Dx_query (s, ts, rs) -> Dx_query (s, List.map strip_loc ts, List.map strip_loc rs)
+    | Dx_prop (t, ts) -> Dx_prop (t, ts)
+    | Subtree (s, t) -> Subtree (s, strip_loc t)
+    | Let (p, b, t) -> Let (p, b, strip_loc t)
+    | Default (p, t) -> Default (p, strip_loc t)
+    | Scope t -> Scope (strip_loc t)
+    | Put (p, t) -> Put (p, strip_loc t)
+    | Fun (b, t) -> Fun (b, strip_loc t)
+    | Call (t, s) -> Call (strip_loc t, s)
+    | Text _
+    | Verbatim _
+    | Ident _
+    | Hash_ident _
+    | Xml_ident (_, _)
+    | Open _
+    | Get _
+    (* TODO: strip object *)
+    | Object _
+    | Patch _
+    | Import (_, _)
+    | Decl_xmlns (_, _)
+    | Alloc _
+    | Dx_var _
+    | Comment _
+    | Error _ ->
+      node
 
+let parse_string str =
+  let lexbuf = Lexing.from_string str in
+  let res = Parse.parse ~source: (`String { title = None; content = str }) lexbuf in
+  Result.map strip_loc res
+
+let test_prim () =
+  let open Forester_frontend.DSL.Code in
+  Alcotest.(check @@ result t diagnostic)
+    "same nodes"
+    (
+      Ok
+        [
+          ident ["p"];
+          braces
+            [
+              ident ["ul"];
+              braces
+                [
+                  ident ["li"];
+                  braces
+                    [text "foo"]
+                ]
+            ]
+        ]
+    )
+    (
+      parse_string
+        {|\p{\ul{\li{foo}}}|}
+    )
+
+let test_open () =
+  let open Forester_frontend.DSL.Code in
+  Alcotest.(check @@ result t diagnostic)
+    "same nodes"
+    (Ok [open_ ["foo"]])
+    (parse_string {|\open\foo|});
+  Alcotest.(check @@ result t diagnostic)
+    "same nodes"
+    (Ok [open_ ["foo"; "bar"; "baz"]])
+    (parse_string {|\open\foo/bar/baz|})
+
+let test_scope () =
+  let open Forester_frontend.DSL.Code in
+  Alcotest.(check @@ result t diagnostic)
+    "same nodes"
+    (
+      Ok
+        [
+          scope
+            [ident ["p"]; braces []]
+        ]
+    )
+    (parse_string {|\scope{\p{}}|})
+
+let test_file_parsing () =
+  let open Forester_frontend.DSL.Code in
+  Alcotest.(check @@ result t diagnostic)
+    "same nodes"
+    (Ok [ident ["foo"]])
+    (
+      let@ () = Reporter.easy_run in
+      Result.map strip_loc @@
+        Parse.parse_file "trees/index.tree"
+    )
+
+let () =
+  let open Alcotest in
+  run
+    "Parser"
+    [
+      "nodes",
+      [
+        test_case "open" `Quick test_open;
+      ];
+      "scope",
+      [
+        test_case "scope" `Quick test_scope;
+      ];
+      "text", [test_case "text" `Quick test_prim];
+      "file", [test_case "parse file" `Quick test_file_parsing]
+    ]

@@ -81,4 +81,7 @@
   (ppx_yojson_conv
     (>= 0.17.0))
   (logs
-    (>= 0.7.0))))
+    (>= 0.7.0))
+  (bisect_ppx
+    (>= 2.8.3))
+  (alcotest :with-test)))

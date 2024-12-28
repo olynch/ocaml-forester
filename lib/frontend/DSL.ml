@@ -4,60 +4,109 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-module X = Forester_core.Types
+(* At the moment, this module is mostly for marking up test cases *)
 
-let txt str = X.Text str
+module T = Forester_core.Types
 
-let p content = X.Prim (`P, X.Content content)
-let ul content = X.Prim (`Ul, X.Content content)
-let ol content = X.Prim (`Ol, X.Content content)
-let li content = X.Prim (`Li, X.Content content)
-let em content = X.Prim (`Em, X.Content content)
-let strong content = X.Prim (`Strong, X.Content content)
-let code content = X.Prim (`Code, X.Content content)
-let blockquote content = X.Prim (`Blockquote, X.Content content)
-let pre content = X.Prim (`Pre, X.Content content)
-let figure content = X.Prim (`Figure, X.Content content)
-let figcaption content = X.Prim (`Figcaption, X.Content content)
-let cdata content = X.CDATA content
-let contextual_number href = X.Contextual_number (Iri.of_string href)
-let results_of_query query = X.Results_of_query query
-let section content = X.Section content
-let prim p content = X.Prim (p, content)
-let katex m content = X.KaTeX (m, content)
-let tex content = X.TeX_cs (Word content)
-let img href = X.(Img (Remote href))
-let content c = X.Content c
+let txt str = T.Text str
+
+let p content = T.Prim (`P, T.Content content)
+let ul content = T.Prim (`Ul, T.Content content)
+let ol content = T.Prim (`Ol, T.Content content)
+let li content = T.Prim (`Li, T.Content content)
+let em content = T.Prim (`Em, T.Content content)
+let strong content = T.Prim (`Strong, T.Content content)
+let code content = T.Prim (`Code, T.Content content)
+let blockquote content = T.Prim (`Blockquote, T.Content content)
+let pre content = T.Prim (`Pre, T.Content content)
+let figure content = T.Prim (`Figure, T.Content content)
+let figcaption content = T.Prim (`Figcaption, T.Content content)
+let cdata content = T.CDATA content
+let contextual_number href = T.Contextual_number (Iri.of_string href)
+let results_of_query query = T.Results_of_query query
+let katex m content = T.KaTeX (m, content)
+let tex content = T.TeX_cs (Word content)
+let img href = T.(Img (Remote href))
+
+let section
+    ~mainmatter
+    ?(frontmatter = T.default_frontmatter ())
+    ?(flags = T.default_section_flags)
+    ()
+  =
+  T.Section
+    {
+      frontmatter;
+      mainmatter = T.Content mainmatter;
+      flags;
+    }
 
 let xml_elt (prefix, uname) content =
   let prefix = Option.value ~default: "" prefix in
-  let qname = X.{ prefix; uname; xmlns = None } in
-  X.Xml_elt
+  let qname = T.{ prefix; uname; xmlns = None } in
+  T.Xml_elt
     {
       name = qname;
       attrs = [];
-      content = X.Content content
+      content = T.Content content
     }
 
 let transclude href =
-  X.Transclude
-    X.{
+  T.Transclude
+    T.{
       href = Iri.of_string href;
       target = Mainmatter;
       modifier = Identity
     }
 
 let artefact content =
-  X.Artefact
-    X.{
+  T.Artefact
+    T.{
       hash = "";
       content = Content content;
       sources = []
     }
 
 let link href content =
-  X.Link
+  T.Link
     {
       href = Iri.of_string href;
-      content = X.Content content;
+      content = T.Content content;
     }
+
+module Code = struct
+  open Forester_compiler
+  open Code
+  open Asai.Range
+
+  let import_private = Fun.compose (locate_opt None) @@ Code.import_private
+  let import_public = Fun.compose (locate_opt None) @@ Code.import_public
+
+  let inline_math = Fun.compose (locate_opt None) @@ Code.inline_math
+  let display_math = Fun.compose (locate_opt None) @@ Code.display_math
+  let parens = Fun.compose (locate_opt None) @@ Code.parens
+  let squares = Fun.compose (locate_opt None) @@ Code.squares
+  let braces = Fun.compose (locate_opt None) @@ Code.braces
+
+  let text str = locate_opt None @@ Text str
+  let verbatim str = locate_opt None @@ Verbatim str
+  let math mode nodes = locate_opt None @@ Math (mode, nodes)
+  let ident path = locate_opt None @@ Ident path
+  let scope nodes = locate_opt None @@ Scope nodes
+  let open_ path = locate_opt None @@ Open path
+  let group delim nodes = locate_opt None @@ Group (delim, nodes)
+  let def p b t = locate_opt None @@ Def (p, b, t)
+end
+
+module Syn = struct
+  open Forester_compiler.Syn
+  open Asai.Range
+  let fun_ b t = locate_opt None @@ Fun (b, t)
+  let prim p = locate_opt None @@ Prim p
+
+  let text s = locate_opt None @@ Text s
+
+  let parens e = locate_opt None @@ Group (Parens, e)
+  let squares e = locate_opt None @@ Group (Squares, e)
+  let braces e = locate_opt None @@ Group (Braces, e)
+end

@@ -17,6 +17,7 @@
 
 (library
  (name Forester_compiler)
+ (instrumentation (backend bisect_ppx))
  (preprocess
   (pps ppx_deriving.show ppx_repr))
  (libraries

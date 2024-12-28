@@ -14,12 +14,12 @@
   };
   outputs =
     {
-      self,
       flake-utils,
       opam-nix,
       nixpkgs,
       opam-repository,
-    }@inputs:
+      ...
+    }:
     let
       package = "forester";
     in
@@ -31,8 +31,8 @@
         devPackagesQuery = {
           ocaml-base-compiler = "5.2.0";
           ocaml-lsp-server = "*";
-          odoc = "*";
           odig = "*";
+          alcotest = "*";
         };
         query = devPackagesQuery // { };
         scope = on.buildOpamProject' { repos = [ "${opam-repository}" ]; } ./. query;

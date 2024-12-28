@@ -2,14 +2,41 @@
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
+; (test
+;   (name Import_graph)
+;   (libraries 
+;     eio
+;     eio.core
+;     eio.unix
+;     eio_main
+;     forester.prelude
+;     forester.core
+;     forester.forest
+;     forester.frontend
+;     forester.compiler
+;     alcotest)
+;   (deps (glob_files_rec ./imports/*)))
+
 (tests
- (names parse dsl)
+ (names parse DSL Compiler Expansion Import_graph)
  (preprocess
   (pps ppx_deriving.show))
+ (deps
+   (glob_files_rec ./trees/* )
+   (glob_files_rec ./imports/*))
  (libraries
+  alcotest
+  fmt
   forester.frontend
   forester.prelude
   forester.compiler
   forester.core
+  forester.forest
+  yuujinchou
+  logs
+  iri
   eio
+  eio.core
+  eio.unix
+  eio_main
   asai))
