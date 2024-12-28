@@ -91,7 +91,8 @@ module V = struct
   let extract_obj_ptr (x : located) =
     match x.value with
     | Obj sym -> sym
-    | _ -> Reporter.fatalf ?loc: x.loc Type_error "Expected object"
+    (* TODO: Rephrase, should be something like "this is a thing of type foo, cannot access method bar"*)
+    | other -> Reporter.fatalf ?loc: x.loc Type_error "Expected object, but got %s" (show other)
 
   let extract_sym (x : located) =
     match x.value with
