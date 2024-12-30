@@ -94,7 +94,7 @@ let expand_tilde path =
 
 let create_bib_tree ~env ~dest ~bibfile =
   let source = EP.load @@ EP.(Eio.Stdenv.fs env / expand_tilde bibfile) in
-  let dtb = Bibtex.parse @@ Lexing.from_string source in
+  let dtb = Bibtex.parse ~with_keys: Bibtex_import.keys @@ Lexing.from_string source in
   let _ = if Bibtex.Database.cardinal dtb == 1 then () else Reporter.fatalf Invalid_bibtex_import "expected bib file to contain exactly one entry" in
   dtb |> Bibtex.Database.to_list |> List.hd |> fun (_, bibrecord) ->
     let treename = Bibtex_import.tree_name bibrecord in

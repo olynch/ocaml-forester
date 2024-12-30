@@ -1,3 +1,15 @@
+let keys =
+  let open Bibtex.Field_types in
+  let open Bibtex.Fields in
+  let str named_field = ( named_field.f @: named_field.conv ) in
+  let (|++) database named_field =
+    Bibtex.Database.add named_field.name (str named_field) database in
+  Bibtex.Fields.default_keys
+         |++ str_field ~name:"issn"
+         |++ str_field ~name:"publisher"
+         (* we don't care about parsing pages as a tuple of numbers *)
+         |++ str_field ~name:"pages"
+
 let format_tree b source =
   let open Bibtex.Fields in
   let buf = Buffer.create 1000 in
