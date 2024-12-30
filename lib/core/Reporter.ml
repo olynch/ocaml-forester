@@ -28,6 +28,8 @@ module Message = struct
     | Broken_link
     | IO_error
     | Log
+    | Invalid_bibtex_import
+    | Argument_error
   [@@deriving show]
 
   let default_severity : t -> Asai.Diagnostic.severity = function
@@ -51,6 +53,8 @@ module Message = struct
     | Resource_not_found -> Error
     | Broken_link -> Warning
     | IO_error -> Error
+    | Invalid_bibtex_import -> Error
+    | Argument_error -> Error
 
   let short_code : t -> string =
     show

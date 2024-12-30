@@ -136,4 +136,5 @@ setup.log
 _opam/
 
 # for Nix
-result/
+result
+.direnv

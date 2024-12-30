@@ -26,7 +26,8 @@
   algaeff
   str
   unix
-  iri))
+  iri
+  talaria-bibtex))
 
 (env
  (dev

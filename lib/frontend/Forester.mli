@@ -44,6 +44,12 @@ val create_tree :
   mode: [`Sequential | `Random] ->
   string
 
+val create_bib_tree :
+  env: env ->
+  dest: dir ->
+  bibfile: string ->
+  string
+
 val json_manifest :
   host: string ->
   home: string option ->

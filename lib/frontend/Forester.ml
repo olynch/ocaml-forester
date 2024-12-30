@@ -83,6 +83,28 @@ let create_tree ~env ~dest ~prefix ~template ~mode =
   EP.save ~create path @@ body ^ template_content;
   next
 
+let expand_tilde path =
+  if String.length path > 0 && String.sub path 0 1 = "~" then
+    match Sys.getenv_opt "HOME" with
+      (* support ~dir as well as ~/dir *)
+    | Some home -> home ^ (if String.sub path 0 2 = "~/" then "" else "/") ^ String.sub path 1 (String.length path - 1)
+    | None -> Reporter.fatalf IO_error "HOME environment variable not set"
+  else
+    path
+
+let create_bib_tree ~env ~dest ~bibfile =
+  let source = EP.load @@ EP.(Eio.Stdenv.fs env / expand_tilde bibfile) in
+  let dtb = Bibtex.parse @@ Lexing.from_string source in
+  let _ = if Bibtex.Database.cardinal dtb == 1 then () else Reporter.fatalf Invalid_bibtex_import "expected bib file to contain exactly one entry" in
+  dtb |> Bibtex.Database.to_list |> List.hd |> fun (_, bibrecord) ->
+    let treename = Bibtex_import.tree_name bibrecord in
+    let fname = treename ^ ".tree" in
+    let content = Bibtex_import.format_tree bibrecord source in
+    let path = EP.(dest / fname) in
+    let create = `Exclusive 0o644 in
+    EP.save ~create path @@ content;
+    treename
+
 let complete ~host prefix =
   let@ article = Seq.filter_map @~ List.to_seq @@ FU.get_all_articles () in
   let@ iri = Option.bind article.frontmatter.iri in

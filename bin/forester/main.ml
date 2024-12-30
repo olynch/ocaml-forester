@@ -37,7 +37,13 @@ let build ~env config_filename dev no_theme =
   let@ dir_to_copy = List.iter @~ dirs_to_copy in
   Forester.copy_contents_of_dir ~env @@ path_of_dir ~env dir_to_copy
 
-let new_tree ~env config_filename dest_dir prefix template random =
+let bib_or_prefix prefix bibfile = match (prefix, bibfile) with
+    | (Some prefix, None) -> `Prefix prefix
+    | (None, Some bibfile) -> `Bibfile bibfile
+    | _ -> Reporter.fatalf Argument_error "precisely one of --prefix or --bib is required"
+
+let new_tree ~env config_filename dest_dir prefix template random bibfile =
+  let tree_type = bib_or_prefix prefix bibfile in
   let@ () = Reporter.silence in
   let config = Forester_frontend.Config.parse_forest_config_file config_filename in
   let tree_dirs = paths_of_dirs ~env config.trees in
@@ -46,7 +52,9 @@ let new_tree ~env config_filename dest_dir prefix template random =
   Forester.plant_raw_forest_from_dirs ~env ~host: config.host ~dev: true ~tree_dirs ~asset_dirs ~foreign_paths;
   let mode = if random then `Random else `Sequential in
   let dest = path_of_dir ~env dest_dir in
-  let addr = Forester.create_tree ~env ~dest ~prefix ~template ~mode in
+  let addr = match tree_type with
+      | `Prefix prefix -> Forester.create_tree ~env ~dest ~prefix ~template ~mode
+      | `Bibfile bibfile -> Forester.create_bib_tree ~env ~dest ~bibfile in
   Format.printf "%s/%s.tree\n" dest_dir addr
 
 let complete ~env config_filename title =
@@ -173,7 +181,7 @@ let build_cmd ~env =
 let new_tree_cmd ~env =
   let arg_prefix =
     let doc = "The namespace prefix for the created tree." in
-    Arg.required @@
+    Arg.value @@
     Arg.opt (Arg.some Arg.string) None @@
     Arg.info ["prefix"] ~docv: "XXX" ~doc
   in
@@ -193,6 +201,12 @@ let new_tree_cmd ~env =
     let doc = "True if the new tree should have id assigned randomly rather than sequentially" in
     Arg.value @@ Arg.flag @@ Arg.info ["random"] ~doc
   in
+  let arg_bibfile =
+    let doc = "Create a reference tree based on this .bib file" in
+    Arg.value @@
+    Arg.opt (Arg.some Arg.string) None @@
+    Arg.info ["bib"] ~docv: "BIBFILE" ~doc
+  in
   let doc = "Create a new tree." in
   let info = Cmd.info "new" ~version ~doc in
   Cmd.v
@@ -204,6 +218,7 @@ let new_tree_cmd ~env =
       $ arg_prefix
       $ arg_template
       $ arg_random
+      $ arg_bibfile
     )
 
 let complete_cmd ~env =
