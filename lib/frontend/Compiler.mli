@@ -62,16 +62,10 @@ val build_import_graph_for : addr: iri -> state -> state
 (** [expand  forest] will expand all unit paths in [forest], accumulating the diagnostics. *)
 val expand : quit_on_error: bool -> state -> state
 
-val expand_only :
-  (* ?quit_on_error:bool -> *)
-  (* host:string -> *)
-  (* addr:iri -> *)
-  (* Tree_resolver.t -> *)
-  (* Expand.Env.t * (Lsp.Uri.t, Reporter.diagnostic list) Hashtbl.t * Syn.t Forest.t *)
-  iri -> state -> state
+val expand_only : iri -> state -> state
 
 (** [eval  forest] will evaluate all trees in [forest]. *)
-val eval : state -> state
+val eval : dev: bool -> state -> state
 
 val get_article : iri -> state -> T.content T.article option
 
@@ -79,7 +73,7 @@ val get_all_resources : state -> resource list
 
 val get_all_articles : state -> T.content T.article list
 
-(* val plant : iri -> 'a -> 'a forest -> unit *)
+val plant : state -> state
 
 val plant_resource : resource -> state -> unit
 

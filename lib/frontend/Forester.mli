@@ -23,6 +23,7 @@ val plant_assets :
 
 val plant_raw_forest_from_dirs :
   env: env ->
+  dev: bool ->
   config: Forester_forest.Config.Forest_config.t ->
   Compiler.state
 

@@ -101,7 +101,7 @@ let render_tree ~env ~format ~config addr : unit =
     forest
     |> build_import_graph_for ~addr
     |> expand_only addr
-    |> eval
+    |> eval ~dev
     |> resources
     |> Fun.flip Forest.find_opt addr
     |> function
@@ -120,10 +120,10 @@ let render_tree ~env ~format ~config addr : unit =
         | STRING -> Format.printf "%s" (Render.render ~dev forest STRING (Article article))
         | HTML -> Format.printf "%a" Pure_html.pp (Render.render ~dev forest HTML (Article article))
         | JSON -> Format.printf "%a" Yojson.Safe.pp (Render.render ~dev forest JSON (Article article))
-        | XML -> Format.printf "%a" Pure_html.pp (Render.render ~dev forest XML (Article article))
+        | XML -> Format.printf "%a" Pure_html.(pp_xml ?header: None) (Render.render ~dev forest XML (Article article))
   )
 
-let plant_raw_forest_from_dirs ~env ~(config : Config.Forest_config.t) : Compiler.state =
+let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.Forest_config.t) : Compiler.state =
   let asset_dirs = Eio_util.paths_of_dirs ~env config.assets in
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let foreign_paths = Eio_util.paths_of_dirs ~env config.foreign in
@@ -151,7 +151,7 @@ let plant_raw_forest_from_dirs ~env ~(config : Config.Forest_config.t) : Compile
     |> parse ~quit_on_error: true
     |> build_import_graph
     |> expand ~quit_on_error: true
-    |> eval
+    |> eval ~dev
   )
 
 let json_manifest ~dev ~(forest : Compiler.state) : string =

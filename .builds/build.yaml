@@ -23,6 +23,7 @@ tasks:
             cachix use forester
     - build: |
             cd ocaml-forester
+            nix develop --command dune runtest
             nix build --json \
               | jq -r '.[].outputs | to_entries[].value' \
               | cachix push forester

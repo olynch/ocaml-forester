@@ -389,17 +389,16 @@ let export_publication ~env ~(forest : state) (publication : Job.publication) : 
       blob
 
 let eval
-    : state -> state
-  = fun forest ->
+    : dev: bool -> state -> state
+  = fun ~dev forest ->
     let host = forest.config.host in
     let expanded = forest.expanded in
     let env = forest.env in
-    (* let resolver = Tree_resolver.Text_document forest.documents in *)
     expanded
     |> Forest.iter
       (
         fun iri syn ->
-          let source_path = Iri_resolver.(resolve (Iri iri) To_path forest) in
+          let source_path = if dev then Iri_resolver.(resolve (Iri iri) To_path forest) else None in
           let uri = Iri_resolver.(resolve (Iri iri) To_uri forest) in
           let diagnostics, Eval.{ articles; jobs } =
             Eval.eval_tree
@@ -445,6 +444,13 @@ let eval
       );
     let resources = forest.resources |> Forest.length in
     Logs.debug (fun m -> m "evaluated %i trees" resources);
+    forest
+
+let plant
+    : State.t -> State.t
+  = fun forest ->
+    let resources = get_all_resources forest in
+    List.iter (fun t -> plant_resource t forest) resources;
     forest
 
 let section_symbol = "§"

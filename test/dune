@@ -2,10 +2,23 @@
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
+(env
+ (dev
+  (flags (:standard -w -66-32-26)))
+ (_
+  (env-vars
+   (FORESTERLSP_TEST true))))
+
+(cram
+  (deps
+    %{bin:forester}
+    (glob_files_rec ./forest*)
+    ))
+
 (tests
- (names parse DSL Expansion Import_graph)
+ (names parse DSL Expansion Import_graph Output Transclusion Errors E2e)
  (preprocess
-  (pps ppx_deriving.show))
+  (pps ppx_deriving.show ppx_yojson_conv))
  (deps
    (glob_files_rec ./trees/* )
    (glob_files_rec ./imports/*))
@@ -17,6 +30,7 @@
   forester.compiler
   forester.core
   forester.forest
+  pure-html
   yuujinchou
   logs
   iri
@@ -24,4 +38,8 @@
   eio.core
   eio.unix
   eio_main
-  asai))
+  asai
+  lsp
+  yojson
+  jsonrpc))
+

@@ -181,7 +181,6 @@ let rec event_loop () =
 let start ~env ~(config : Forester_forest.Config.Forest_config.t) =
   let lsp_io = LspEio.init env in
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
-  Eio.traceln "hello";
   let forest =
     Compiler.(
       init ~env ~config
@@ -189,7 +188,7 @@ let start ~env ~(config : Forester_forest.Config.Forest_config.t) =
       |> parse ~quit_on_error: false
       |> build_import_graph
       |> expand ~quit_on_error: false
-      |> eval
+      |> eval ~dev: true
     )
   in
   Server.run

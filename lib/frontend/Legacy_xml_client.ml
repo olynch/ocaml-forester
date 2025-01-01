@@ -172,6 +172,7 @@ and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
       render_attributions forest frontmatter.iri frontmatter.attributions;
       render_dates forest frontmatter.dates;
       X.optional (X.source_path [] "%s") frontmatter.source_path;
+      (* This introduces nondeterminism that breaks tests.*)
       X.anchor [] "%i" @@ Oo.id ( object end);
       X.optional (fun iri -> X.addr [X.type_ "%s" @@ iri_type iri] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
       X.optional (X.route [] "%s") @@
@@ -285,11 +286,6 @@ and render_content_node
           }
       in
       Forester_forest.Forest.run_datalog_query (Compiler.graphs forest) q
-      (* |> ( fun vs -> *)
-      (*     Logs.debug (fun m -> m "Running %s, got %i vertices" (Datalog_expr.(show_query Format.pp_print_string T.(pp_vertex pp_content)) q) *)
-      (*   (Vertex_set.cardinal vs)); *)
-      (*     vs *)
-      (* ) *)
       |> get_sorted_articles forest
       |> List.map article_to_section
       |> List.map (render_section forest)

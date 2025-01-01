@@ -37,7 +37,7 @@ let version =
 let build ~env _ config_filename dev no_theme =
   let config = Config.parse_forest_config_file config_filename in
   Logs.debug (fun m -> m "Parsed config file %s" config_filename);
-  let forest = Forester.plant_raw_forest_from_dirs ~env ~config in
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~dev ~config in
   Compiler.(
     forest
     |> get_diagnostics
@@ -51,7 +51,7 @@ let build ~env _ config_filename dev no_theme =
 let new_tree ~env config_filename prefix template random =
   let@ () = Reporter.silence in
   let config = Config.parse_forest_config_file config_filename in
-  let forest = Forester.plant_raw_forest_from_dirs ~env ~config in
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~dev: true ~config in
   let mode = if random then `Random else `Sequential in
   let new_tree = Forester.create_tree ~env ~prefix ~template ~mode ~config ~forest in
   Format.printf "%s.tree\n" new_tree
@@ -59,14 +59,14 @@ let new_tree ~env config_filename prefix template random =
 let complete ~env config_filename title =
   let@ () = Reporter.silence in
   let config = Config.parse_forest_config_file config_filename in
-  let forest = Forester.plant_raw_forest_from_dirs ~env ~config in
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~dev: true ~config in
   let@ iri, title = Seq.iter @~ Forester.complete ~forest title in
   Format.printf "%a, %s\n" pp_iri iri title
 
 let query_all ~env config_filename =
   let@ () = Reporter.silence in
   let config = Config.parse_forest_config_file config_filename in
-  let forest = Forester.plant_raw_forest_from_dirs ~env ~config in
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~config ~dev: true in
   Format.printf "%s" @@
     Forester.json_manifest ~dev: true ~forest
 
