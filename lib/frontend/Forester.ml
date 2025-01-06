@@ -20,6 +20,10 @@ let (let*) = Option.bind
 
 let output_dir_name = "output"
 
+let log s b = 
+  Logs.app (fun m -> m " ￮ %s...@." s);
+  b 
+
 let create_tree ~env ~prefix ~template ~mode ~config ~forest =
   let addrs =
     let@ article = List.filter_map @~ Compiler.get_all_articles forest in
@@ -148,8 +152,10 @@ let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.Forest_config.t) : Co
   Compiler.(
     forest
     |> load tree_dirs
+    |> log "Parse trees"
     |> parse ~quit_on_error: true
     |> build_import_graph
+    |> log "Expand, evaluate, and analyse forest"
     |> expand ~quit_on_error: true
     |> eval ~dev
   )
@@ -169,7 +175,7 @@ let json_manifest ~dev ~(forest : Compiler.state) : string =
   |> Yojson.Safe.to_string
 
 let render_forest ~dev ~(forest : Compiler.state) : unit =
-  let@ () = Reporter.profile "Render forest" in
+  log "Render forest" ();
   let cwd = Eio.Stdenv.cwd (Compiler.get_env forest) in
   let all_resources = forest |> Compiler.get_all_resources in
   List.iter (fun t -> Compiler.plant_resource t forest) all_resources;
