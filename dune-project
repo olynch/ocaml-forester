@@ -27,6 +27,8 @@
 
 (license GPL-3.0-or-later)
 
+(cram enable)
+
 (package
  (name forester)
  (synopsis "A tool for tending mathematical forests")
