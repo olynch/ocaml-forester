@@ -7,7 +7,6 @@
 open Forester_core
 open Forester_prelude
 open Forester_compiler
-open Forest_graphs
 
 module T = Types
 
@@ -78,16 +77,16 @@ and analyse_node roots (node : Forester_compiler.Code.node Asai.Range.located) =
     List.iter (analyse_code roots) negatives
   | Text _ | Hash_ident _ | Xml_ident (_, _) | Verbatim _ | Ident _ | Open _ | Put (_, _) | Default (_, _) | Get _ | Decl_xmlns (_, _) | Call (_, _) | Alloc _ | Dx_var _ | Dx_const_content _ | Dx_const_iri _ | Comment _ | Error _ -> ()
 
-let dependencies ~host tree forest =
+let dependencies tree forest =
   let graph = Forest_graph.create () in
   let env = { graph; forest; follow = true } in
   let@ () = Analysis_env.run ~env in
   analyse_tree [] tree;
   env.graph
 
-let minimal_dependency_graph
-    : addr: iri -> Forest_graph.t -> Forest_graph.t
-  = fun ~addr graph ->
+let _minimal_dependency_graph
+    : addr: iri -> Forest_graph.t
+  = fun ~addr ->
     let dep_graph = Forest_graph.create () in
     let rec f v =
       Forest_graph.iter_succ
