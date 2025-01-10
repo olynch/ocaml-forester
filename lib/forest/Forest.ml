@@ -6,7 +6,6 @@
 
 open Forester_prelude
 open Forester_core
-open Forester_compiler
 
 module T = Types
 module Q = Query
@@ -18,12 +17,6 @@ module Tbl = Hashtbl.Make(struct
 end)
 
 include Tbl
-
-type resource = T.content T.resource
-
-module type P = sig
-  val resources : (iri, resource) Hashtbl.t option
-end
 
 let iri_for_resource = function
   | T.Article article -> article.frontmatter.iri
