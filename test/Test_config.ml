@@ -22,7 +22,7 @@ let test_parsing () =
     (
       Forester_core.Reporter.easy_run @@
         fun () ->
-          Forester_forest.Config.parse_forest_config
+          Forester_forest.Config.parse_forest_config_string
             {|
         [forest]
         host = "test"

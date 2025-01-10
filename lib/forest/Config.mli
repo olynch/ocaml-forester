@@ -18,4 +18,6 @@ module Forest_config: sig
 end
 
 val default_forest_config : Forest_config.t
+
+val parse_forest_config_string : string -> Forest_config.t
 val parse_forest_config_file : string -> Forest_config.t

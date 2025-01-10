@@ -31,10 +31,7 @@ let default_forest_config : Forest_config.t =
     prefixes = [];
   }
 
-let parse_forest_config_file filename =
-  let ch = open_in filename in
-  let@ () = Fun.protect ~finally: (fun _ -> close_in ch) in
-  let lexbuf = Lexing.from_channel ch in
+let parse lexbuf filename =
   match Toml.Parser.parse lexbuf filename with
   | `Error (desc, { source; _ }) ->
     let@ () = Reporter.tracef "when parsing configuration file" in
@@ -82,3 +79,13 @@ let parse_forest_config_file filename =
         get tbl (forest |-- key "prefixes" |-- array |-- strings)
     in
     Forest_config.{ host; assets; trees; foreign; theme; home; prefixes }
+
+let parse_forest_config_string str =
+  let lexbuf = Lexing.from_string str in
+  parse lexbuf "<anonymous>"
+
+let parse_forest_config_file filename =
+  let ch = open_in filename in
+  let@ () = Fun.protect ~finally: (fun _ -> close_in ch) in
+  let lexbuf = Lexing.from_channel ch in
+  parse lexbuf filename
