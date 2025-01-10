@@ -14,18 +14,31 @@ module H = P.HTML
 
 module Xmlns = Xmlns_effect.Make ()
 
+let get_sorted_articles forest addrs =
+  let module C = Types.Comparators(struct
+    let string_of_content =
+      Plain_text_client.string_of_content
+        forest
+  end) in
+  addrs
+  |> Vertex_set.to_seq
+  |> Seq.filter_map Vertex.iri_of_vertex
+  |> Seq.filter_map (fun iri -> Compiler.get_article iri forest)
+  |> List.of_seq
+  |> List.sort C.compare_article
+
 let route forest addr =
   let config = Compiler.get_config forest in
   if Some addr = (Option.map (Iri_scheme.user_iri ~host: config.host) config.home) then
     "index.html"
   else
-    Format.asprintf "%a.html" Iri.pp addr
+    Format.asprintf "%s" (Iri.path_string addr)
 
 let render_xml_qname = function
   | { prefix = ""; uname; _ } -> uname
   | { prefix; uname; _ } -> Format.sprintf "%s:%s" prefix uname
 
-let render_xml_attr
+let _render_xml_attr
     : T.content T.xml_attr -> _
   = fun
       T.{ key; value = _ }
@@ -55,7 +68,7 @@ let render_img = function
   | T.Remote url ->
     H.img [H.src "%s" url]
 
-let render_xmlns_prefix Xmlns.{ prefix; xmlns } =
+let _render_xmlns_prefix Xmlns.{ prefix; xmlns } =
   P.string_attr ("xmlns:" ^ prefix) "%s" xmlns
 
 let rec render_article (forest : Compiler.state) (article : T.content T.article) : P.node =
@@ -66,7 +79,8 @@ let rec render_article (forest : Compiler.state) (article : T.content T.article)
         []
         [
           H.meta [H.charset "utf-8"];
-          H.link [H.rel "stylesheet"; H.href "style.css"]
+          H.link [H.rel "stylesheet"; H.href "style.css"];
+          H.script [H.src "https://unpkg.com/htmx.org@2.0.4"] "";
         ];
       H.body
         []
@@ -104,12 +118,15 @@ and render_frontmatter (forest : Compiler.state) (frontmatter : T.content T.fron
 and render_content (forest : Compiler.state) (Content content: T.content) : P.node list =
   List.concat_map (render_content_node forest) content
 
-and render_content_node : Compiler.state -> 'a T.content_node -> P.node list = fun forest node ->
+and render_content_node
+    : Compiler.state -> 'a T.content_node -> P.node list
+  = fun forest node ->
     match node with
     | Text str ->
       [P.txt "%s" str]
     | CDATA str ->
       [P.txt ~raw: true "<![CDATA[%s]]>" str]
+    (*
     | Xml_elt elt ->
       let prefixes_to_add, (name, attrs, content) =
         let@ () = Xmlns.within_scope in
@@ -122,6 +139,7 @@ and render_content_node : Compiler.state -> 'a T.content_node -> P.node list = f
         attrs @ xmlns_attrs
       in
       [P.std_tag name attrs content]
+      *)
     | Prim (p, content) ->
       [render_prim_node p @@ render_content forest content]
     | Transclude transclusion ->
@@ -139,11 +157,12 @@ and render_content_node : Compiler.state -> 'a T.content_node -> P.node list = f
       [P.txt "%s" num]
     | Link link ->
       render_link forest link
-    | Results_of_query _q ->
-      (* Forest.run_query q *)
-      (* |> Util.get_sorted_articles *)
-      (* |> List.map (Fun.compose render_section T.article_to_section) *)
-      assert false
+    | Results_of_query q ->
+      let module Graphs = (val forest.graphs) in
+      let module Engine = Forester_forest.Legacy_query_engine.Make(Graphs) in
+      Engine.run_query q
+      |> get_sorted_articles forest
+      |> List.map (Fun.compose (render_section forest) T.article_to_section)
     | Section section ->
       [render_section forest section]
     | KaTeX (mode, content) ->
@@ -158,9 +177,15 @@ and render_content_node : Compiler.state -> 'a T.content_node -> P.node list = f
       [P.txt ~raw: true "\\%s" (TeX_cs.show cs)]
     | Img img ->
       [render_img img]
-    | _ -> [P.txt "todo"]
-(* | Resource resource -> *)
-(*   render_resource resource *)
+    | T.Artefact _
+    | T.Iri _
+    | T.Route_of_iri _
+    | T.Datalog_script _
+    | T.Results_of_datalog_query _ ->
+      [P.txt "todo"]
+    (* | Resource resource -> *)
+    (*   render_resource resource *)
+    | _ -> []
 
 and _render_resource resource =
   render_content resource.contents
