@@ -88,6 +88,9 @@ let try_create_file ~cwd ?(content = "") fname =
       | exn ->
         Forester_core.Reporter.emitf Initialization_warning "Failed to create file `%s`: %a" fname Eio.Exn.pp exn
 
-(* TODO: make this portable *)
+(* TODO: test this! *)
 let copy_to_dir ~env ~cwd ~source ~dest_dir =
-  run_process ~quiet: true ~env ~cwd ["cp"; "-R"; source; dest_dir ^ "/"]
+  if Sys.unix then
+    run_process ~quiet: true ~env ~cwd ["cp"; "-R"; source; dest_dir ^ "/"]
+  else
+    run_process ~quiet: true ~env ~cwd ["xcopy"; source; dest_dir ^ "/"]
