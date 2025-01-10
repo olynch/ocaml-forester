@@ -4,7 +4,7 @@
 
 (env
  (dev
-  (flags (:standard -w -66-32-26)))
+  (flags (:standard -w -66-32-26-27-33)))
  (_
   (env-vars
    (FORESTERLSP_TEST true))))
@@ -12,15 +12,61 @@
 (cram
   (deps
     %{bin:forester}
-    (glob_files_rec ./forest*)
-    ))
+    (glob_files_rec ./forest/*)))
+
+(executable
+ (name Test_machine)
+ (public_name machine)
+ (libraries
+  logs
+  logs.fmt
+  pure-html
+  eio
+  eio.core
+  eio.unix
+  eio_main
+  forester.frontend
+  forester.prelude
+  forester.compiler
+  forester.core
+  forester.forest))
+
+(alias
+ (name dev))
+
+(subdir
+ output
+ (copy_files
+  (alias dev)
+  (files %{project_root}/{manifest.json,preferences.html}))
+ (subdir
+  icons
+  (copy_files
+   (alias dev)
+   (files %{project_root}/forester-base-theme/*))))
 
 (tests
- (names parse DSL Expansion Import_graph Output Transclusion Errors E2e)
+ (names
+   Test_parser
+   Test_DSL
+   Test_expansion
+   Test_import_graph
+   Test_output
+   Test_transclusion
+   Test_errors
+   Test_e2e
+   Test_compiler
+   Test_LaTeX_pipeline
+   Test_json_manifest_client
+   Test_legacy_xml_client
+   Test_config
+   ; Test_machine
+   Test_iri_util)
  (preprocess
   (pps ppx_deriving.show ppx_yojson_conv))
  (deps
-   (glob_files_rec ./trees/* )
+   (glob_files_rec ./errors/*)
+   (glob_files_rec ./trees/*)
    (glob_files_rec ./imports/*))
  (libraries
   alcotest
@@ -39,6 +85,7 @@
   eio.unix
   eio_main
   asai
+  bwd
   lsp
   yojson
   jsonrpc))

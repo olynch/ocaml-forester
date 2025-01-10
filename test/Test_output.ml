@@ -57,25 +57,25 @@ let () =
   let check_documents () =
     Alcotest.(check int)
       "check number of loaded trees"
-      6
+      7
       (Hashtbl.length forest.documents)
   in
   let check_parsed () =
     Alcotest.(check int)
       "check number of parsed trees"
-      6
+      7
       (Forest.length forest.parsed)
   in
   let check_expanded () =
     Alcotest.(check int)
       "check number of expanded"
-      6
+      7
       (Forest.length forest.expanded)
   in
   let check_resources () =
     Alcotest.(check int)
       "check number of resources"
-      6
+      7
       (Forest.length forest.resources)
   in
   let check_output () =
@@ -416,7 +416,7 @@ let () =
       "check XML"
       (
         Some
-          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<fr:tree\nxmlns:fr=\"http://www.jonmsterling.com/jms-005P.xml\"\nroot=\"false\"><fr:frontmatter><fr:authors /><fr:anchor>391</fr:anchor><fr:addr\ntype=\"user\">index</fr:addr><fr:route>index.xml</fr:route><fr:title\ntext=\"\" /></fr:frontmatter><fr:mainmatter>\\foo</fr:mainmatter><fr:backmatter><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>386</fr:anchor><fr:title\ntext=\"References\">References</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>387</fr:anchor><fr:title\ntext=\"Context\">Context</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>388</fr:anchor><fr:title\ntext=\"Backlinks\">Backlinks</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>389</fr:anchor><fr:title\ntext=\"Related\">Related</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>390</fr:anchor><fr:title\ntext=\"Contributions\">Contributions</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree></fr:backmatter></fr:tree>"
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<fr:tree\nxmlns:fr=\"http://www.jonmsterling.com/jms-005P.xml\"\nroot=\"false\"><fr:frontmatter><fr:authors /><fr:anchor>391</fr:anchor><fr:addr\ntype=\"user\">index</fr:addr><fr:route>index.xml</fr:route><fr:title\ntext=\"\" /></fr:frontmatter><fr:mainmatter>\\foo</fr:mainmatter><fr:backmatter><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>387</fr:anchor><fr:title\ntext=\"References\">References</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>387</fr:anchor><fr:title\ntext=\"Context\">Context</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>388</fr:anchor><fr:title\ntext=\"Backlinks\">Backlinks</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>389</fr:anchor><fr:title\ntext=\"Related\">Related</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree><fr:tree\nshow-metadata=\"false\"\nhidden-when-empty=\"true\"><fr:frontmatter><fr:anchor>390</fr:anchor><fr:title\ntext=\"Contributions\">Contributions</fr:title></fr:frontmatter><fr:mainmatter /></fr:tree></fr:backmatter></fr:tree>"
       )
       (render_article "index")
   in

@@ -118,6 +118,7 @@ let test () =
         )
     )
     content
+
 let () =
   let open Alcotest in
   run "DSL" ["works", [test_case "" `Quick test]]

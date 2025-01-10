@@ -1,3 +1,12 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
+(* This stuff used to work when this module was part of an executable stanza in
+   the dune file. *)
+
 open Forester_prelude
 
 let ( / ) = Eio.Path.( / )

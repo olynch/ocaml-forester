@@ -4,29 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-open Forester_core
 open Forester_compiler
-
-let syn =
-  (module struct
-    type t = Syn.t
-    let equal = ( = )
-    let pp = Syn.pp
-  end: Alcotest.TESTABLE with type t = Syn.t)
-
-let path =
-  (module struct
-    type t = Trie.path
-    let equal = ( = )
-    let pp = Trie.pp_path
-  end: Alcotest.TESTABLE with type t = Trie.path)
-
-let _data =
-  (module struct
-    type t = Resolver.Scope.data
-    let equal = ( = )
-    let pp = Resolver.P.pp_data
-  end: Alcotest.TESTABLE with type t = Resolver.Scope.data)
+open Testables
 
 let () =
   let open Alcotest in
@@ -98,11 +77,20 @@ let () =
           fun
               ()
             ->
+            (* Create a scope that includes binding "bar"*)
             Sc.include_singleton
               ["bar"] @@
-              (Term [Asai.Range.locate_opt None (Syn.Sym (Symbol.named ["symbol"]))], None);
-            let visible = Sc.get_visible () in
-            List.map (fun (a, _, b) -> (a, b)) @@ Expand.suggestions ["baz"] visible
+              (
+                Term
+                  [
+                    Asai.Range.locate_opt
+                      None
+                      (Syn.Sym (Symbol.named ["symbol"]))
+                  ],
+                None
+              );
+            Expand.suggestions ["baz"] @@ Sc.get_visible ()
+            |> List.map (fun (a, _, b) -> (a, b))
       )
   in
   run

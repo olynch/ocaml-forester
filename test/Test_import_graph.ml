@@ -23,7 +23,7 @@ let () =
       |> parse ~quit_on_error: false
     )
   in
-  let g =
+  let batch_graph =
     Imports.run_builder
       {
         forest;
@@ -37,7 +37,7 @@ let () =
   let vtx_c = mk_vtx "c" in
   let vtx_d = mk_vtx "d" in
   let vtx_e = mk_vtx "e" in
-  let has_edge v w = Forest_graph.mem_edge g v w in
+  let has_edge g v w = Forest_graph.mem_edge g v w in
   let test_parsed_trees () =
     Alcotest.(check bool)
       "number of trees"
@@ -48,20 +48,50 @@ let () =
     Alcotest.(check bool)
       "number of vertices"
       true
-      (Forest.length forest.parsed >= (Forest_graph.nb_vertex g));
+      (Forest.length forest.parsed >= (Forest_graph.nb_vertex batch_graph));
     Alcotest.(check bool)
-      "has edge"
+      "has edges"
       true
       (
         List.for_all
           Fun.id
           [
-            (has_edge vtx_b vtx_a);
-            (has_edge vtx_c vtx_b);
-            (has_edge vtx_d vtx_c);
-            (has_edge vtx_e vtx_c);
+            (has_edge batch_graph vtx_b vtx_a);
+            (has_edge batch_graph vtx_c vtx_b);
+            (has_edge batch_graph vtx_d vtx_c);
+            (has_edge batch_graph vtx_e vtx_c);
           ]
       )
+  in
+  let minimal_graph =
+    Imports.run_builder
+      ~root: (Iri_scheme.user_iri ~host: config.host "b")
+      {
+        forest;
+        graph = Forest_graph.create ();
+        follow = true
+      }
+  in
+  let test_minimal_graph () =
+    Alcotest.(check bool)
+      "has edges"
+      true
+      (
+        List.for_all
+          Fun.id
+          [
+            (not (has_edge minimal_graph vtx_b vtx_a));
+            (has_edge minimal_graph vtx_c vtx_b);
+            (has_edge minimal_graph vtx_d vtx_c);
+            (has_edge minimal_graph vtx_e vtx_c);
+          ]
+      )
+  in
+  let test_dependencies () =
+    Alcotest.(check bool)
+      ""
+      true
+      true
   in
   run
     "Import graph"
@@ -70,5 +100,10 @@ let () =
       [
         test_case "check parsed trees" `Quick test_parsed_trees;
         test_case "check number of vertices" `Quick test_graph;
+      ];
+      "creating minimal import graph",
+      [
+        test_case "running builder" `Quick test_minimal_graph;
+        test_case "check dependencies" `Quick test_dependencies;
       ]
     ]

@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
+(* TODO: should just use cram tests for this instead. *)
+
 open Forester_core
 open Forester_prelude
 open Forester_forest
@@ -14,17 +16,8 @@ module EP = Eio.Path
 module T = Types
 module HTML = Pure_html.HTML
 
-let path_of_dir ~env dir =
-  EP.(Eio.Stdenv.fs env / dir)
-
-let paths_of_dirs ~env =
-  List.map (path_of_dir ~env)
-
 let config = { Config.default_forest_config with trees = ["transclude"] }
 let host = config.host
-(* module F = Forest.Make(Forest_graphs.Make ()) *)
-(* module P = struct let host = host let home = None end *)
-(* module Client = Legacy_xml_client.Make(P)(F)() *)
 
 let href = Iri_scheme.user_iri ~host "transcludee"
 
@@ -44,12 +37,6 @@ module Transclusions = struct
       metadata_shown =
       Some true
     }
-
-  (* let header_shown = *)
-  (*   { *)
-  (*     default_section_flags with *)
-  (*     header_shown = Some true *)
-  (*   } *)
 end
 
 let () =
@@ -57,7 +44,7 @@ let () =
   let open Alcotest in
   let@ () = Reporter.easy_run in
   (* Needs to be false to make tests reproducible. The source path depends on the host *)
-  let tree_dirs = paths_of_dirs ~env config.trees in
+  let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let forest =
     Compiler.(
       init ~env ~config
