@@ -81,6 +81,16 @@ let silence k =
     Tty.display diagnostics;
     exit 1
   in
+  run ~emit: Tty.display ~fatal k
+
+let test_run k =
+  let fatal diagnostics =
+    Tty.display
+      ~use_color: false
+      ~use_ansi: false
+      diagnostics;
+    exit 1
+  in
   let emit _diagnostics = () in
   run ~emit ~fatal k
 
