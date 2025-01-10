@@ -80,6 +80,22 @@
         devPackages = builtins.attrValues (
           pkgs.lib.getAttrs (builtins.attrNames devPackagesQuery) scopes.scope'
         );
+        tex = (
+          pkgs.texlive.combine {
+            inherit (pkgs.texlive)
+              scheme-small
+              latexindent
+              dvisvgm
+              pgf
+              tikz-cd
+              spath3
+              mathtools
+              amsfonts
+              stmaryrd
+              standalone
+              ;
+          }
+        );
       in
       {
         legacyPackages = scopes.scope';
@@ -87,10 +103,12 @@
         devShells.default = pkgs.mkShell {
           TOPIARY_LANGUAGE_DIR = "topiary";
           inputsFrom = [ scopes.main ];
+
           buildInputs =
             with pkgs;
             devPackages
             ++ [
+              tex
               topiary
               reuse
               watchexec
