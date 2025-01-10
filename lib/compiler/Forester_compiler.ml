@@ -18,3 +18,5 @@ module Lexer = Lexer
 module Asset_router = Asset_router
 
 module Job = Job
+
+module Export_for_test = Export_for_test
