@@ -2,6 +2,11 @@
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
+
+; (env
+;  (dev
+;   (flags (:standard -w -32-33))))
+
 (library
  (name Forester_frontend)
  (public_name forester.frontend)
@@ -9,11 +14,13 @@
  (preprocess
   (pps ppx_deriving.show ppx_repr))
  (libraries
+  http
+  cohttp-eio
+  eio_main
   bwd
   forester.prelude
   forester.core
   forester.compiler
-  forester.forest
   forester.human_datetime
   forester.xml_names
   ocamlgraph

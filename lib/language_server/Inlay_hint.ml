@@ -7,7 +7,7 @@
 
 open Forester_core
 open Forester_frontend
-open Forester_forest
+open Forester_compiler
 
 module L = Lsp.Types
 
@@ -21,14 +21,14 @@ let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
   } ->
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
     let render = Render.render forest STRING in
-    let config = Compiler.get_config forest in
+    let config = State.config forest in
     let host = config.host in
     match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
     | None ->
       None
     | Some { code; _ } ->
-      forest
-      |> Compiler.get_all_resources
+      forest.resources
+      |> Forest.get_all_resources
       |> List.iter
         (
           fun resource ->
@@ -53,7 +53,7 @@ let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
               | Some str ->
                 (* Eio.traceln "got addr"; *)
                 let iri = Iri_scheme.user_iri ~host str in
-                match Compiler.get_article iri forest with
+                match Forest.get_article iri forest.resources with
                 | None ->
                   (* Eio.traceln "article %a not found" pp_iri iri; *)
                   None

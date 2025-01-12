@@ -6,7 +6,6 @@
  *)
 
 open Forester_compiler
-open Forester_forest
 
 module L = Lsp.Types
 

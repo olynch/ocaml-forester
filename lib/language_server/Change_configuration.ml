@@ -5,7 +5,9 @@
  *
  *)
 
+open Forester_compiler
 open Forester_frontend
+
 module L = Lsp.Types
 module RPC = Jsonrpc
 
@@ -19,8 +21,8 @@ let compute (params : L.DidChangeConfigurationParams.t) =
         begin
           match List.assoc_opt "configuration_file" xs with
           | Some (`String f) ->
-            let config = Forester_forest.Config.parse_forest_config_file f in
-            Lsp_state.modify (fun state -> { state with forest = Compiler.with_config config state.forest })
+            let config = Config_parser.parse_forest_config_file f in
+            Lsp_state.modify (fun state -> { state with forest = State.with_config config state.forest })
           | _ ->
             Eio.traceln "invalid value for configuration_file"
           (* RPC.Response.Error.raise *)

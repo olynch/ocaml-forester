@@ -28,8 +28,7 @@
   forester.frontend
   forester.prelude
   forester.compiler
-  forester.core
-  forester.forest))
+  forester.core))
 
 (alias
  (name dev))
@@ -75,7 +74,6 @@
   forester.prelude
   forester.compiler
   forester.core
-  forester.forest
   pure-html
   yuujinchou
   logs

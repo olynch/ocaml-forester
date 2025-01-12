@@ -5,8 +5,9 @@
  *)
 
 open Forester_core
+open Forester_compiler
 
 module T := Types
 
-val string_of_content : Compiler.state -> Types.content -> string
-val pp_content : Compiler.state -> Format.formatter -> Types.content -> unit
+val string_of_content : T.content T.resource Forest.t -> Types.content -> string
+val pp_content : T.content T.resource Forest.t -> Format.formatter -> Types.content -> unit

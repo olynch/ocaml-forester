@@ -7,6 +7,7 @@
 open Forester_prelude
 open Forester_xml_names
 open Forester_core
+open Forester_compiler
 
 module T = Types
 module P = Pure_html
@@ -14,21 +15,21 @@ module H = P.HTML
 
 module Xmlns = Xmlns_effect.Make ()
 
-let get_sorted_articles forest addrs =
+let get_sorted_articles (forest : State.t) addrs =
   let module C = Types.Comparators(struct
     let string_of_content =
       Plain_text_client.string_of_content
-        forest
+        forest.resources
   end) in
   addrs
   |> Vertex_set.to_seq
   |> Seq.filter_map Vertex.iri_of_vertex
-  |> Seq.filter_map (fun iri -> Compiler.get_article iri forest)
+  |> Seq.filter_map (fun iri -> Forest.get_article iri forest.resources)
   |> List.of_seq
   |> List.sort C.compare_article
 
 let route forest addr =
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   if Some addr = (Option.map (Iri_scheme.user_iri ~host: config.host) config.home) then
     "index.html"
   else
@@ -71,7 +72,7 @@ let render_img = function
 let _render_xmlns_prefix Xmlns.{ prefix; xmlns } =
   P.string_attr ("xmlns:" ^ prefix) "%s" xmlns
 
-let rec render_article (forest : Compiler.state) (article : T.content T.article) : P.node =
+let rec render_article (forest : State.t) (article : T.content T.article) : P.node =
   H.html
     []
     [
@@ -95,7 +96,7 @@ let rec render_article (forest : Compiler.state) (article : T.content T.article)
         ]
     ]
 
-and render_section (forest : Compiler.state) (section : T.content T.section) : P.node =
+and render_section (forest : State.t) (section : T.content T.section) : P.node =
   H.section
     []
     [
@@ -103,7 +104,7 @@ and render_section (forest : Compiler.state) (section : T.content T.section) : P
       H.null @@ render_content forest section.mainmatter
     ]
 
-and render_frontmatter (forest : Compiler.state) (frontmatter : T.content T.frontmatter) : P.node =
+and render_frontmatter (forest : State.t) (frontmatter : T.content T.frontmatter) : P.node =
   H.header
     []
     [
@@ -115,11 +116,11 @@ and render_frontmatter (forest : Compiler.state) (frontmatter : T.content T.fron
         frontmatter.title
     ]
 
-and render_content (forest : Compiler.state) (Content content: T.content) : P.node list =
+and render_content (forest : State.t) (Content content: T.content) : P.node list =
   List.concat_map (render_content_node forest) content
 
 and render_content_node
-    : Compiler.state -> 'a T.content_node -> P.node list
+    : State.t -> 'a T.content_node -> P.node list
   = fun forest node ->
     match node with
     | Text str ->
@@ -146,7 +147,7 @@ and render_content_node
       render_transclusion forest transclusion
     | Contextual_number addr ->
       let custom_number =
-        let@ article = Option.bind @@ Compiler.get_article addr forest in
+        let@ article = Option.bind @@ Forest.get_article addr forest.resources in
         article.frontmatter.number
       in
       let num =
@@ -159,7 +160,7 @@ and render_content_node
       render_link forest link
     | Results_of_query q ->
       let module Graphs = (val forest.graphs) in
-      let module Engine = Forester_forest.Legacy_query_engine.Make(Graphs) in
+      let module Engine = Legacy_query_engine.Make(Graphs) in
       Engine.run_query q
       |> get_sorted_articles forest
       |> List.map (Fun.compose (render_section forest) T.article_to_section)
@@ -171,7 +172,7 @@ and render_content_node
         | Display -> {|\[|}, {|\]|}
         | Inline -> {|\(|}, {|\)|}
       in
-      let body = Plain_text_client.string_of_content forest content in
+      let body = Plain_text_client.string_of_content forest.resources content in
       [P.txt ~raw: true "%s%s%s" l body r]
     | TeX_cs cs ->
       [P.txt ~raw: true "\\%s" (TeX_cs.show cs)]
@@ -190,15 +191,15 @@ and render_content_node
 and _render_resource resource =
   render_content resource.contents
 
-and render_transclusion (forest : Compiler.state) (transclusion : T.content T.transclusion) : P.node list =
+and render_transclusion (forest : State.t) (transclusion : T.content T.transclusion) : P.node list =
   List.concat @@
   Option.to_list @@
   Option.map (render_content forest) @@
-  Compiler.get_content_of_transclusion transclusion forest
+  Forest.get_content_of_transclusion transclusion forest.resources
 
 (* TODO: links need to be flattened in order to produce valid HTML. *)
-and render_link (forest : Compiler.state) (link : T.content T.link) : P.node list =
-  let article_opt = Compiler.get_article link.href forest in
+and render_link (forest : State.t) (link : T.content T.link) : P.node list =
+  let article_opt = Forest.get_article link.href forest.resources in
   let attrs =
     match article_opt with
     | None ->

@@ -12,3 +12,4 @@ module Option_util = Option_util
 module List_util = List_util
 module BaseN = BaseN
 module Compare = Compare
+module Eio_util = Eio_util

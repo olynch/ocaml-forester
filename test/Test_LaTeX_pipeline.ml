@@ -6,8 +6,7 @@
 
 open Forester_core
 open Forester_prelude
-open Forester_compiler.Export_for_test
-open Forester_frontend.Export_for_test
+open Forester_compiler
 
 let () =
   let test_pipeline () =

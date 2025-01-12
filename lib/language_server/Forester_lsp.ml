@@ -10,6 +10,7 @@ module RPC = Jsonrpc
 module Server = Lsp_server
 module Analysis = Analysis
 
+open Forester_compiler
 open Forester_frontend
 
 open Server
@@ -178,19 +179,9 @@ let rec event_loop () =
   | None ->
     Eio.traceln "Recieved an invalid message. Shutting down...@."
 
-let start ~env ~(config : Forester_forest.Config.Forest_config.t) =
+let start ~env ~(config : Config.t) =
   let lsp_io = LspEio.init env in
-  let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
-  let forest =
-    Compiler.(
-      init ~env ~config
-      |> load tree_dirs
-      |> parse ~quit_on_error: false
-      |> build_import_graph
-      |> expand ~quit_on_error: false
-      |> eval ~dev: true
-    )
-  in
+  let forest = State_machine.batch_run ~env ~config in
   Server.run
     ~init: { forest; lsp_io; should_shutdown = false; } @@
     fun () ->

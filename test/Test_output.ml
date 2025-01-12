@@ -6,7 +6,7 @@
 
 open Forester_core
 open Forester_prelude
-open Forester_forest
+open Forester_compiler
 open Forester_frontend
 
 module EP = Eio.Path
@@ -19,7 +19,7 @@ let path_of_dir ~env dir =
 let paths_of_dirs ~env =
   List.map (path_of_dir ~env)
 
-let config = Config.default_forest_config
+let config = Config.default
 let host = config.host
 
 let () =
@@ -29,15 +29,15 @@ let () =
   let frontmatter = testable T.(pp_frontmatter pp_content) ( = ) in
   let tree_dirs = paths_of_dirs ~env config.trees in
   let@ () = Reporter.easy_run in
-  let forest =
-    Compiler.(
-      init ~env ~config
-      |> load tree_dirs
-      |> parse ~quit_on_error: true
-      |> build_import_graph
-      |> expand ~quit_on_error: true
-      |> eval ~dev: false
-      |> plant
+  let (forest, _) =
+    State_machine.(
+      Phases.init ~env ~config
+      |> run_action Load_all ~until: Do_nothing
+      (* |> load tree_dirs *)
+      (* |> parse ~quit_on_error: true *)
+      (* |> build_import_graph *)
+      (* |> expand ~quit_on_error: true *)
+      (* |> eval ~dev: false *)
     )
   in
   let get_article addr =

@@ -4,13 +4,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-(* This file is impacted by https://github.com/mirage/alcotest/issues/414*)
 open Testables
+open Forester_compiler
+open Forester_frontend
 
 let test_parsing () =
   Alcotest.(check config)
     "is the same"
-    Forester_forest.Config.Forest_config.{
+    Config.{
       host = "test";
       trees = ["trees"];
       home = Some "index";
@@ -22,7 +23,7 @@ let test_parsing () =
     (
       Forester_core.Reporter.easy_run @@
         fun () ->
-          Forester_forest.Config.parse_forest_config_string
+          Config_parser.parse_forest_config_string
             {|
         [forest]
         host = "test"

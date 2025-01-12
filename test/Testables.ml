@@ -47,7 +47,7 @@ let diagnostic =
 
 let iri = testable Iri.pp ( = )
 
-let config = Alcotest.testable Forester_forest.Config.Forest_config.pp ( = )
+let config = Alcotest.testable Config.pp ( = )
 
 let document =
   let pp fmt t = Format.pp_print_string fmt (Lsp.Text_document.text t) in

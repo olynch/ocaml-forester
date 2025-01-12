@@ -7,7 +7,7 @@
 
 open Forester_prelude
 open Forester_core
-open Forester_frontend
+open Forester_compiler
 
 module L = Lsp.Types
 module Lsp_Diagnostic = Lsp.Types.Diagnostic
@@ -34,7 +34,7 @@ let render_lsp_diagnostic (uri : L.DocumentUri.t) (diag : diagnostic) : Lsp_Diag
   let code = `String (Reporter.Message.short_code diag.message) in
   let source =
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
-    match Hashtbl.find_opt (Compiler.documents forest) uri with
+    match Hashtbl.find_opt (State.documents forest) uri with
     | None -> None
     | Some doc ->
       Some (Lsp.Text_document.text doc)

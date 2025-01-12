@@ -6,9 +6,8 @@
  *)
 
 open Forester_core
-open Forester_compiler
 open Forester_frontend
-open Forester_forest
+open Forester_compiler
 
 module L = Lsp.Types
 
@@ -18,7 +17,7 @@ let (let*) = Option.bind
 let compute (params : L.DocumentLinkParams.t) =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
   let render = Render.render ~dev: true forest STRING in
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   match params with
   | { textDocument; _ } ->
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
@@ -39,7 +38,7 @@ let compute (params : L.DocumentLinkParams.t) =
                   let range = (Lsp_shims.Loc.lsp_range_of_range node.loc) in
                   let iri = (Iri_scheme.user_iri ~host: config.host addr) in
                   let* target = Iri_resolver.(resolve (Iri iri) To_uri forest) in
-                  let* { frontmatter; _ } = Compiler.get_article iri forest in
+                  let* { frontmatter; _ } = Forest.get_article iri forest.resources in
                   let* tooltip = Option.map (fun c -> render (Content c)) frontmatter.title in
                   let link =
                     L.DocumentLink.create

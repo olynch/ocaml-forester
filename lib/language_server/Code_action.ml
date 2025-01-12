@@ -6,14 +6,14 @@
  *)
 
 open Lsp_error
-open Forester_frontend
+open Forester_compiler
 
 module L = Lsp.Types
 
 (* This function is mainly decodes the arguments to the command*)
 let execute (params : L.ExecuteCommandParams.t) =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   match params with
   | { arguments; command; _ } ->
     match command with
@@ -45,7 +45,7 @@ let execute (params : L.ExecuteCommandParams.t) =
               x
           )
       in
-      let env = Compiler.get_env forest in
+      let env = State.env forest in
       let template = None in
       let res = Forester_frontend.Forester.create_tree ~env ~prefix ~template ~mode ~config ~forest in
       `String res
@@ -69,7 +69,7 @@ let create_new_tree_cmd ~prefix ~mode =
 
 let compute (_params : L.CodeActionParams.t) : L.CodeActionResult.t =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   let prefixes = config.prefixes in
   Eio.traceln "got %i prefixes" (List.length prefixes);
   let actions =

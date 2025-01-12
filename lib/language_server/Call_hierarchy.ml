@@ -7,16 +7,14 @@
 
 open Forester_core
 open Forester_compiler
-open Forester_frontend
-open Forester_forest
 
 module T = Types
 module L = Lsp.Types
 
 let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
-  let config = Compiler.get_config forest in
-  let module G = (val Compiler.graphs forest) in
+  let config = State.config forest in
+  let module G = (val State.graphs forest) in
   match params with
   | { item; _ } ->
     let vertex_to_item (v : _ T.vertex) =
@@ -38,8 +36,8 @@ let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
 
 let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
-  let config = Compiler.get_config forest in
-  let module G = (val Compiler.graphs forest) in
+  let config = State.config forest in
+  let module G = (val State.graphs forest) in
   Eio.traceln "computing outgoing calls";
   match params with
   | { item; _ } ->

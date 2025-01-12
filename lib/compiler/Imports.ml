@@ -6,7 +6,6 @@
 
 open Forester_core
 open Forester_prelude
-open Forester_compiler
 
 module T = Types
 
@@ -18,7 +17,7 @@ type analysis_env = {
 
 module Analysis_env = Algaeff.Reader.Make(struct type t = analysis_env end)
 
-let rec analyse_tree roots (tree : Forester_compiler.Code.tree) =
+let rec analyse_tree roots (tree : Code.tree) =
   let env = Analysis_env.read () in
   let host = env.forest.config.host in
   let addr_opt = tree.addr in
@@ -39,7 +38,7 @@ let rec analyse_tree roots (tree : Forester_compiler.Code.tree) =
 and analyse_code roots (code : Code.t) =
   List.iter (analyse_node roots) code
 
-and analyse_node roots (node : Forester_compiler.Code.node Asai.Range.located) =
+and analyse_node roots (node : Code.node Asai.Range.located) =
   let env = Analysis_env.read () in
   let host = env.forest.config.host in
   match node.value with

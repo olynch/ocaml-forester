@@ -5,13 +5,15 @@
  *
  *)
 
+open Forester_compiler
+
 module L = Lsp.Types
 
 let compute
     ({ textDocument = { uri; _ } } as params: L.DidOpenTextDocumentParams.t)
   =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
-  let docs = Forester_frontend.Compiler.documents forest in
+  let docs = State.documents forest in
   let document =
     Lsp.Text_document.make
       ~position_encoding: `UTF16

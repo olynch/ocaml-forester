@@ -96,6 +96,7 @@ module Code = struct
   let open_ path = locate_opt None @@ Open path
   let group delim nodes = locate_opt None @@ Group (delim, nodes)
   let def p b t = locate_opt None @@ Def (p, b, t)
+  let object_ t = locate_opt None @@ Code.Object t
 end
 
 module Syn = struct

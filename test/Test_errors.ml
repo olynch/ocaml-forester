@@ -6,7 +6,7 @@
 
 open Forester_core
 open Forester_prelude
-open Forester_forest
+open Forester_compiler
 open Forester_compiler
 open Forester_frontend
 open Testables
@@ -29,16 +29,14 @@ let test_parse_error_explanation src expect =
 
 let () =
   let@ env = Eio_main.run in
-  let config = { Config.default_forest_config with trees = ["errors"] } in
+  let config = { Config.default with trees = ["errors"] } in
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let mk_iri addr = Iri_scheme.user_iri ~host: config.host addr in
-  let forest =
-    Compiler.(
-      init ~env ~config
-      |> load tree_dirs
-    )
+  let _, forest, _ =
+    Phases.init ~env ~config
+    |> State_machine.update Load_all
   in
-  let documents = Compiler.documents forest in
+  let documents = State.documents forest in
   let parse_error_uri =
     documents
     |> Hashtbl.to_seq_keys

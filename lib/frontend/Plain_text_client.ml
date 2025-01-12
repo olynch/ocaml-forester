@@ -5,6 +5,7 @@
  *)
 
 open Forester_core
+open Forester_compiler
 
 module T = Types
 
@@ -30,7 +31,7 @@ and pp_content_node
   | Results_of_query _ | Results_of_datalog_query _ | Img _ | Artefact _ | Datalog_script _ -> ()
 
 and pp_transclusion forest fmt (transclusion : T.content T.transclusion) =
-  match Compiler.get_content_of_transclusion transclusion forest with
+  match Forest.get_content_of_transclusion transclusion forest with
   | None -> Format.fprintf fmt "<could not resolve transclusion of %a>" pp_iri transclusion.href
   | Some content -> pp_content forest fmt content
 

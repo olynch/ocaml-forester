@@ -5,23 +5,23 @@
  *)
 
 open Forester_core
-open Forester_forest
+open Forester_compiler
 open Forester_prelude
 open Forester_frontend
 
 module T = Types
 
-let config = { Config.default_forest_config with trees = ["imports"] }
+let config = { Config.default with trees = ["imports"] }
 
 let () =
   let@ env = Eio_main.run in
   let open Alcotest in
-  let forest =
-    Compiler.(
-      init ~env ~config
-      |> load (Eio_util.paths_of_dirs ~env config.trees)
-      |> parse ~quit_on_error: false
-    )
+  let forest, _ =
+    Phases.init ~env ~config
+    |> State_machine.run_action Load_all ~until: Expand_all
+  (* load (Eio_util.paths_of_dirs ~env config.trees) *)
+  (*   |> parse ~quit_on_error: false *)
+  (* ) *)
   in
   let batch_graph =
     Imports.run_builder

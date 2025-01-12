@@ -5,7 +5,6 @@
  *)
 
 open Forester_core
-open Forester_compiler
 
 type analysis_env = {
   graph: Forest_graph.t;

@@ -6,7 +6,7 @@
  *)
 
 open Forester_core
-open Forester_forest
+open Forester_compiler
 open Forester_frontend
 
 module L = Lsp.Types
@@ -24,7 +24,7 @@ let compute
   =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
   let render = Render.render ~dev: true forest STRING in
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   let host = config.host in
   let content =
     match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
@@ -35,7 +35,7 @@ let compute
       | None -> Format.asprintf "character: %i, line: %i." position.character position.line;
       | Some addr_at_cursor ->
         let iri_under_cursor = Iri_scheme.user_iri ~host addr_at_cursor in
-        match Compiler.get_article iri_under_cursor forest with
+        match Forest.get_article iri_under_cursor forest.resources with
         | None ->
           Format.asprintf "Could not get article %a." pp_iri iri_under_cursor
         | Some { mainmatter; frontmatter; _ } ->

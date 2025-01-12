@@ -18,6 +18,8 @@ end)
 
 include Tbl
 
+type resource = T.content T.resource
+
 let iri_for_resource = function
   | T.Article article -> article.frontmatter.iri
   | T.Asset asset -> Some asset.iri
@@ -155,3 +157,107 @@ let analyse_article graphs (article : article) : unit =
 let analyse_resource graphs = function
   | T.Article article -> analyse_article graphs article
   | T.Asset _ -> ()
+
+let get_article
+    : iri -> _ t -> T.content T.article option
+  = fun iri forest ->
+    match find_opt forest iri with
+    | None -> None
+    | Some (T.Asset _) ->
+      Logs.debug (fun m -> m "%a is an asset, not an article" pp_iri iri);
+      None
+    | Some (T.Article article) -> Some article
+
+let plant_resource
+    : resource -> (module Forest_graphs.S) -> resource t -> unit
+  = fun resource graphs resources ->
+    let module Graphs = (val graphs) in
+    analyse_resource graphs resource;
+    let@ iri = Option.iter @~ iri_for_resource resource in
+    let iri = Iri.normalize iri in
+    Graphs.register_iri iri;
+    match mem resources iri with
+    | false ->
+      (* Graphs.register_iri iri; *)
+      add resources iri resource
+    | true ->
+      ()
+
+let rec get_expanded_title ?scope ?(flags = T.{ empty_when_untitled = false }) (frontmatter : _ T.frontmatter) forest =
+  let short_title =
+    match frontmatter.title with
+    | Some content -> content
+    | None when not flags.empty_when_untitled ->
+      begin
+        match frontmatter.iri with
+        | Some iri -> T.Content [T.Iri iri]
+        | _ -> T.Content [T.Text "Untitled"]
+      end
+    | _ -> T.Content []
+  in
+  Option.value ~default: short_title @@
+    match frontmatter.designated_parent with
+    | Some parent_iri when not (scope = frontmatter.designated_parent) ->
+      let@ parent = Option.map @~ get_article parent_iri forest in
+      let parent_title = get_expanded_title parent.frontmatter forest in
+      let parent_link = T.Link { href = parent_iri; content = parent_title } in
+      let chevron = T.Text " › " in
+      T.map_content (fun xs -> parent_link :: chevron :: xs) short_title
+    | _ -> None
+
+let section_symbol = "§"
+
+let get_content_of_transclusion (transclusion : T.content T.transclusion) forest =
+  let@ content =
+    Option.map @~
+      match transclusion.target with
+      | Full flags ->
+        let@ article = Option.map @~ get_article transclusion.href forest in
+        T.Content [T.Section (T.article_to_section article ~flags)]
+      | Mainmatter ->
+        let@ article = Option.map @~ get_article transclusion.href forest in
+        article.mainmatter
+      | Title flags ->
+        Option.some @@
+          begin
+            match get_article transclusion.href forest with
+            | None -> T.Content [T.Iri transclusion.href]
+            | Some article -> get_expanded_title ~flags article.frontmatter forest
+          end
+      | Taxon ->
+        let@ article = Option.map @~ get_article transclusion.href forest in
+        let default = T.Content [T.Text section_symbol] in
+        Option.value ~default article.frontmatter.taxon
+  in
+  T.apply_modifier_to_content transclusion.modifier content
+
+let get_title_or_content_of_vertex ?(not_found = fun _ -> None) ~modifier vertex forest =
+  let@ content =
+    Option.map @~
+      match vertex with
+      | T.Content_vertex content -> Some content
+      | T.Iri_vertex iri ->
+        begin
+          match get_article iri forest with
+          | Some article -> article.frontmatter.title
+          | None -> not_found iri
+        end
+  in
+  T.apply_modifier_to_content modifier content
+
+let get_all_articles resources =
+  resources
+  |> to_seq_values
+  |> Seq.filter_map
+    (
+      fun r ->
+        match r with
+        | T.Article a -> Some a
+        | T.Asset _ -> None
+    )
+  |> List.of_seq
+
+let get_all_resources resources =
+  resources
+  |> to_seq_values
+  |> List.of_seq

@@ -13,7 +13,6 @@
    forester.core
    forester.compiler
    forester.frontend
-   forester.forest
    forester.human_datetime
    lsp
    asai

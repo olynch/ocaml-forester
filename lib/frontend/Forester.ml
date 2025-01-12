@@ -6,7 +6,7 @@
 
 open Forester_prelude
 open Forester_core
-open Forester_forest
+open Forester_compiler
 
 module M = Iri_map
 module T = Types
@@ -14,19 +14,20 @@ module EP = Eio.Path
 
 type env = Eio_unix.Stdenv.base
 type dir = Eio.Fs.dir_ty EP.t
-type format = HTML | JSON | XML | STRING
+
+type target = Target : 'a Render.target -> target
 
 let (let*) = Option.bind
 
 let output_dir_name = "output"
 
-let log s b = 
+let log s b =
   Logs.app (fun m -> m " ￮ %s...@." s);
-  b 
+  b
 
-let create_tree ~env ~prefix ~template ~mode ~config ~forest =
+let create_tree ~env ~prefix ~template ~mode ~config ~(forest : State.t) =
   let addrs =
-    let@ article = List.filter_map @~ Compiler.get_all_articles forest in
+    let@ article = List.filter_map @~ Forest.get_all_articles forest.resources in
     let@ iri = Option.bind article.frontmatter.iri in
     let (Absolute path | Relative path) = Iri.path iri in
     match List.rev path with
@@ -58,8 +59,8 @@ let create_tree ~env ~prefix ~template ~mode ~config ~forest =
   EP.native_exn path
 
 let complete ~forest prefix =
-  let config = Compiler.get_config forest in
-  let@ article = Seq.filter_map @~ List.to_seq @@ Compiler.get_all_articles forest in
+  let config = State.config forest in
+  let@ article = Seq.filter_map @~ List.to_seq @@ Forest.get_all_articles forest.resources in
   let@ iri = Option.bind article.frontmatter.iri in
   let@ iri = Option.bind @@ Option_util.guard Iri_scheme.is_named_iri iri in
   let iri = Iri_scheme.relativise_iri ~host: config.host iri in
@@ -82,7 +83,8 @@ let copy_contents_of_dir ~env dir =
     let source = EP.native_exn path in
     Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir: output_dir_name
 
-let plant_assets ~env ~host ~asset_dirs ~forest =
+(* I think this function does not belong here *)
+let plant_assets ~env ~host ~asset_dirs ~(forest : State.t) =
   let paths = Dir_scanner.scan_directories asset_dirs in
   Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
   let@ source_path = Seq.iter @~ paths in
@@ -90,49 +92,26 @@ let plant_assets ~env ~host ~asset_dirs ~forest =
   let cwd = Eio.Stdenv.cwd env in
   let content = EP.load EP.(cwd / source_path) in
   let iri = Forester_compiler.Asset_router.install ~host ~source_path ~content in
-  Compiler.plant_resource (T.Asset { iri; host; content }) forest
+  Forest.plant_resource (T.Asset { iri; host; content }) forest.graphs forest.resources
 
-let render_tree ~env ~format ~config addr : unit =
-  let@ () = Reporter.silence in
-  let dev = true in
-  let forest = Compiler.init ~env ~config in
-  let asset_dirs = Eio_util.paths_of_dirs ~env config.assets in
-  let config = Compiler.get_config forest in
-  let addr = Iri_scheme.user_iri ~host: config.host addr in
-  let host = config.host in
-  plant_assets ~env ~host ~asset_dirs ~forest;
-  Compiler.(
-    forest
-    |> build_import_graph_for ~addr
-    |> expand_only addr
-    |> eval ~dev
-    |> resources
-    |> Fun.flip Forest.find_opt addr
-    |> function
-    | None -> assert false
-    | Some resource ->
-      match resource with
-      | T.Asset _ -> assert false
-      | T.Article article ->
-        match format with
-        (* NOTE: The STRING, HTML, etc. on the left and right are different
-           types. The left one is defined in this module, the right one is
-           defined in Render.
-           See https://github.com/dbuenzli/cmdliner/issues/199
-           This works for now.
-           *)
-        | STRING -> Format.printf "%s" (Render.render ~dev forest STRING (Article article))
-        | HTML -> Format.printf "%a" Pure_html.pp (Render.render ~dev forest HTML (Article article))
-        | JSON -> Format.printf "%a" Yojson.Safe.pp (Render.render ~dev forest JSON (Article article))
-        | XML -> Format.printf "%a" Pure_html.(pp_xml ?header: None) (Render.render ~dev forest XML (Article article))
-  )
+let render_tree
+    : env: env ->
+    config: Config.t ->
+    target: target ->
+    string ->
+    unit
+  = fun ~env ~config ~target addr ->
+    let@ () = Reporter.silence in
+    let dev = true in
+    let iri = Iri_scheme.user_iri ~host: config.host addr in
+    let Target tgt = target in
+    let result = State_machine.render_tree ~env ~config ~dev tgt iri in
+    Format.printf "%s" result
 
-let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.Forest_config.t) : Compiler.state =
+let plant_raw_forest_from_dirs ~env ~dev: _ ~(config : Config.t) : State.t =
   let asset_dirs = Eio_util.paths_of_dirs ~env config.assets in
-  let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let foreign_paths = Eio_util.paths_of_dirs ~env config.foreign in
-  let forest = Compiler.init ~env ~config in
-  let host = (Compiler.get_config forest).host in
+  let forest = Phases.init ~env ~config in
   begin
     let@ path = List.iter @~ foreign_paths in
     let path_str = EP.native_exn path in
@@ -140,7 +119,7 @@ let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.Forest_config.t) : Co
     let blob = try EP.load path with _ -> Reporter.fatalf IO_error "Could not read foreign forest blob at `%s`" path_str in
     match Repr.of_json_string (T.forest_t T.content_t) blob with
     | Ok foreign_forest ->
-      List.iter (fun r -> Compiler.plant_resource r forest) foreign_forest
+      List.iter (fun r -> Forest.plant_resource r forest.graphs forest.resources) foreign_forest
     | Error (`Msg err) ->
       Reporter.fatalf Parse_error "Could not parse foreign forest blob: %s" err
     | exception (Iri.Error err) ->
@@ -148,22 +127,13 @@ let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.Forest_config.t) : Co
     | exception exn ->
       Reporter.fatalf Parse_error "Encountered unknown error while decoding foreign forest blob: %s" (Printexc.to_string exn)
   end;
-  plant_assets ~env ~host ~asset_dirs ~forest;
-  Compiler.(
-    forest
-    |> load tree_dirs
-    |> log "Parse trees"
-    |> parse ~quit_on_error: true
-    |> build_import_graph
-    |> log "Expand, evaluate, and analyse forest"
-    |> expand ~quit_on_error: true
-    |> eval ~dev
-  )
+  plant_assets ~env ~host: config.host ~asset_dirs ~forest;
+  State_machine.batch_run ~env ~config
 
-let json_manifest ~dev ~(forest : Compiler.state) : string =
+let json_manifest ~dev ~(forest : State.t) : string =
   let render = Render.render ~dev forest JSON in
-  forest
-  |> Compiler.get_all_articles
+  forest.resources
+  |> Forest.get_all_articles
   |> List.map (fun tree -> render (Article tree))
   |> List.map
     (
@@ -174,11 +144,11 @@ let json_manifest ~dev ~(forest : Compiler.state) : string =
   |> (fun t -> `Assoc t)
   |> Yojson.Safe.to_string
 
-let render_forest ~dev ~(forest : Compiler.state) : unit =
+let render_forest ~dev ~(forest : State.t) : unit =
   log "Render forest" ();
-  let cwd = Eio.Stdenv.cwd (Compiler.get_env forest) in
-  let all_resources = forest |> Compiler.get_all_resources in
-  List.iter (fun t -> Compiler.plant_resource t forest) all_resources;
+  let cwd = Eio.Stdenv.cwd (State.env forest) in
+  let all_resources = forest.resources |> Forest.get_all_resources in
+  List.iter (fun t -> Forest.plant_resource t forest.graphs forest.resources) all_resources;
   Logs.debug (fun m -> m "rendering %i resources" (List.length all_resources));
   begin
     let json_string = json_manifest ~dev ~forest in
@@ -186,7 +156,7 @@ let render_forest ~dev ~(forest : Compiler.state) : unit =
     Eio_util.ensure_context_of_path ~perm: 0o755 json_path;
     EP.save ~create: (`Or_truncate 0o644) json_path json_string
   end;
-  let module Graphs = (val Compiler.graphs forest) in
+  let module Graphs = (val State.graphs forest) in
   begin
     let@ resource = Eio.Fiber.List.iter ~max_fibers: 20 @~ all_resources in
     let@ () = Reporter.easy_run in
@@ -214,10 +184,10 @@ let render_forest ~dev ~(forest : Compiler.state) : unit =
         end
   end
 
-let _export ~forest : unit =
+let _export ~(forest : State.t) : unit =
   let@ () = Reporter.profile "Export forest" in
   let local_resources =
-    let@ resource = List.filter @~ Compiler.get_all_resources forest in
+    let@ resource = List.filter @~ Forest.get_all_resources forest.resources in
     match resource with
     | T.Article { frontmatter = { iri = Some iri; _ }; _ } ->
       Iri.host iri = Some forest.config.host

@@ -5,11 +5,12 @@
  *)
 
 open Forester_core
+open Forester_compiler
 
 type env = Eio_unix.Stdenv.base
 type dir = Eio.Fs.dir_ty Eio.Path.t
 
-type format = HTML | JSON | XML | STRING
+type target = Target : 'a Render.target -> target
 
 val plant_assets :
   env:
@@ -18,24 +19,24 @@ val plant_assets :
   .. > ->
   host: string ->
   asset_dirs: Eio.Fs.dir_ty Eio.Path.t list ->
-  forest: Compiler.state ->
+  forest: State.t ->
   unit
 
 val plant_raw_forest_from_dirs :
   env: env ->
   dev: bool ->
-  config: Forester_forest.Config.Forest_config.t ->
-  Compiler.state
+  config: Config.t ->
+  State.t
 
 val render_forest :
   dev: bool ->
-  forest: Compiler.state ->
+  forest: State.t ->
   unit
 
 val render_tree :
   env: env ->
-  format: format ->
-  config: Forester_forest.Config.Forest_config.t ->
+  config: Config.t ->
+  target: target ->
   string ->
   unit
 
@@ -49,8 +50,8 @@ val create_tree :
   prefix: string ->
   template: string option ->
   mode: [`Sequential | `Random] ->
-  config: Forester_forest.Config.Forest_config.t ->
-  forest: Compiler.state ->
+  config: Config.t ->
+  forest: State.t ->
   string
 
 (* val export_publication : *)
@@ -58,10 +59,10 @@ val create_tree :
 
 val json_manifest :
   dev: bool ->
-  forest: Compiler.state ->
+  forest: State.t ->
   string
 
 val complete :
-  forest: Compiler.state ->
+  forest: State.t ->
   string ->
   (iri * string) Seq.t

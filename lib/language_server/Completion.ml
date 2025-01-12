@@ -7,7 +7,6 @@
 
 open Forester_core
 open Forester_compiler
-open Forester_forest
 open Forester_frontend
 
 module L = Lsp.Types
@@ -107,17 +106,17 @@ let compute
       | None -> None
     in
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
-    let config = Compiler.get_config forest in
+    let config = State.config forest in
     let addr_items () =
       forest
-      |> Compiler.parsed
+      |> State.parsed
       |> Forest.to_seq_values
       |> Seq.filter_map
         (
           fun (tree : Code.tree) ->
             let* addr = tree.addr in
             let* { frontmatter; mainmatter; _ } =
-              (Compiler.get_article (Iri_scheme.user_iri ~host: config.host addr) forest)
+              (Forest.get_article (Iri_scheme.user_iri ~host: config.host addr) forest.resources)
             in
             let documentation =
               let render = Render.render ~dev: true forest STRING in
@@ -147,7 +146,7 @@ let compute
       (* TODO: If the selected item is not in scope in the current tree, auto-import it.
          reference: https://github.com/rust-lang/rust-analyzer/blob/fc98e0657abf3ce07eed513e38274c89bbb2f8ad/crates/ide-assists/src/handlers/auto_import.rs#L15
          *)
-      let units = Compiler.units forest in
+      let units = State.units forest in
       units
       |> Expand.Unit_map.to_list
       |> List.map snd

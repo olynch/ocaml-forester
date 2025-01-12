@@ -6,30 +6,7 @@
 
 open Forester_prelude
 open Forester_core
-
-module Forest_config = struct
-  type t = {
-    host: string;
-    home: string option;
-    trees: string list;
-    assets: string list;
-    foreign: string list;
-    theme: string;
-    prefixes: string list;
-  }
-  [@@deriving show, repr]
-end
-
-let default_forest_config : Forest_config.t =
-  {
-    host = "my-forest";
-    trees = ["trees"];
-    assets = [];
-    foreign = [];
-    theme = "theme";
-    home = None;
-    prefixes = [];
-  }
+open Forester_compiler
 
 let parse lexbuf filename =
   match Toml.Parser.parse lexbuf filename with
@@ -59,26 +36,26 @@ let parse lexbuf filename =
         Reporter.emitf Configuration_error "Custom XSL stylesheet injection is no longer supported; please remove the `stylesheet' key from the [forest] group."
     in
     let trees =
-      Option.value ~default: default_forest_config.trees @@
+      Option.value ~default: Config.default.trees @@
         get tbl (forest |-- key "trees" |-- array |-- strings)
     in
     let foreign =
-      Option.value ~default: default_forest_config.foreign @@
+      Option.value ~default: Config.default.foreign @@
         get tbl (forest |-- key "foreign" |-- array |-- strings)
     in
     let assets =
-      Option.value ~default: default_forest_config.assets @@
+      Option.value ~default: Config.default.assets @@
         get tbl (forest |-- key "assets" |-- array |-- strings)
     in
     let theme =
-      Option.value ~default: default_forest_config.theme @@
+      Option.value ~default: Config.default.theme @@
         get tbl (forest |-- key "theme" |-- string)
     in
     let prefixes =
-      Option.value ~default: default_forest_config.prefixes @@
+      Option.value ~default: Config.default.prefixes @@
         get tbl (forest |-- key "prefixes" |-- array |-- strings)
     in
-    Forest_config.{ host; assets; trees; foreign; theme; home; prefixes }
+    Config.{ host; assets; trees; foreign; theme; home; prefixes }
 
 let parse_forest_config_string str =
   let lexbuf = Lexing.from_string str in

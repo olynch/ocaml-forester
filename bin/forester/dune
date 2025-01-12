@@ -15,7 +15,6 @@
    forester.frontend
    forester.language_server
    forester.compiler
-   forester.forest
    logs
    logs.fmt
    logs.cli

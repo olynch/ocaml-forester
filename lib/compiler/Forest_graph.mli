@@ -16,6 +16,8 @@ val safe_succ : t -> Vertex.t -> Vertex.t list
 val mem_edge : t -> Vertex.t -> Vertex.t -> bool
 val transitive_closure : ?reflexive: bool -> t -> t
 
+val out_degree : t -> Vertex.t -> int
+
 val remove_vertex : t -> Vertex.t -> unit
 val transitive_reduction : ?reflexive: bool -> t -> t
 val nb_vertex : t -> int

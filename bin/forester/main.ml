@@ -7,7 +7,7 @@
 open Forester_prelude
 open Forester_core
 open Forester_frontend
-open Forester_forest
+open Forester_compiler
 open Cmdliner
 
 module EP = Eio.Path
@@ -35,14 +35,12 @@ let version =
     | Some v -> Build_info.V1.Version.to_string v
 
 let build ~env _ config_filename dev no_theme =
-  let config = Config.parse_forest_config_file config_filename in
+  let config = Config_parser.parse_forest_config_file config_filename in
   Logs.debug (fun m -> m "Parsed config file %s" config_filename);
   let forest = Forester.plant_raw_forest_from_dirs ~env ~dev ~config in
-  Compiler.(
-    forest
-    |> get_diagnostics
-    |> Diagnostics.iter (fun _ d -> List.iter Reporter.Tty.display d)
-  );
+  forest
+  |> State.diagnostics
+  |> Diagnostic_store.iter (fun _ d -> List.iter Reporter.Tty.display d);
   Forester.render_forest ~dev ~forest;
   let dirs_to_copy = (if not no_theme then [config.theme] else []) in
   let@ dir_to_copy = List.iter @~ dirs_to_copy in
@@ -50,7 +48,7 @@ let build ~env _ config_filename dev no_theme =
 
 let new_tree ~env config_filename prefix template random =
   let@ () = Reporter.silence in
-  let config = Config.parse_forest_config_file config_filename in
+  let config = Config_parser.parse_forest_config_file config_filename in
   let forest = Forester.plant_raw_forest_from_dirs ~env ~dev: true ~config in
   let mode = if random then `Random else `Sequential in
   let new_tree = Forester.create_tree ~env ~prefix ~template ~mode ~config ~forest in
@@ -58,14 +56,14 @@ let new_tree ~env config_filename prefix template random =
 
 let complete ~env config_filename title =
   let@ () = Reporter.silence in
-  let config = Config.parse_forest_config_file config_filename in
+  let config = Config_parser.parse_forest_config_file config_filename in
   let forest = Forester.plant_raw_forest_from_dirs ~env ~dev: true ~config in
   let@ iri, title = Seq.iter @~ Forester.complete ~forest title in
   Format.printf "%a, %s\n" pp_iri iri title
 
 let query_all ~env config_filename =
   let@ () = Reporter.silence in
-  let config = Config.parse_forest_config_file config_filename in
+  let config = Config_parser.parse_forest_config_file config_filename in
   let forest = Forester.plant_raw_forest_from_dirs ~env ~config ~dev: true in
   Format.printf "%s" @@
     Forester.json_manifest ~dev: true ~forest
@@ -89,6 +87,31 @@ let index_tree_str =
   \li{[Creating your personal biographical tree](http://www.jonmsterling.com/jms-007K.xml)}
 }
 |}
+
+let try_create_dir ~cwd dname =
+  let ( / ) = EP.( / ) in
+  if Eio.Path.is_directory (cwd / dname) then
+    Reporter.emitf
+      Initialization_warning
+      "`%s` already exists"
+      dname
+  else
+    try
+      Eio.Path.mkdir ~perm: 0o755 (cwd / dname)
+    with
+      | exn ->
+        Forester_core.Reporter.emitf Initialization_warning "Failed to create directory `%s`: %a" dname Eio.Exn.pp exn
+
+let try_create_file ~cwd ?(content = "") fname =
+  let ( / ) = EP.( / ) in
+  if Eio.Path.is_file (cwd / fname) then
+    Forester_core.Reporter.emitf Initialization_warning "`%s` already exists" fname
+  else
+    try
+      Eio.Path.save ~create: (`Exclusive 0o644) (cwd / fname) content
+    with
+      | exn ->
+        Forester_core.Reporter.emitf Initialization_warning "Failed to create file `%s`: %a" fname Eio.Exn.pp exn
 
 let init ~env dir =
   let default_theme_url = "https://git.sr.ht/~jonsterling/forester-base-theme" in
@@ -135,11 +158,11 @@ git -C theme checkout %s
           default_theme_url
           theme_version
   end;
-  ["trees"; "assets"] |> List.iter (Eio_util.try_create_dir ~cwd);
-  Eio_util.try_create_file ~cwd ~content: default_config_str "forest.toml";
-  Eio_util.try_create_file ~cwd ~content: "output/" ".gitignore";
-  Eio_util.try_create_file ~cwd ~content: "" "assets/.gitkeep";
-  Eio_util.try_create_file ~cwd ~content: index_tree_str "trees/index.tree";
+  ["trees"; "assets"] |> List.iter (try_create_dir ~cwd);
+  try_create_file ~cwd ~content: default_config_str "forest.toml";
+  try_create_file ~cwd ~content: "output/" ".gitignore";
+  try_create_file ~cwd ~content: "" "assets/.gitkeep";
+  try_create_file ~cwd ~content: index_tree_str "trees/index.tree";
   Reporter.emitf Log "%s" "Initialized forest, try editing `trees/index.tree` and running `forester build`. Afterwards, you can open `output/index.xml` in your browser to view your forest."
 
 let arg_config =
@@ -239,7 +262,7 @@ let init_cmd ~env =
   Cmd.v info Term.(const (init ~env) $ arg_dir)
 
 let lsp ~env _ config =
-  let config = Config.parse_forest_config_file config in
+  let config = Config_parser.parse_forest_config_file config in
   Forester_lsp.start
     ~env
     ~config
@@ -261,9 +284,9 @@ let lsp_cmd ~env =
       $ arg_config
     )
 
-let render ~env format addr config =
-  let config = Config.parse_forest_config_file config in
-  Forester_frontend.Forester.render_tree ~env ~format ~config addr
+let render ~env target addr config =
+  let config = Config_parser.parse_forest_config_file config in
+  Forester_frontend.Forester.render_tree ~env ~target ~config addr
 
 let render_cmd ~env =
   let open Cmdliner in
@@ -288,14 +311,14 @@ let render_cmd ~env =
         (
           Arg.enum
             [
-              "html", Forester.HTML;
-              "json", JSON;
-              "xml", XML;
-              "string", STRING
+              "html", Forester.Target HTML;
+              "json", Forester.Target JSON;
+              "xml", Forester.Target XML;
+              "string", Forester.Target STRING
             ]
         )
-        ~vopt: Forester.HTML
-        HTML
+        ~vopt: (Forester.Target HTML)
+        (Target HTML)
       & info ["format"]
     )
   in

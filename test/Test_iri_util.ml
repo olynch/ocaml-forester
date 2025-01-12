@@ -5,7 +5,7 @@
  *)
 
 open Testables
-open Forester_forest
+open Forester_compiler
 open Forester_core
 
 let test_iri_to_addr () =

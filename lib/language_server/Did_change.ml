@@ -5,7 +5,7 @@
  *
  *)
 
-(* open Forester_frontend *)
+open Forester_compiler
 module L = Lsp.Types
 
 let compute
@@ -14,7 +14,7 @@ let compute
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
   match params with
   | { textDocument = { uri; _ }; contentChanges } ->
-    let docs = Forester_frontend.Compiler.documents forest in
+    let docs = State.documents forest in
     match Hashtbl.find_opt docs uri with
     | None -> assert false
     | Some doc ->

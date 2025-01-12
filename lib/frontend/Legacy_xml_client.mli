@@ -5,10 +5,11 @@
  *)
 
 open Forester_core
+open Forester_compiler
 
 module T := Types
 module P := Pure_html
 
-val route : Compiler.state -> Iri.t -> string
-val render_article : Compiler.state -> T.content T.article -> P.node
-val render_content : Compiler.state -> T.content -> P.node list
+val route : State.t -> Iri.t -> string
+val render_article : State.t -> T.content T.article -> P.node
+val render_content : State.t -> T.content -> P.node list

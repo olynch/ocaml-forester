@@ -13,16 +13,11 @@ let () =
   Logs.set_reporter (Logs_fmt.reporter ());
   Logs.set_level (Some Debug);
   let@ () = Reporter.easy_run in
-  let config = Forester_forest.Config.parse_forest_config_file "forest.toml" in
-  let (state, result) =
-    Machine.(
-      init ~env ~config
-      |> run_until Do_nothing
-    )
-  in
-  Machine.serve ~env state
-(* match result with *)
-(* | Nothing -> Format.printf "Got nothing@." *)
-(* | Vertex_set _ -> Format.printf "Got vertex set@." *)
-(* | Render_result node -> Format.printf "Got render result: %a@." Pure_html.pp node *)
-(* | Error (`Not_found i) -> Format.printf "Got error: %a not found@." pp_iri i *)
+  let config = Config_parser.parse_forest_config_file "forest.toml" in
+  State_machine.(
+    serve
+      ~env
+      (
+        batch_run ~env ~config
+      )
+  )

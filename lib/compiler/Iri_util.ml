@@ -36,7 +36,7 @@ let split_addr addr =
 let next_addr
     ~prefix
     ~mode
-    ~(config : Config.Forest_config.t)
+    ~(config : Config.t)
     (addrs : (string * string) List.t)
   =
   let keys =

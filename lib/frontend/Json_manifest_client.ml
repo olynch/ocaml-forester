@@ -5,6 +5,7 @@
  *)
 
 open Forester_prelude
+open Forester_compiler
 open Forester_core
 
 module T = Types
@@ -12,14 +13,14 @@ module T = Types
 module PT = Plain_text_client
 
 let render_tree ~dev ~forest (doc : T.content T.article) : (string * Yojson.Safe.t) option =
-  let host = (Compiler.get_config forest).host in
+  let host = (State.config forest).host in
   let@ iri = Option.bind doc.frontmatter.iri in
   (* TODO : Check routing *)
   let route = Legacy_xml_client.route forest iri in
   let title_string =
     String_util.sentence_case @@
-    PT.string_of_content forest @@
-    Compiler.get_expanded_title doc.frontmatter forest
+    PT.string_of_content forest.resources @@
+    Forest.get_expanded_title doc.frontmatter forest.resources
   in
   let title = `String title_string in
   let taxon =
@@ -27,19 +28,19 @@ let render_tree ~dev ~forest (doc : T.content T.article) : (string * Yojson.Safe
     | None -> `Null
     | Some vertex ->
       let content = T.apply_modifier_to_content Sentence_case vertex in
-      `String (PT.string_of_content forest content)
+      `String (PT.string_of_content forest.resources content)
   in
   let tags =
     `List
       begin
         let@ tag = List.filter_map @~ doc.frontmatter.tags in
-        let@ content = Option.map @~ Compiler.get_title_or_content_of_vertex ~modifier: Identity tag forest in
-        `String (PT.string_of_content forest content)
+        let@ content = Option.map @~ Forest.get_title_or_content_of_vertex ~modifier: Identity tag forest.resources in
+        `String (PT.string_of_content forest.resources content)
       end
   in
   let route = `String route in
   let metas =
-    let meta_string meta = String.trim @@ PT.string_of_content forest meta in
+    let meta_string meta = String.trim @@ PT.string_of_content forest.resources meta in
     let meta_assoc (s, meta) = (s, `String (meta_string meta)) in
     `Assoc (List.map meta_assoc doc.frontmatter.metas)
   in
@@ -66,8 +67,8 @@ let render_tree ~dev ~forest (doc : T.content T.article) : (string * Yojson.Safe
 
 let render_trees
     ~(dev : bool)
-    ~forest
+    ~(forest : State.t)
     : Yojson.Safe.t
   =
-  let trees = Compiler.get_all_articles forest in
+  let trees = Forest.get_all_articles forest.resources in
   `Assoc (List.filter_map (render_tree ~dev ~forest) trees)

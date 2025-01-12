@@ -7,11 +7,11 @@
 open Forester_prelude
 open Forester_xml_names
 open Forester_core
-open Forester_forest
+open Forester_compiler
 
 module T = Types
 module P = Pure_html
-module X = Forester_forest.Xml_forester
+module X = Xml_forester
 
 module Xmlns = struct
   include Xmlns_effect.Make ()
@@ -31,20 +31,20 @@ module Scope = Algaeff.Reader.Make(struct type t = iri option end)
 (* It's fine to have a global transclusion cache since iris fully qualify a tree*)
 let transclusion_cache = Hashtbl.create 1000
 
-let get_sorted_articles forest addrs =
+let get_sorted_articles (forest : State.t) addrs =
   let module C = Types.Comparators(struct
     let string_of_content =
       Plain_text_client.string_of_content
-        forest
+        forest.resources
   end) in
   addrs
   |> Vertex_set.to_seq
   |> Seq.filter_map Vertex.iri_of_vertex
-  |> Seq.filter_map (fun iri -> Compiler.get_article iri forest)
+  |> Seq.filter_map (fun iri -> Forest.get_article iri forest.resources)
   |> List.of_seq
   |> List.sort C.compare_article
 
-let forester_iri_to_string ~host ~path ~(config : Config.Forest_config.t) =
+let forester_iri_to_string ~host ~path ~(config : Config.t) =
   if host = config.host then
     String.concat "/" @@
       match path with
@@ -69,8 +69,8 @@ let iri_type iri =
   | Absolute [_] -> "user"
   | _ -> failwith "addr_type"
 
-let home_iri ~(config : Config.Forest_config.t) =
-  (* let config = Compiler.get_config forest in *)
+let home_iri ~(config : Config.t) =
+  (* let config = State.get_config forest in *)
   let@ root = Option.bind config.home in
   let base = Iri_scheme.base_iri ~host: config.host in
   try
@@ -85,7 +85,7 @@ let iri_is_home ~config iri =
   | None -> false
 
 let route_resource_iri ~suffix forest iri =
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   let host = Option.value ~default: "" @@ Iri.host iri in
   let bare_route =
     String.concat "-" @@
@@ -103,7 +103,7 @@ let route_resource_iri ~suffix forest iri =
   end
 
 let route forest iri =
-  match Forest.find_opt (Compiler.(forest |> resources)) iri with
+  match Forest.find_opt (State.resources forest) iri with
   | Some resource ->
     let suffix =
       match resource with
@@ -119,7 +119,7 @@ let route forest iri =
 
 let get_expanded_title frontmatter forest =
   let scope = Scope.read () in
-  let title = Compiler.get_expanded_title ?scope ~flags: T.{ empty_when_untitled = true } frontmatter forest in
+  let title = Forest.get_expanded_title ?scope ~flags: T.{ empty_when_untitled = true } frontmatter forest in
   T.apply_modifier_to_content Sentence_case title
 
 let render_xml_qname qname =
@@ -165,7 +165,7 @@ let rec render_section forest (section : T.content T.section) : P.node =
     ]
 
 and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   X.frontmatter
     []
     [
@@ -180,8 +180,8 @@ and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
           (fun iri -> route forest iri)
           frontmatter.iri;
       begin
-        let title = get_expanded_title frontmatter forest in
-        X.title [X.text_ "%s" @@ Plain_text_client.string_of_content forest title] @@
+        let title = get_expanded_title frontmatter forest.resources in
+        X.title [X.text_ "%s" @@ Plain_text_client.string_of_content forest.resources title] @@
           render_content forest title
       end;
       begin
@@ -197,7 +197,7 @@ and render_meta forest (key, body) =
   X.meta [X.name "%s" key] @@
     render_content forest body
 
-and render_content (forest : Compiler.state) (Content content: T.content) : P.node list =
+and render_content (forest : State.t) (Content content: T.content) : P.node list =
   match content with
   | T.Text txt0 :: T.Text txt1 :: content ->
     render_content forest (Content (T.Text (txt0 ^ txt1) :: content))
@@ -208,9 +208,9 @@ and render_content (forest : Compiler.state) (Content content: T.content) : P.no
   | [] -> []
 
 and render_content_node
-    : Compiler.state -> 'a T.content_node -> P.node list
+    : State.t -> 'a T.content_node -> P.node list
   = fun forest node ->
-    let config = Compiler.get_config forest in
+    let config = State.config forest in
     match node with
     | Text str ->
       [P.txt "%s" str]
@@ -226,7 +226,7 @@ and render_content_node
       let prefixes_to_add, (name, attrs, content) =
         let@ () = Xmlns.within_scope in
         render_xml_qname elt.name,
-        List.map (render_xml_attr forest) elt.attrs,
+        List.map (render_xml_attr forest.resources) elt.attrs,
         render_content forest elt.content
       in
       let attrs =
@@ -264,7 +264,7 @@ and render_content_node
             metadata_shown = Some true
           }
       in
-      let module Legacy_query_engine = (val (Forest.legacy_query_engine (Compiler.graphs forest))) in
+      let module Legacy_query_engine = (val (Forest.legacy_query_engine (State.graphs forest))) in
       Legacy_query_engine.run_query q
       |> (
         fun vs ->
@@ -285,7 +285,7 @@ and render_content_node
             metadata_shown = Some true
           }
       in
-      Forester_forest.Forest.run_datalog_query (Compiler.graphs forest) q
+      Forest.run_datalog_query (State.graphs forest) q
       |> get_sorted_articles forest
       |> List.map article_to_section
       |> List.map (render_section forest)
@@ -323,11 +323,11 @@ and render_resource_sources sources =
 and render_resource_source source =
   X.resource_source [X.type_ "%s" source.type_; X.resource_part "%s" source.part] "<![CDATA[%s]]>" source.source
 
-and render_transclusion (forest : Compiler.state) (transclusion : T.content T.transclusion) : P.node list =
+and render_transclusion (forest : State.t) (transclusion : T.content T.transclusion) : P.node list =
   match Hashtbl.find_opt transclusion_cache transclusion with
   | Some nodes -> nodes
   | None ->
-    match Compiler.get_content_of_transclusion transclusion forest with
+    match Forest.get_content_of_transclusion transclusion forest.resources with
     | None ->
       Reporter.fatalf Resource_not_found "Could not find tree %a" pp_iri transclusion.href
     | Some content ->
@@ -335,9 +335,9 @@ and render_transclusion (forest : Compiler.state) (transclusion : T.content T.tr
       Hashtbl.add transclusion_cache transclusion nodes;
       nodes
 
-and render_link (forest : Compiler.state) (link : T.content T.link) : P.node list =
-  let config = Compiler.get_config forest in
-  let article_opt = Compiler.get_article link.href forest in
+and render_link (forest : State.t) (link : T.content T.link) : P.node list =
+  let config = State.config forest in
+  let article_opt = Forest.get_article link.href forest.resources in
   let attrs =
     match article_opt with
     | None ->
@@ -348,7 +348,7 @@ and render_link (forest : Compiler.state) (link : T.content T.link) : P.node lis
     | Some article ->
       [
         X.optional_ (X.href "%s") @@ Option.map (route forest) article.frontmatter.iri;
-        X.title_ "%s" @@ Plain_text_client.string_of_content forest @@ get_expanded_title article.frontmatter forest;
+        X.title_ "%s" @@ Plain_text_client.string_of_content forest.resources @@ get_expanded_title article.frontmatter forest.resources;
         X.optional_ (X.addr_ "%s") @@ Option.map (iri_to_string ~config) article.frontmatter.iri;
         X.type_ "local"
       ]
@@ -357,7 +357,7 @@ and render_link (forest : Compiler.state) (link : T.content T.link) : P.node lis
 
 and render_attributions =
   let attributions_cache = Hashtbl.create 1000 in
-  fun (forest : Compiler.state) scope (attributions : _ T.attribution list) ->
+  fun (forest : State.t) scope (attributions : _ T.attribution list) ->
     match Hashtbl.find_opt attributions_cache (scope, attributions) with
     | Some cached -> cached
     | None ->
@@ -377,8 +377,8 @@ and render_attributions =
                 get_sorted_articles
                   forest
                   (
-                    Forester_forest.Forest.run_datalog_query
-                      (Compiler.graphs forest)
+                    Forest.run_datalog_query
+                      (State.graphs forest)
                       query
                   )
             in
@@ -406,7 +406,7 @@ and render_attribution forest (attrib : _ T.attribution) =
   in
   tag [] @@ render_attribution_vertex forest attrib.vertex
 
-and render_attribution_vertex (forest : Compiler.state) vtx =
+and render_attribution_vertex (forest : State.t) vtx =
   match vtx with
   | T.Iri_vertex href ->
     let content = T.Content [T.Transclude { href; target = Title { empty_when_untitled = false }; modifier = Identity }] in
@@ -418,12 +418,12 @@ and render_dates forest dates =
   X.null @@ List.map (render_date forest) dates
 
 and render_date forest (date : Human_datetime.t) =
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   let href_attr =
     let str = Format.asprintf "%a" Human_datetime.pp (Human_datetime.drop_time date) in
     let base = Iri_scheme.base_iri ~host: config.host in
     let iri = Iri.resolve ~base (Iri.of_string str) in
-    match Compiler.get_article iri forest with
+    match Forest.get_article iri forest.resources with
     | None -> X.null_
     | Some _ -> X.href "%s" @@ route forest iri
   in
@@ -437,7 +437,7 @@ and render_date forest (date : Human_datetime.t) =
 
 let render_article forest (article : T.content T.article) : P.node =
   let@ () = Reporter.tracef "when rendering article %a" Format.(pp_print_option Iri.pp) article.frontmatter.iri in
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   let xmlns_prefix = Xmlns.{ prefix = X.reserved_prefix; xmlns = X.forester_xmlns } in
   let@ () = Scope.run ~env: article.frontmatter.iri in
   let@ () = Xmlns.run in

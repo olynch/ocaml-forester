@@ -8,7 +8,7 @@
 
 open Forester_core
 open Forester_prelude
-open Forester_forest
+open Forester_compiler
 open Forester_frontend
 
 module EP = Eio.Path
@@ -16,7 +16,7 @@ module EP = Eio.Path
 module T = Types
 module HTML = Pure_html.HTML
 
-let config = { Config.default_forest_config with trees = ["transclude"] }
+let config = { Config.default with trees = ["transclude"] }
 let host = config.host
 
 let href = Iri_scheme.user_iri ~host "transcludee"
@@ -45,20 +45,13 @@ let () =
   let@ () = Reporter.easy_run in
   (* Needs to be false to make tests reproducible. The source path depends on the host *)
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
-  let forest =
-    Compiler.(
-      init ~env ~config
-      |> load tree_dirs
-      |> parse ~quit_on_error: true
-      |> build_import_graph
-      |> expand ~quit_on_error: true
-      |> eval ~dev: false
-      |> plant
-    )
+  let forest, _ =
+    Phases.init ~env ~config
+    |> State_machine.run_action Load_all ~until: Do_nothing
   in
   let iri = Iri_scheme.user_iri ~host "transcludee" in
   let test_transclusion t expect =
-    let result = Compiler.get_content_of_transclusion t forest in
+    let result = Forest.get_content_of_transclusion t forest.resources in
     Alcotest.(check @@ option string)
       ""
       expect

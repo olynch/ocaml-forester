@@ -11,10 +11,10 @@ type diagnostics = Reporter.Message.t Asai.Diagnostic.t list
 module Table = Hashtbl.Make(Lsp.Uri)
 include Table
 
-type table = diagnostics t
+type t = diagnostics Table.t
 
 let append
-    : diagnostics t -> key -> diagnostics -> unit
+    : t -> key -> diagnostics -> unit
   = fun table uri diagnostics ->
     match find_opt table uri with
     | None ->

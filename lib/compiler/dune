@@ -27,6 +27,9 @@
   forester.human_datetime
   yuujinchou
   asai
+  ocamlgraph
+  pure-html
+  str
   menhirLib
   bwd
   algaeff

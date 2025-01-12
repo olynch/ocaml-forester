@@ -5,9 +5,7 @@
  *
  *)
 
-open Forester_prelude
 open Forester_core
-open Forester_compiler
 
 (* We need a good solution for the mismatch between internal IRIs and URIs.
    URIs refer to the absolute path of the document, whereas IRIs don't keep

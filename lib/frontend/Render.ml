@@ -5,6 +5,7 @@
  *)
 
 open Forester_prelude
+open Forester_compiler
 open Forester_core
 
 exception Todo of string
@@ -26,9 +27,10 @@ type _ target =
   | JSON : json target
   | HTML : html target
   | STRING : string target
+[@@deriving show]
 
 let render
-    : type a b. dev: bool -> Forester_forest.State.t -> a target -> b renderable -> a
+    : type a b. dev: bool -> State.t -> a target -> b renderable -> a
   = fun
       ~dev
       forest
@@ -55,7 +57,7 @@ let render
         match renderable with
         | Content content ->
           `String
-            (Plain_text_client.string_of_content forest content)
+            (Plain_text_client.string_of_content forest.resources content)
         | Article article ->
           begin
             match (Json_manifest_client.render_tree ~dev ~forest article) with
@@ -68,7 +70,7 @@ let render
       begin
         match renderable with
         | Content content -> P.HTML.div [] @@ Htmx_client.render_content forest content
-        | Article _ -> P.HTML.null []
+        | Article article -> Htmx_client.render_article forest article
         | Frontmatter _ -> P.HTML.null []
       end
     | XML ->
@@ -84,13 +86,13 @@ let render
     | STRING ->
       begin
         match renderable with
-        | Content content -> Plain_text_client.string_of_content forest content
+        | Content content -> Plain_text_client.string_of_content forest.resources content
         | Article _ -> raise (Todo "render article to string")
         | Frontmatter _ -> raise (Todo "render frontmatter to string")
       end
 
 let pp
-    : type a b. dev: bool -> Compiler.state -> a target -> Format.formatter -> b renderable -> unit
+    : type a b. dev: bool -> State.t -> a target -> Format.formatter -> b renderable -> unit
   = fun ~dev forest target fmt renderable ->
     let stuff =
       render ~dev forest target renderable

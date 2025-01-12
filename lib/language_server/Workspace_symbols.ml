@@ -7,7 +7,7 @@
 
 open Forester_core
 open Forester_frontend
-open Forester_forest
+open Forester_compiler
 
 (* module State = Analysis.State *)
 module L = Lsp.Types
@@ -17,17 +17,17 @@ let compute
     ({ query = _; _ }: L.WorkspaceSymbolParams.t)
   =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   let render = Render.render ~dev: true forest STRING in
   let trees =
     forest
-    |> Compiler.parsed
+    |> State.parsed
     |> Forest.to_seq_keys
     |> Seq.filter_map
       (
         fun iri ->
           let title =
-            match Compiler.get_article iri forest with
+            match Forest.get_article iri forest.resources with
             | None -> "untitled"
             | Some { frontmatter; _ } ->
               begin
@@ -40,7 +40,7 @@ let compute
           (*   Forest.find_opt (Compiler.parsed forest) iri with *)
           let uri =
             let (let*) = Option.bind in
-            let* tree = Forest.find_opt (Compiler.parsed forest) iri in
+            let* tree = Forest.find_opt (State.parsed forest) iri in
             let* source_path = tree.source_path in
             Some (Lsp.Uri.of_path source_path)
           in
@@ -63,7 +63,7 @@ let compute
   let symbols =
     let open Forester_compiler in
     forest
-    |> Compiler.units
+    |> State.units
     |> Unit_map.to_seq
     |> Seq.concat_map
       (
@@ -81,7 +81,7 @@ let compute
                   let iri = Iri_scheme.user_iri ~host: config.host addr in
                   let uri =
                     let (let*) = Option.bind in
-                    let* tree = Forest.find_opt (Compiler.parsed forest) iri in
+                    let* tree = Forest.find_opt (State.parsed forest) iri in
                     let* source_path = tree.source_path in
                     Some (Lsp.Uri.of_path source_path)
                   in

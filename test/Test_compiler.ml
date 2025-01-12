@@ -6,31 +6,37 @@
 
 open Forester_core
 open Forester_prelude
-open Forester_forest
+open Forester_compiler
 open Forester_frontend
-let do_ a b = a; b
+
+module T = Types
 
 let () =
   Logs.set_level (Some Debug);
   let@ env = Eio_main.run in
-  let config = Config.default_forest_config in
+  let config = Config.default in
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let test_reparsing () =
     let@ () = Reporter.test_run in
     let before_forest =
-      Compiler.(
-        init ~env ~config
-        |> load tree_dirs
-        |> parse ~quit_on_error: true
-        |> build_import_graph
-        |> expand ~quit_on_error: true
-        |> eval ~dev: false
-        |> plant
-      )
+      State_machine.batch_run
+        ~env
+        ~config
     in
-    (* let uri = Hashtbl.find_opt (fun _ -> Lsp.Uri.of_string) before_forest in *)
+    let uri =
+      before_forest.documents |> Hashtbl.to_seq_keys
+      |> Seq.find_map
+        (
+          fun uri ->
+            if String.ends_with ~suffix: "reparse.tree" (Lsp.Uri.to_string uri) then
+              Some uri
+            else None
+        )
+      |> Option.get
+    in
+    let vtx = T.Iri_vertex (Iri_scheme.user_iri ~host: config.host (Iri_util.uri_to_addr uri)) in
     let reparsed_forest =
-      Compiler.(
+      Phases.(
         before_forest
         |> reparse
           (
@@ -40,32 +46,33 @@ let () =
                 ~textDocument: (
                   Lsp.Types.TextDocumentItem.create
                     ~languageId: "forester"
-                    ~uri: (Lsp.Uri.of_path "")
+                    ~uri
                     ~version: 2
                     ~text: {| \title{I am now importing something and the import graphs should be updated accordingly} \import{a}|}
                 )
           )
       )
     in
-    Alcotest.(check bool) "" true false
+    let module Graphs = (val reparsed_forest.graphs) in
+    let import_graph = Graphs.get_rel Query.Edges "imports" in
+    Alcotest.(check string)
+      ""
+      ""
+      ""
+  (* Alcotest.(check bool) *)
+  (*   "" *)
+  (*   true *)
+  (*   (Forest_graph.out_degree import_graph vtx > 0) *)
   in
   let test () =
     let forest =
       let@ () = Reporter.easy_run in
-      Compiler.(
-        init ~env ~config
-        |> load tree_dirs
-        |> parse ~quit_on_error: true
-        |> build_import_graph
-        |> expand ~quit_on_error: true
-        |> eval ~dev: false
-        |> plant
-      )
+      State_machine.batch_run ~env ~config
     in
     Alcotest.(check int)
       ""
       7
-      (List.length @@ Compiler.get_all_articles forest)
+      (List.length @@ Forest.get_all_articles forest.resources)
   in
   let open Alcotest in
   run

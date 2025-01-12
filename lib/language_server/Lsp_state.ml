@@ -5,8 +5,10 @@
  *
  *)
 
+open Forester_compiler
+
 type state = {
-  forest: Forester_forest.State.t;
+  forest: State.t;
   should_shutdown: bool;
   lsp_io: LspEio.io;
 }

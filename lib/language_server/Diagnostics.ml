@@ -9,23 +9,22 @@
    the emitted diagnostics should be reported to the same URI?
    *)
 
-open Forester_forest
-open Forester_frontend
+open Forester_compiler
 
 module L = Lsp.Types
 
 let compute (document : Lsp.Text_document.t) =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
-  let config = Compiler.get_config forest in
+  let config = State.config forest in
   let uri = Lsp.Text_document.documentUri document in
   let iri = uri |> Iri_util.uri_to_iri ~host: config.host in
-  Compiler.(
+  Phases.(
     forest
     |> reparse document
     |> expand_only iri
     |> eval ~dev: true
-    |> get_diagnostics
-    |> Diagnostics.iter
+    |> State.diagnostics
+    |> Diagnostic_store.iter
       (
         fun uri diagnostics ->
           match diagnostics with
