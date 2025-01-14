@@ -15,8 +15,8 @@
     (glob_files_rec ./forest/*)))
 
 (executable
- (name Test_machine)
- (public_name machine)
+ (name Test_http_server)
+ (public_name server)
  (libraries
   logs
   logs.fmt
