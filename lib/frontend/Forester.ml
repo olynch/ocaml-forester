@@ -21,10 +21,6 @@ let (let*) = Option.bind
 
 let output_dir_name = "output"
 
-let log s b =
-  Logs.app (fun m -> m " ￮ %s...@." s);
-  b
-
 let create_tree ~env ~prefix ~template ~mode ~config ~(forest : State.t) =
   let addrs =
     let@ article = List.filter_map @~ Forest.get_all_articles forest.resources in
@@ -128,7 +124,7 @@ let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.t) : State.t =
       Reporter.fatalf Parse_error "Encountered unknown error while decoding foreign forest blob: %s" (Printexc.to_string exn)
   end;
   plant_assets ~env ~host: config.host ~asset_dirs ~forest;
-  State_machine.batch_run ~env ~config
+  State_machine.batch_run ~env ~config ~dev
 
 let json_manifest ~dev ~(forest : State.t) : string =
   let render = Render.render ~dev forest JSON in
@@ -145,7 +141,6 @@ let json_manifest ~dev ~(forest : State.t) : string =
   |> Yojson.Safe.to_string
 
 let render_forest ~dev ~(forest : State.t) : unit =
-  log "Render forest" ();
   let cwd = Eio.Stdenv.cwd (State.env forest) in
   let all_resources = forest.resources |> Forest.get_all_resources in
   List.iter (fun t -> Forest.plant_resource t forest.graphs forest.resources) all_resources;
