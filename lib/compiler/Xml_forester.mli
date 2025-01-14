@@ -12,6 +12,7 @@ val forester_xmlns : string
 
 val register_ns : std_tag -> std_tag
 
+val conditional : bool -> node -> node
 val optional : ('a -> node) -> 'a option -> node
 val optional_ : ('a -> attr) -> 'a option -> attr
 

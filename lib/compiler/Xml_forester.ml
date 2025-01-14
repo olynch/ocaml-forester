@@ -12,6 +12,11 @@ let forester_xmlns = "http://www.jonmsterling.com/jms-005P.xml"
 let null = HTML.null
 let null_ = HTML.null_
 
+let conditional b n =
+  if b then
+    n
+  else null []
+
 let optional kont opt =
   match opt with
   | Some x -> kont x
