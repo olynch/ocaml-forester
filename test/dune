@@ -33,24 +33,12 @@
 (alias
  (name dev))
 
-(subdir
- output
- (copy_files
-  (alias dev)
-  (files %{project_root}/{manifest.json,preferences.html}))
- (subdir
-  icons
-  (copy_files
-   (alias dev)
-   (files %{project_root}/forester-base-theme/*))))
-
 (tests
  (names
    Test_parser
    Test_DSL
    Test_expansion
    Test_import_graph
-   Test_output
    Test_transclusion
    Test_errors
    Test_e2e
