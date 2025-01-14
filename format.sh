@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
 # SPDX-FileCopyrightText: 2024 The Forester Project Contributors
 #
