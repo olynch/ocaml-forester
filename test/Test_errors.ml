@@ -33,8 +33,8 @@ let () =
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let mk_iri addr = Iri_scheme.user_iri ~host: config.host addr in
   let _, forest, _ =
-    Phases.init ~env ~config
-    |> State_machine.update Load_all
+    Phases.init ~env ~config ~dev: false
+    |> State_machine.(update Load_all)
   in
   let documents = State.documents forest in
   let parse_error_uri =

@@ -108,10 +108,10 @@ let render_tree
     let result = State_machine.render_tree ~env ~config ~dev tgt iri in
     Format.printf "%s" result
 
-let plant_raw_forest_from_dirs ~env ~dev: _ ~(config : Config.t) : State.t =
+let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.t) : State.t =
   let asset_dirs = Eio_util.paths_of_dirs ~env config.assets in
   let foreign_paths = Eio_util.paths_of_dirs ~env config.foreign in
-  let forest = Phases.init ~env ~config in
+  let forest = Phases.init ~env ~config ~dev in
   begin
     let@ path = List.iter @~ foreign_paths in
     let path_str = EP.native_exn path in

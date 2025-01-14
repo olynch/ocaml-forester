@@ -16,8 +16,8 @@ type state = State.t
 type transition = state -> state
 
 let init
-    : env: Eio_unix.Stdenv.base -> config: Config.t -> state
-  = fun ~env ~config ->
+    : env: Eio_unix.Stdenv.base -> config: Config.t -> dev: bool -> state
+  = fun ~env ~config ~dev ->
     Logs.debug (fun m -> m "Initializing with config @.%a" Config.pp config);
     let graphs = (module Forest_graphs.Make (): Forest_graphs.S) in
     let parsed = Forest.create 1000 in
@@ -28,6 +28,7 @@ let init
     let units = Expand.Env.empty in
     {
       env;
+      dev;
       config;
       units;
       documents;
@@ -37,12 +38,6 @@ let init
       resources;
       graphs
     }
-
-(*  TODO: after my refactors, it is no longer clear when and how this should be
-    used. I think we need to find a definitive design for when to call
-    register_iri, and no longer use a name such as plant_resource. It seems to
-    me that this function conflates adding stuff to the hash table and dealing
-    with the graphs.*)
 
 let load
     : Eio.Fs.dir_ty EP.t list -> transition
@@ -54,7 +49,7 @@ let load
       (
         fun path ->
           (* WARNING: using realpath. This is necessary because later on,
-             the client will send notifications using the absolute path of
+             the lsp client will send notifications using the absolute path of
              a file.*)
           let source_path = EP.native_exn path |> Unix.realpath in
           let content = EP.load path in
@@ -87,7 +82,6 @@ let load_configured_dirs
 let parse
     : quit_on_error: bool -> transition
   = fun ~quit_on_error forest ->
-    Logs.debug (fun m -> m "parsing trees");
     let host = forest.config.host in
     forest.documents
     |> Hashtbl.iter
@@ -361,7 +355,7 @@ let eval
                 let resource = (T.Article article) in
                 match Forest.iri_for_resource resource with
                 | Some iri ->
-                  Forest.add forest.resources iri resource
+                  Forest.plant_resource resource forest.graphs forest.resources
                 | None ->
                   Logs.debug (fun m -> m "failed to plant resource because an iri could not be guessed")
             );
@@ -377,11 +371,13 @@ let eval
                   let mainmatter = content ~svg in
                   let backmatter = T.Content [] in
                   let article = T.{ frontmatter; mainmatter; backmatter } in
-                  Forest.add forest.resources iri (T.Article article)
+                  (* Forest.add forest.resources iri (T.Article article) *)
+                  Forest.plant_resource (T.Article article) forest.graphs forest.resources
                 | Job.Publish publication ->
                   export_publication ~env ~forest publication
             )
       );
+    Logs.debug (fun m -> m "evaluated %i resources" (Forest.length forest.resources));
     forest
 
 let eval_only : iri -> transition = fun iri forest ->

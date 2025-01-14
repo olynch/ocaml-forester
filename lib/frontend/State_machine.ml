@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-open Forester_prelude
 open Forester_core
 open Forester_compiler
 
@@ -36,11 +35,12 @@ type ('r, 'e) result =
   | Render_result of 'r
   | Error of 'e
 
+let log s =
+  Logs.app (fun m -> m " ￮ %s...@." s)
+
 let update
     : type a. a action -> state -> (a action * state * (a, _) result)
   = fun msg state ->
-    (*  HACK: *)
-    Logs.debug (fun m -> m "Updating: %a@." (pp_action (fun fmt _ -> Format.(fprintf fmt "%a" pp_print_nothing ()))) msg);
     match msg with
     | Query q ->
       let r = Forest.run_datalog_query state.graphs q in
@@ -69,6 +69,7 @@ let update
     | Load_all ->
       (Parse_all, Cmp.load_configured_dirs state, Nothing)
     | Parse_all ->
+      log "Parse trees";
       (
         Build_import_graph,
         Cmp.parse ~quit_on_error: false state,
@@ -87,6 +88,7 @@ let update
         Nothing
       )
     | Expand_all ->
+      log "Expand, evaluate and analyse forest";
       (
         Eval_all,
         Cmp.expand ~quit_on_error: false state,
@@ -135,96 +137,21 @@ let rec force
       let _discard, new_state, _ = update msg state in
       force remaining new_state
 
-let batch_run ~env ~config =
-  Phases.init ~env ~config
-  |> run_action
-    Load_all
-    ~until: Do_nothing
+let batch_run ~env ~config ~dev =
+  Phases.init ~env ~config ~dev
+  |> run_action Load_all ~until: Do_nothing
   |> fst
 
 let language_server
     : state -> unit
   = fun _ -> ()
 
-let log_warning ex = Logs.warn (fun f -> f "%a" Eio.Exn.pp ex)
-
 let render_tree ~env ~config ~dev target iri =
   let (forest, _) =
-    Cmp.init ~env ~config
+    Cmp.init ~env ~config ~dev
     |> run_action (Build_dependency_graph iri) ~until: Do_nothing
   in
   match Forest.get_article iri forest.resources with
   | None -> ""
   | Some article ->
     Format.asprintf "%a" Render.(pp ~dev forest target) (Article article)
-
-let serve
-    : env: Eio_unix.Stdenv.base -> state -> unit
-  = fun ~env state ->
-    let@ sw = Eio.Switch.run ?name: None in
-    let port = ref 8080 in
-    let state = ref state in
-    let handler _ request _ =
-      let state = !state in
-      match Http.Request.resource request with
-      | "/" ->
-        begin
-          let home =
-            Option.bind
-              (
-                Option.map
-                  (Iri_scheme.user_iri ~host: state.config.host)
-                  state.config.home
-              )
-              (fun iri -> Forest.get_article iri state.resources)
-          in
-          match home with
-          | None ->
-            Cohttp_eio.Server.respond_string
-              ~status: `OK
-              ~body: (
-                Format.asprintf
-                  "not found"
-              )
-              ()
-          | Some r ->
-            Cohttp_eio.Server.respond_string
-              ~status: `OK
-              ~body: (
-                Format.asprintf "%a" Render.(pp ~dev: true state HTML) (Article r)
-              )
-              ()
-        end
-      | path ->
-        let path =
-          let len = String.length path in
-          String.sub path 1 (len - 1)
-        in
-        let iri = Iri_scheme.user_iri ~host: state.config.host path in
-        match Forest.get_article iri state.resources with
-        | None ->
-          Cohttp_eio.Server.respond_string
-            ~status: `Not_found
-            ~body: (
-              Format.asprintf
-                "not found"
-            )
-            ()
-        | Some r ->
-          Cohttp_eio.Server.respond_string
-            ~status: `OK
-            ~body: (
-              Format.asprintf "%a" Render.(pp ~dev: true state HTML) (Article r)
-            )
-            ()
-    in
-    let socket =
-      Eio.Net.listen
-        env#net
-        ~sw
-        ~backlog: 128
-        ~reuse_addr: true
-        (`Tcp (Eio.Net.Ipaddr.V4.loopback, !port))
-    and server = Cohttp_eio.Server.make ~callback: handler ()
-    in
-    Cohttp_eio.Server.run socket server ~on_error: log_warning

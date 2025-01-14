@@ -181,7 +181,7 @@ let rec event_loop () =
 
 let start ~env ~(config : Config.t) =
   let lsp_io = LspEio.init env in
-  let forest = State_machine.batch_run ~env ~config in
+  let forest = State_machine.batch_run ~env ~config ~dev: true in
   Server.run
     ~init: { forest; lsp_io; should_shutdown = false; } @@
     fun () ->

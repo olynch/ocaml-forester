@@ -11,6 +11,7 @@ type resource = T.content T.resource
 
 type t = {
   env: Eio_unix.Stdenv.base;
+  dev: bool;
   config: Config.t;
   units: Expand.Env.t;
   documents: (Lsp.Uri.t, Lsp.Text_document.t) Hashtbl.t;

@@ -17,8 +17,10 @@ let () =
   let@ env = Eio_main.run in
   let open Alcotest in
   let forest, _ =
-    Phases.init ~env ~config
-    |> State_machine.run_action Load_all ~until: Expand_all
+    State_machine.(
+      Phases.init ~env ~config ~dev: false
+      |> run_action Load_all ~until: Expand_all
+    )
   (* load (Eio_util.paths_of_dirs ~env config.trees) *)
   (*   |> parse ~quit_on_error: false *)
   (* ) *)

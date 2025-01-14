@@ -22,6 +22,7 @@ let () =
       State_machine.batch_run
         ~env
         ~config
+        ~dev: false
     in
     let uri =
       before_forest.documents |> Hashtbl.to_seq_keys
@@ -67,7 +68,7 @@ let () =
   let test () =
     let forest =
       let@ () = Reporter.easy_run in
-      State_machine.batch_run ~env ~config
+      State_machine.batch_run ~env ~config ~dev: false
     in
     Alcotest.(check int)
       ""

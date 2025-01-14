@@ -46,8 +46,8 @@ let () =
   (* Needs to be false to make tests reproducible. The source path depends on the host *)
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let forest, _ =
-    Phases.init ~env ~config
-    |> State_machine.run_action Load_all ~until: Do_nothing
+    Phases.init ~env ~config ~dev: false
+    |> State_machine.(run_action Load_all ~until: Do_nothing)
   in
   let iri = Iri_scheme.user_iri ~host "transcludee" in
   let test_transclusion t expect =
