@@ -7,6 +7,8 @@
 open Forester_core
 
 module type S = sig
+  (** A simple graph database. Used to record the {{!Forester_core.Builtin_relation}relations} that exist between trees.*)
+
   val dl_db : Datalog_engine.db
   val register_iri : Iri.t -> unit
   val get_all_vertices : unit -> Vertex_set.t
