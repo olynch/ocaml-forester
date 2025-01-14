@@ -13,6 +13,11 @@ module T = Types
 module P = Pure_html
 module H = P.HTML
 
+type query = {
+  query: (string, T.content T.vertex) Forester_core.Datalog_expr.query;
+}
+[@@deriving repr]
+
 module Xmlns = Xmlns_effect.Make ()
 
 let get_sorted_articles (forest : State.t) addrs =
@@ -39,7 +44,7 @@ let render_xml_qname = function
   | { prefix = ""; uname; _ } -> uname
   | { prefix; uname; _ } -> Format.sprintf "%s:%s" prefix uname
 
-let _render_xml_attr
+let render_xml_attr
     : T.content T.xml_attr -> _
   = fun
       T.{ key; value = _ }
@@ -69,10 +74,12 @@ let render_img = function
   | T.Remote url ->
     H.img [H.src "%s" url]
 
-let _render_xmlns_prefix Xmlns.{ prefix; xmlns } =
+let render_xmlns_prefix Xmlns.{ prefix; xmlns } =
   P.string_attr ("xmlns:" ^ prefix) "%s" xmlns
 
 let rec render_article (forest : State.t) (article : T.content T.article) : P.node =
+  (* FIXME: What should reserved be here? *)
+  let@ () = Xmlns.run ~reserved: [] in
   H.html
     []
     [
@@ -80,8 +87,41 @@ let rec render_article (forest : State.t) (article : T.content T.article) : P.no
         []
         [
           H.meta [H.charset "utf-8"];
-          H.link [H.rel "stylesheet"; H.href "style.css"];
-          H.script [H.src "https://unpkg.com/htmx.org@2.0.4"] "";
+          (* H.link [H.rel "stylesheet"; H.href "style.css"]; *)
+          H.link
+            [
+              H.rel "stylesheet";
+              H.href "https://cdn.jsdelivr.net/npm/katex@0.16.20/dist/katex.min.css";
+              H.integrity "sha384-sMefv1J1YJCHsg0mTa9YG+n/9KnJb9lGrJUUY5arg6bAL1qps/oZjmUwaHlX5Ugg";
+              H.crossorigin `anonymous
+            ];
+          H.script
+            [
+              H.defer;
+              H.src "https://cdn.jsdelivr.net/npm/katex@0.16.20/dist/katex.min.js";
+              H.integrity "sha384-i9p+YmlwbK0lT9RcfgdAo/Cikui1KeFMeV/0Fwsu+rzgsCvas6oUptNOmo29C33p";
+              H.crossorigin `anonymous
+            ]
+            "";
+          H.script
+            [
+              H.defer;
+              H.src "https://cdn.jsdelivr.net/npm/katex@0.16.20/dist/contrib/auto-render.min.js";
+              H.integrity "sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh";
+              H.crossorigin `anonymous;
+              P.string_attr "onload" "renderMathInElement(document.body);"
+            ]
+            "";
+          H.script [H.src "https://unpkg.com/htmx.org@2.0.4/dist/htmx.js"] "";
+          H.script [H.src "https://unpkg.com/htmx.org/dist/ext/json-enc.js"] "";
+          H.script
+            [
+            ]
+            {js|
+              document.body.addEventListener('htmx:load', function(evt) {
+                myJavascriptLib.init(evt.detail.elt);
+              });
+            |js};
         ];
       H.body
         []
@@ -122,12 +162,13 @@ and render_content (forest : State.t) (Content content: T.content) : P.node list
 and render_content_node
     : State.t -> 'a T.content_node -> P.node list
   = fun forest node ->
+    let open P in
+    (* let open H in *)
     match node with
     | Text str ->
       [P.txt "%s" str]
     | CDATA str ->
       [P.txt ~raw: true "<![CDATA[%s]]>" str]
-    (*
     | Xml_elt elt ->
       let prefixes_to_add, (name, attrs, content) =
         let@ () = Xmlns.within_scope in
@@ -140,7 +181,6 @@ and render_content_node
         attrs @ xmlns_attrs
       in
       [P.std_tag name attrs content]
-      *)
     | Prim (p, content) ->
       [render_prim_node p @@ render_content forest content]
     | Transclude transclusion ->
@@ -178,15 +218,39 @@ and render_content_node
       [P.txt ~raw: true "\\%s" (TeX_cs.show cs)]
     | Img img ->
       [render_img img]
+    | T.Results_of_datalog_query q ->
+      (* We could just evaluate the query immediately. This is just experimental*)
+      [
+        H.div
+          []
+          [
+            H.div
+              [
+                Hx.get "/query";
+                Hx.trigger "load";
+                (* Hx.headers {|{"Content-Type": "application/json"}|}; *)
+                (* Hx.ext "json-enc"; *)
+                Hx.vals
+                  "%s"
+                  Repr.(
+                    to_json_string
+                      ~minify: true
+                      (* Datalog_expr.(query_t Repr.string (T.vertex_t T.content_t)) *)
+                      query_t
+                      { query = q }
+                  )
+              ]
+              []
+          ]
+      ]
     | T.Artefact _
     | T.Iri _
     | T.Route_of_iri _
-    | T.Datalog_script _
-    | T.Results_of_datalog_query _ ->
+    | T.Datalog_script _ ->
       [P.txt "todo"]
-    (* | Resource resource -> *)
-    (*   render_resource resource *)
-    | _ -> []
+(* | Resource resource -> *)
+(*   render_resource resource *)
+(* | _ -> [] *)
 
 and _render_resource resource =
   render_content resource.contents
@@ -216,3 +280,43 @@ and render_link (forest : State.t) (link : T.content T.link) : P.node list =
       ]
   in
   [H.a attrs @@ render_content forest link.content]
+
+let render_query_result (forest : State.t) vs =
+  vs
+  |> Vertex_set.to_list
+  |> List.map
+    (
+      function
+      | T.Iri_vertex iri ->
+        begin
+          match Forest.find_opt forest.resources iri with
+          | None ->
+            H.li
+              []
+              [
+                H.a
+                  [
+                    H.href "%s" (Format.asprintf "%a" pp_iri iri)
+                  ]
+                  [P.txt "%s" (Format.asprintf "%a" pp_iri iri)]
+              ]
+          | Some resource ->
+            match resource with
+            | T.Article a ->
+              H.li
+                []
+                [
+                  (render_frontmatter forest a.frontmatter);
+                  H.div
+                    []
+                    (
+                      render_content
+                        forest
+                        a.mainmatter
+                    )
+                ]
+            | T.Asset _ ->
+              P.txt "todo: render asset"
+        end
+      | T.Content_vertex c -> H.div [] (render_content forest c)
+    )
