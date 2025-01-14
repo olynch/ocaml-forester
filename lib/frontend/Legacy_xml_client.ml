@@ -171,7 +171,7 @@ and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
     [
       render_attributions forest frontmatter.iri frontmatter.attributions;
       render_dates forest frontmatter.dates;
-      X.optional (X.source_path [] "%s") frontmatter.source_path;
+      X.conditional forest.dev (X.optional (X.source_path [] "%s") frontmatter.source_path);
       (* This introduces nondeterminism that breaks tests.*)
       X.anchor [] "%i" @@ Oo.id ( object end);
       X.optional (fun iri -> X.addr [X.type_ "%s" @@ iri_type iri] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
@@ -266,11 +266,6 @@ and render_content_node
       in
       let module Legacy_query_engine = (val (Forest.legacy_query_engine (State.graphs forest))) in
       Legacy_query_engine.run_query q
-      |> (
-        fun vs ->
-          Logs.debug (fun m -> m "got %i vertices" (Vertex_set.cardinal vs));
-          vs
-      )
       |> get_sorted_articles forest
       |> List.map article_to_section
       |> List.map (render_section forest)
