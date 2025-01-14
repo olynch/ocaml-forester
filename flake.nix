@@ -44,6 +44,7 @@
           ocaml-lsp-server = "*";
           odig = "*";
           alcotest = "*";
+          dream-serve = "*";
         };
         query = devPackagesQuery // {
           ocaml-system = "*";
