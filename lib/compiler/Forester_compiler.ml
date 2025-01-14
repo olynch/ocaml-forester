@@ -43,7 +43,7 @@ module State = State
 module Phases = Phases
 module Asset_router = Asset_router
 module Legacy_query_engine = Legacy_query_engine
-[@@ocaml.deprecated "Use Datalog_query_engine instead"]
+(* [@@ocaml.deprecated "Use Datalog_query_engine instead"] *)
 
 module Iri_resolver = Iri_resolver
 module Iri_util = Iri_util

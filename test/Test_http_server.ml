@@ -14,10 +14,6 @@ let () =
   Logs.set_level (Some Debug);
   let@ () = Reporter.easy_run in
   let config = Config_parser.parse_forest_config_file "forest.toml" in
-  State_machine.(
-    serve
-      ~env
-      (
-        batch_run ~env ~config
-      )
-  )
+  Http_server.run
+    ~env
+    (State_machine.batch_run ~env ~config ~dev: true)
