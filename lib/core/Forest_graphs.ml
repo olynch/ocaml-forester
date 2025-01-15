@@ -5,7 +5,6 @@
  *)
 
 open Forester_prelude
-open Forester_core
 
 module T = Types
 module Dl = Datalog_engine

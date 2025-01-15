@@ -18,13 +18,13 @@ val execute_datalog_script : (module Forest_graphs.S) -> (string, Vertex.t) Dx.s
 (**/**)
 
 val analyse_resource : (module Forest_graphs.S) -> T.content T.resource -> unit
-(** [analyse_resource graphs resource] traverses {{!Forester_core.Types.resource}[resource]}, recording facts about it in {{!Forest_graphs.S}[graphs]}.
+(** [analyse_resource graphs resource] traverses {{!Forester_core.Types.resource}[resource]}, recording facts about it in {{!Forester_core.Forest_graphs.S}[graphs]}.
 
-    - When encountering a {{!Forester_core.Types.Link}[Link]}, it adds an edge to the {{!Forester_core.Builtin_relation.links_to}[links_to]} relation in {{!Forest_graphs.S}[graphs]}.
+    - When encountering a {{!Forester_core.Types.Link}[Link]}, it adds an edge to the {{!Forester_core.Builtin_relation.links_to}[links_to]} relation in {{!Forester_core.Forest_graphs.S}[graphs]}.
 
-    - When encountering a {{!Forester_core.Types.Transclude}[Transclude]}, it adds an edge to the {{!Forester_core.Builtin_relation.transcludes}[transcludes]} relation in {{!Forest_graphs.S}[graphs]}.
+    - When encountering a {{!Forester_core.Types.Transclude}[Transclude]}, it adds an edge to the {{!Forester_core.Builtin_relation.transcludes}[transcludes]} relation in {{!Forester_core.Forest_graphs.S}[graphs]}.
 
-    - When encountering a {{!Forester_core.Types.Datalog_script}[Datalog_script script]}, it runs the script and records the results in {{!Forest_graphs.S}[graphs]}.
+    - When encountering a {{!Forester_core.Types.Datalog_script}[Datalog_script script]}, it runs the script and records the results in {{!Forester_core.Forest_graphs.S}[graphs]}.
     *)
 
 val iri_for_resource : 'a T.resource -> Forester_core__.Base.iri option

@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-open Forester_core
-
 type t
 
 val create : ?size: int -> unit -> t

@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-open Forester_core
-
 module G = Graph.Imperative.Digraph.ConcreteBidirectional(Vertex)
 include G
 include Graph.Oper.I(G)

@@ -8,10 +8,11 @@
 open Forester_prelude
 open Forester_core
 
+(**/**)
 module T = Types
-module EP = Eio.Path
 
 type state = State.t
+(**/**)
 
 type transition = state -> state
 
@@ -40,7 +41,7 @@ let init
     }
 
 let load
-    : Eio.Fs.dir_ty EP.t list -> transition
+    : Eio.Fs.dir_ty Eio.Path.t list -> transition
   = fun tree_dirs forest ->
     Logs.debug (fun m -> m "loading trees from file system");
     tree_dirs
@@ -51,8 +52,8 @@ let load
           (* WARNING: using realpath. This is necessary because later on,
              the lsp client will send notifications using the absolute path of
              a file.*)
-          let source_path = EP.native_exn path |> Unix.realpath in
-          let content = EP.load path in
+          let source_path = Eio.Path.native_exn path |> Unix.realpath in
+          let content = Eio.Path.load path in
           let uri = source_path |> Lsp.Uri.of_path in
           let tree =
             Lsp.Text_document.make
