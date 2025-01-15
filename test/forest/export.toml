@@ -1,0 +1,7 @@
+[forest]
+host = "foreign"
+trees = ["for_export" ]  # The directories in which your trees are stored
+assets = [] # The directories in which your assets are stored
+theme = "theme"     # The directory in which your theme is stored
+home = "index"
+prefixes = ["test"]

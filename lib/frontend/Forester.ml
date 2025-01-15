@@ -79,17 +79,6 @@ let copy_contents_of_dir ~env dir =
     let source = EP.native_exn path in
     Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir: output_dir_name
 
-(* I think this function does not belong here *)
-let plant_assets ~env ~host ~asset_dirs ~(forest : State.t) =
-  let paths = Dir_scanner.scan_directories asset_dirs in
-  Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
-  let@ source_path = Seq.iter @~ paths in
-  let source_path = String.concat "/" source_path in
-  let cwd = Eio.Stdenv.cwd env in
-  let content = EP.load EP.(cwd / source_path) in
-  let iri = Forester_compiler.Asset_router.install ~host ~source_path ~content in
-  Forest.plant_resource (T.Asset { iri; host; content }) forest.graphs forest.resources
-
 let render_tree
     : env: env ->
     config: Config.t ->
@@ -105,25 +94,6 @@ let render_tree
     Format.printf "%s" result
 
 let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.t) : State.t =
-  let asset_dirs = Eio_util.paths_of_dirs ~env config.assets in
-  let foreign_paths = Eio_util.paths_of_dirs ~env config.foreign in
-  let forest = Phases.init ~env ~config ~dev in
-  begin
-    let@ path = List.iter @~ foreign_paths in
-    let path_str = EP.native_exn path in
-    let@ () = Reporter.profile @@ Format.sprintf "Implant foreign forest from `%s'" path_str in
-    let blob = try EP.load path with _ -> Reporter.fatalf IO_error "Could not read foreign forest blob at `%s`" path_str in
-    match Repr.of_json_string (T.forest_t T.content_t) blob with
-    | Ok foreign_forest ->
-      List.iter (fun r -> Forest.plant_resource r forest.graphs forest.resources) foreign_forest
-    | Error (`Msg err) ->
-      Reporter.fatalf Parse_error "Could not parse foreign forest blob: %s" err
-    | exception (Iri.Error err) ->
-      Reporter.fatalf Parse_error "Encountered error while decoding foreign forest blob: %s" (Iri.string_of_error err)
-    | exception exn ->
-      Reporter.fatalf Parse_error "Encountered unknown error while decoding foreign forest blob: %s" (Printexc.to_string exn)
-  end;
-  plant_assets ~env ~host: config.host ~asset_dirs ~forest;
   State_machine.batch_run ~env ~config ~dev
 
 let json_manifest ~dev ~(forest : State.t) : string =
@@ -179,7 +149,7 @@ let render_forest ~dev ~(forest : State.t) : unit =
         end
   end
 
-let _export ~(forest : State.t) : unit =
+let export ~(forest : State.t) : unit =
   let@ () = Reporter.profile "Export forest" in
   let local_resources =
     let@ resource = List.filter @~ Forest.get_all_resources forest.resources in

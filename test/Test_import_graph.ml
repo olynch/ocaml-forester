@@ -16,14 +16,11 @@ let config = { Config.default with trees = ["imports"] }
 let () =
   let@ env = Eio_main.run in
   let open Alcotest in
-  let forest, _ =
+  let forest =
     State_machine.(
       Phases.init ~env ~config ~dev: false
       |> run_action Load_all ~until: Expand_all
     )
-  (* load (Eio_util.paths_of_dirs ~env config.trees) *)
-  (*   |> parse ~quit_on_error: false *)
-  (* ) *)
   in
   let batch_graph =
     Imports.run_builder

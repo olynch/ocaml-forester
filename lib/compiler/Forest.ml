@@ -257,6 +257,18 @@ let get_all_articles resources =
     )
   |> List.of_seq
 
+let get_all_assets resources =
+  resources
+  |> to_seq_values
+  |> Seq.filter_map
+    (
+      fun r ->
+        match r with
+        | T.Asset a -> Some a
+        | T.Article _ -> None
+    )
+  |> List.of_seq
+
 let get_all_resources resources =
   resources
   |> to_seq_values

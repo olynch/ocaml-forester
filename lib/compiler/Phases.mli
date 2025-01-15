@@ -18,3 +18,5 @@ val expand : quit_on_error: bool -> transition
 val expand_only : Forester_core.iri -> transition
 val eval : dev: bool -> transition
 val eval_only : Forester_core.iri -> transition
+val implant_foreign : Eio.Fs.dir_ty Eio.Path.t list -> transition
+val plant_assets : Eio.Fs.dir_ty Eio.Path.t list -> transition

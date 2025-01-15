@@ -46,6 +46,18 @@ let build ~env _ config_filename dev no_theme =
   let@ dir_to_copy = List.iter @~ dirs_to_copy in
   Forester.copy_contents_of_dir ~env @@ Eio_util.path_of_dir ~env dir_to_copy
 
+let export ~env _ config_filename dev =
+  let config = Config_parser.parse_forest_config_file config_filename in
+  Logs.debug (fun m -> m "Parsed config file %s" config_filename);
+  let forest = Forester.plant_raw_forest_from_dirs ~env ~dev ~config in
+  forest
+  |> State.diagnostics
+  |> Diagnostic_store.iter (fun _ d -> List.iter Reporter.Tty.display d);
+  Forester.render_forest ~dev ~forest;
+  (* let dirs_to_copy = (if not no_theme then [config.theme] else []) in *)
+  (* let@ dir_to_copy = List.iter @~ dirs_to_copy in *)
+  Forester.export ~forest
+
 let new_tree ~env config_filename prefix template random =
   let@ () = Reporter.silence in
   let config = Config_parser.parse_forest_config_file config_filename in
@@ -194,6 +206,26 @@ let build_cmd ~env =
       $ arg_config
       $ arg_dev
       $ arg_no_theme
+    )
+
+let export_cmd ~env =
+  let arg_dev =
+    let doc = "Run forester in development mode; this will attach source file locations to the generated json." in
+    Arg.value @@ Arg.flag @@ Arg.info ["dev"] ~doc
+  in
+  let doc = "Export the forest" in
+  let man =
+    [
+    ]
+  in
+  let info = Cmd.info "export" ~version ~doc ~man in
+  Cmd.v
+    info
+    Term.(
+      const (export ~env)
+      $ arg_logs
+      $ arg_config
+      $ arg_dev
     )
 
 let new_tree_cmd ~env =
@@ -351,6 +383,7 @@ let cmd ~env =
     info
     [
       build_cmd ~env;
+      export_cmd ~env;
       new_tree_cmd ~env;
       complete_cmd ~env;
       init_cmd ~env;

@@ -12,16 +12,6 @@ type dir = Eio.Fs.dir_ty Eio.Path.t
 
 type target = Target : 'a Render.target -> target
 
-val plant_assets :
-  env:
-  < cwd: [> Eio.Fs.dir_ty] Eio.Path.t;
-  fs: Eio.Fs.dir_ty Eio.Path.t;
-  .. > ->
-  host: string ->
-  asset_dirs: Eio.Fs.dir_ty Eio.Path.t list ->
-  forest: State.t ->
-  unit
-
 val plant_raw_forest_from_dirs :
   env: env ->
   dev: bool ->
@@ -66,3 +56,5 @@ val complete :
   forest: State.t ->
   string ->
   (iri * string) Seq.t
+
+val export : forest: State.t -> unit

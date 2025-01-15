@@ -60,5 +60,8 @@ val get_title_or_content_of_vertex :
 val get_all_articles :
   'a T.resource t -> 'a T.article list
 
+val get_all_assets :
+  'a T.resource t -> T.asset list
+
 val get_all_resources :
   'a t -> 'a list

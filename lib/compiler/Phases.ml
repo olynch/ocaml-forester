@@ -385,3 +385,40 @@ let eval_only : iri -> transition = fun iri forest ->
     match Forest.find_opt forest.resources iri with
     | None -> assert false
     | Some _ -> forest
+
+let implant_foreign
+    : Eio.Fs.dir_ty Eio.Path.t list -> transition
+  = fun foreign_paths state ->
+    begin
+      let module EP = Eio.Path in
+      let@ path = List.iter @~ foreign_paths in
+      let path_str = EP.native_exn path in
+      let@ () = Reporter.profile @@ Format.sprintf "Implant foreign forest from `%s'" path_str in
+      let blob = try EP.load path with _ -> Reporter.fatalf IO_error "Could not read foreign forest blob at `%s`" path_str in
+      match Repr.of_json_string (T.forest_t T.content_t) blob with
+      | Ok foreign_forest ->
+        List.iter (fun r -> Forest.plant_resource r state.graphs state.resources) foreign_forest
+      | Error (`Msg err) ->
+        Reporter.fatalf Parse_error "Could not parse foreign forest blob: %s" err
+      | exception (Iri.Error err) ->
+        Reporter.fatalf Parse_error "Encountered error while decoding foreign forest blob: %s" (Iri.string_of_error err)
+      | exception exn ->
+        Reporter.fatalf Parse_error "Encountered unknown error while decoding foreign forest blob: %s" (Printexc.to_string exn)
+    end;
+    state
+
+let plant_assets
+    : Eio.Fs.dir_ty Eio.Path.t list -> transition
+  = fun asset_dirs state ->
+    let paths = Dir_scanner.scan_directories asset_dirs in
+    let module EP = Eio.Path in
+    Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
+    begin
+      let@ source_path = Seq.iter @~ paths in
+      let source_path = String.concat "/" source_path in
+      let cwd = Eio.Stdenv.cwd state.env in
+      let content = EP.load EP.(cwd / source_path) in
+      let iri = Asset_router.install ~host: state.config.host ~source_path ~content in
+      Forest.plant_resource (T.Asset { iri; host = state.config.host; content }) state.graphs state.resources;
+    end;
+    state
