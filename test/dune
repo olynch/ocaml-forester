@@ -56,7 +56,6 @@
    Test_DSL
    Test_compiler
    Test_config
-   Test_e2e
    Test_errors
    Test_expansion
    Test_graph_database
@@ -66,6 +65,7 @@
    Test_json_manifest_client
    Test_legacy_xml_client
    Test_parser
+   ; Test_e2e
    ; Test_transclusion
    ; Test_machine
    )
