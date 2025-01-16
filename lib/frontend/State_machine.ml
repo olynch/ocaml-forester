@@ -37,9 +37,6 @@ type ('r, 'e) result =
   | Render_result of 'r
   | Error of 'e
 
-let log s =
-  Logs.app (fun m -> m " ￮ %s...@." s)
-
 let update
     : type a. a action -> state -> (a action * state * (a, _) result)
   = fun msg state ->
@@ -71,7 +68,7 @@ let update
     | Load_all ->
       (Parse_all, Phases.load_configured_dirs state, Nothing)
     | Parse_all ->
-      log "Parse trees";
+      Reporter.log Format.pp_print_string "Parse trees";
       (
         Build_import_graph,
         Phases.parse ~quit_on_error: false state,
@@ -90,7 +87,7 @@ let update
         Nothing
       )
     | Expand_all ->
-      log "Expand, evaluate and analyse forest";
+      Reporter.log Format.pp_print_string "Expand, evaluate and analyse forest";
       (
         Eval_all,
         Phases.expand ~quit_on_error: false state,

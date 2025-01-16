@@ -12,7 +12,7 @@ type dir = Eio.Fs.dir_ty Eio.Path.t
 
 type target = Target : 'a Render.target -> target
 
-val plant_raw_forest_from_dirs :
+val compile :
   env: env ->
   dev: bool ->
   config: Config.t ->

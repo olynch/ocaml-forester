@@ -7,7 +7,7 @@
  (instrumentation (backend bisect_ppx))
  (preprocess
   (pps ppx_deriving.show ppx_repr))
- (libraries forester.prelude forester.xml_names forester.human_datetime datalog yuujinchou asai ocamlgraph bwd unix iri)
+ (libraries forester.prelude forester.xml_names forester.human_datetime datalog yuujinchou asai ocamlgraph bwd unix iri logs)
  (public_name forester.core))
 
 (env

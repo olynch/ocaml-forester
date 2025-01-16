@@ -60,6 +60,9 @@ include Asai.Reporter.Make(Message)
 
 type diagnostic = Message.t Asai.Diagnostic.t
 
+let log pp s =
+  Logs.app (fun m -> m " ￮ %a...@." pp s)
+
 let profile msg body =
   let before = Unix.gettimeofday () in
   let result = body () in

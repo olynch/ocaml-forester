@@ -93,7 +93,7 @@ let render_tree
     let result = State_machine.render_tree ~env ~config ~dev tgt iri in
     Format.printf "%s" result
 
-let plant_raw_forest_from_dirs ~env ~dev ~(config : Config.t) : State.t =
+let compile ~env ~dev ~(config : Config.t) : State.t =
   State_machine.batch_run ~env ~config ~dev
 
 let json_manifest ~dev ~(forest : State.t) : string =
@@ -150,7 +150,7 @@ let render_forest ~dev ~(forest : State.t) : unit =
   end
 
 let export ~(forest : State.t) : unit =
-  let@ () = Reporter.profile "Export forest" in
+  Reporter.log Format.pp_print_string "Exporting forest";
   let local_resources =
     let@ resource = List.filter @~ Forest.get_all_resources forest.resources in
     match resource with
