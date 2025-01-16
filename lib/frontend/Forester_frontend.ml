@@ -12,6 +12,5 @@ module Render = Render
 
 module DSL = DSL
 
-module Export_for_test = Export_for_test
 module State_machine = State_machine
 module Http_server = Http_server

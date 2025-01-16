@@ -4,4 +4,4 @@
 
 (documentation
   (package forester)
-  (mld_files index test developing))
+  (mld_files index developing))
