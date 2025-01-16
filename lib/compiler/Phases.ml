@@ -19,7 +19,7 @@ type transition = state -> state
 let init
     : env: Eio_unix.Stdenv.base -> config: Config.t -> dev: bool -> state
   = fun ~env ~config ~dev ->
-    Logs.debug (fun m -> m "Initializing with config @.%a" Config.pp config);
+    Logs.debug (fun m -> m "Initializing with config %a" Config.pp config);
     let graphs = (module Forest_graphs.Make (): Forest_graphs.S) in
     let parsed = Forest.create 1000 in
     let documents = Hashtbl.create 1000 in
@@ -393,7 +393,7 @@ let implant_foreign
       let module EP = Eio.Path in
       let@ path = List.iter @~ foreign_paths in
       let path_str = EP.native_exn path in
-      let@ () = Reporter.profile @@ Format.sprintf "Implant foreign forest from `%s'" path_str in
+      Reporter.log Format.pp_print_string (Format.sprintf "Implant foreign forest from `%s'" path_str);
       let blob = try EP.load path with _ -> Reporter.fatalf IO_error "Could not read foreign forest blob at `%s`" path_str in
       match Repr.of_json_string (T.forest_t T.content_t) blob with
       | Ok foreign_forest ->
