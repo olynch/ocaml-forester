@@ -16,14 +16,20 @@ let () =
   let@ env = Eio_main.run in
   let config = Config.default in
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
+
+  (* This test verifies that the `reparse` function works correctly.*)
   let test_reparsing () =
     let@ () = Reporter.test_run in
+    (*First, perform a regular batch compilation run.*)
     let before_forest =
       State_machine.batch_run
         ~env
         ~config
         ~dev: false
     in
+    (* Get the URI of "reparse.tree". In order to make the test reproducible,
+       we can't use hardcoded paths, as those may be different in CI and on
+       different hosts.*)
     let uri =
       before_forest.documents |> Hashtbl.to_seq_keys
       |> Seq.find_map
@@ -41,6 +47,7 @@ let () =
         before_forest
         |> reparse
           (
+          (* Create a Text_document.t with new content.*)
             Lsp.Text_document.make
               ~position_encoding: `UTF16 @@
               Lsp.Types.DidOpenTextDocumentParams.create
@@ -56,6 +63,7 @@ let () =
     in
     let module Graphs = (val reparsed_forest.graphs) in
     let import_graph = Graphs.get_rel Query.Edges "imports" in
+    (* FIXME: *)
     Alcotest.(check string)
       ""
       ""
@@ -65,7 +73,7 @@ let () =
   (*   true *)
   (*   (Forest_graph.out_degree import_graph vtx > 0) *)
   in
-  let test () =
+  let test_batch_run () =
     let forest =
       let@ () = Reporter.easy_run in
       State_machine.batch_run ~env ~config ~dev: false
@@ -81,7 +89,7 @@ let () =
     [
       "pipeline",
       [
-        test_case "basic batch run" `Quick test;
+        test_case "basic batch run" `Quick test_batch_run;
         test_case "reparsing" `Quick test_reparsing
       ]
     ]

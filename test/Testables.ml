@@ -37,6 +37,8 @@ type 'a diagnostic =
 }
 [@@deriving show]
 
+let message = testable Reporter.Message.pp ( = )
+
 let code = testable Code.pp ( = )
 let syn = testable Syn.pp ( = )
 let path = testable Trie.pp_path ( = )

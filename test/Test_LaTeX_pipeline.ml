@@ -8,6 +8,12 @@ open Forester_core
 open Forester_prelude
 open Forester_compiler
 
+(* This test runs LaTeX_pipeline.latex_to_svg. This requires a LaTeX
+   environment. Since the output is (apparently) non-deterministic, we can't
+   equality check the output, so we just use a try-with to verify that the
+   function runs with no exceptions.
+   *)
+
 let () =
   let test_pipeline () =
     let@ env = Eio_main.run in

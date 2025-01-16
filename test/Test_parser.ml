@@ -11,8 +11,6 @@ open Testables
 open Prelude
 open Forester_frontend.DSL.Code
 
-(* Using local open breaks tests, see https://github.com/mirage/alcotest/issues/414*)
-
 let test_prim () =
   Alcotest.(check @@ result code diagnostic)
     "same nodes"

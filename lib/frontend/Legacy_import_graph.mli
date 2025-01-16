@@ -8,7 +8,7 @@ open Forester_compiler
 
 type t
 
-module V:
+module V :
 sig
   type t = string
   val compare : t -> t -> int

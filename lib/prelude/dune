@@ -4,6 +4,7 @@
 
 (library
  (name Forester_prelude)
+ (instrumentation (backend bisect_ppx))
  (libraries 
    eio
    eio.unix

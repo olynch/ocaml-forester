@@ -5,7 +5,7 @@
  *)
 
 type node =
-    Text of string
+  | Text of string
   | Verbatim of string
   | Group of Forester_core.delim * t
   | Math of Forester_core.math_mode * t
@@ -13,8 +13,10 @@ type node =
   | Hash_ident of string
   | Xml_ident of string option * string
   | Subtree of string option * t
-  | Let of Forester_core.Trie.path *
-      Forester_core.Trie.path Forester_core.binding list * t
+  | Let of
+    Forester_core.Trie.path
+    * Forester_core.Trie.path Forester_core.binding list
+    * t
   | Open of Forester_core.Trie.path
   | Scope of t
   | Put of Forester_core.Trie.path * t
@@ -25,8 +27,10 @@ type node =
   | Patch of t patch
   | Call of t * string
   | Import of Forester_core.visibility * string
-  | Def of Forester_core.Trie.path *
-      Forester_core.Trie.path Forester_core.binding list * t
+  | Def of
+    Forester_core.Trie.path
+    * Forester_core.Trie.path Forester_core.binding list
+    * t
   | Decl_xmlns of string * string
   | Alloc of Forester_core.Trie.path
   | Namespace of Forester_core.Trie.path * t
@@ -42,20 +46,20 @@ type node =
 and t = node Forester_core.Range.located list
 
 and 'a _object = {
-  self : Forester_core.Trie.path option;
-  methods : (string * 'a) list;
+  self: Forester_core.Trie.path option;
+  methods: (string * 'a) list;
 }
 
 and 'a patch = {
-  obj : 'a;
-  self : Forester_core.Trie.path option;
-  methods : (string * 'a) list;
+  obj: 'a;
+  self: Forester_core.Trie.path option;
+  methods: (string * 'a) list;
 }
 
 val t : t Repr.t
 val pp : Format.formatter -> t -> unit
 
-type tree = { source_path : string option; addr : string option; code : t; }
+type tree = {source_path: string option; addr: string option; code: t;}
 
 val parens : t -> node
 val squares : t -> node
@@ -65,4 +69,3 @@ val import_private : string -> node
 val import_public : string -> node
 val inline_math : t -> node
 val display_math : t -> node
-

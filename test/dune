@@ -12,7 +12,8 @@
 (cram
   (deps
     %{bin:forester}
-    (glob_files_rec ./forest/*)))
+    (glob_files_rec ./forest/*)
+    (glob_files_rec ./cram-forest/*)))
 
 (executable
  (name Test_http_server)
@@ -35,20 +36,23 @@
 
 (tests
  (names
-   Test_parser
-   Test_DSL
-   Test_expansion
-   Test_import_graph
-   Test_transclusion
-   Test_errors
-   Test_e2e
-   Test_compiler
    Test_LaTeX_pipeline
+   Test_DSL
+   Test_compiler
+   Test_config
+   Test_e2e
+   Test_errors
+   Test_expansion
+   Test_graph_database
+   Test_import_graph
+   Test_implanting
+   Test_iri_util
    Test_json_manifest_client
    Test_legacy_xml_client
-   Test_config
+   Test_parser
+   ; Test_transclusion
    ; Test_machine
-   Test_iri_util)
+   )
  (preprocess
   (pps ppx_deriving.show ppx_yojson_conv))
  (deps

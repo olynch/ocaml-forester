@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-(** This library implements the compiler for Forester. *)
+(** The forester compiler*)
 
 (** {1 Base types }*)
 

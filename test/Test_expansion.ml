@@ -5,6 +5,7 @@
  *)
 
 open Forester_compiler
+open Forester_frontend
 open Testables
 
 let () =
@@ -18,10 +19,7 @@ let () =
           source_path = None;
           (* If tree has no address, exports are not added *)
           addr = Some "test-tree";
-          (* Use fully qualified open here, see
-            https://github.com/mirage/alcotest/issues/414
-             *)
-          code = let open Forester_frontend.DSL.Code in
+          code = let open DSL.Code in
           [
             def
               ["foo"]
