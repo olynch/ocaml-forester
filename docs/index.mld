@@ -1,0 +1,16 @@
+{0 Forester: A language for scientific hypertext}
+
+{1 Introduction}
+
+Forester is a compiled markup language for authoring scientific hypertext. This documentation is intended to give an overview of forester internals for people interested in contributing to the project.
+
+{1 Codebase overview}
+
+The code is organized into several libraries:
+
+{!modules:
+  Forester_prelude
+  Forester_core
+  Forester_compiler
+  Forester_frontend
+  Forester_lsp}
