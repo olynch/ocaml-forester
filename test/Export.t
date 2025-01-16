@@ -8,8 +8,9 @@ Export the forest defined by `export.toml`
    ￮ Expand, evaluate and analyse forest...
   
    ￮ Exporting forest...
-  $ ls export
   
+  $ ls export
+  foreign.json
 
 Verify that the foreign blob can be implanted.
 
