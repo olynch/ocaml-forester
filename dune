@@ -5,7 +5,3 @@
 (env
  (static
   (link_flags (-ccopt -static))))
-
-(documentation
-  (package forester)
-  (mld_files index))
