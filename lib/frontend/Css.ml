@@ -1,3 +1,9 @@
+(*
+ * SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *)
+
 let stylesheet =
   {css|
 /* SPDX-License-Identifier: CC0-1.0 */
