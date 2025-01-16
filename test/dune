@@ -10,6 +10,22 @@
    (FORESTERLSP_TEST true))))
 
 (cram
+  (applies_to :whole_subtree)
+  (deps
+    %{bin:forester}))
+
+(cram
+  (applies_to Build)
+  (deps
+    (glob_files_rec ./cram-forest/*)))
+
+(cram
+  (applies_to Export)
+  (deps
+    (glob_files_rec ./forest/*)))
+
+(cram
+  (applies_to :whole_subtree)
   (deps
     %{bin:forester}
     (glob_files_rec ./forest/*)
