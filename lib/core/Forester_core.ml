@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-(** Core types
-   *)
+(** Core types *)
 
 include Base
+(**@closed*)
 
 module Iri_scheme = Iri_scheme
 
@@ -22,10 +22,13 @@ module Vertex_set = Vertex_set
 
 (** {1 Error handling}*)
 
-(** Definition of compiler diagnostics and other errors.*)
+(** {2 Compiler diagnostics and other errors.}*)
+
 module Reporter = Reporter
 
-(** Source locations. Among other things these are used by compiler diagnostics and the language server.*)
+(** {2 Source locations}
+    Among other things these are used by compiler diagnostics and the language server.*)
+
 module Range = Range
 
 (** {1 Query system}
