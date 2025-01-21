@@ -7,71 +7,166 @@
 
 open Forester_core
 
-(* We need a good solution for the mismatch between internal IRIs and URIs.
-   URIs refer to the absolute path of the document, whereas IRIs don't keep
-   track of the directory. Furthermore, a text document may contain changes
-   that have not yet been saved to disk, so resolving the content of a URI is
-   not as simple as loading the file.
-   *)
+(*  NOTE: Depending on the mode of compilation, we might encouter IRIs
+    corresponding to trees that have not been loaded yet. For example, we might
+    encounter \import{foo-0001}, which corresponds to a tree with source path
+    ./trees/foo-0001.tree. Thus we have to check the configured directories one
+    by one until we find a match.
+
+*)
+
+open Forester_prelude
+open Forester_core
 
 type index = Uri of Lsp.Uri.t | Iri of iri
 
 type _ target =
-  | To_path : string target
   | To_uri : Lsp.Uri.t target
+  | To_path : string target
   | To_doc : Lsp.Text_document.t target
   | To_code : Code.tree target
+[@@deriving show]
+
+let show_target
+    : type a. a target -> string
+  = fun tgt ->
+    match tgt with
+    | To_uri -> "uri"
+    | To_path -> "path"
+    | To_doc -> "doc"
+    | To_code -> "code"
+
+let is_loaded iri forest = Hashtbl.mem forest iri
+
+let find iri ~(in_paths : Eio.Fs.dir_ty Eio.Path.t list) =
+  let i = Iri.path_string iri in
+  Dir_scanner.scan_directories in_paths
+  |> Seq.find
+    (
+      fun p ->
+        let path = String.concat "/" p in
+        Filename.basename path = Filename.basename i
+    )
+  |> Option.map (String.concat "/")
+
+let delete_leading_slash path_str =
+  (String.sub path_str 1 ((String.length path_str) - 1))
+
+(* FIXME: This does not search recursively. *)
+let find_candidate paths iri =
+  paths
+  |> List.find_map
+    (
+      fun p ->
+        let candidate =
+          (* Eio constructs an absolute path when the string starts with "/"*)
+          let path_str =
+            Format.asprintf
+              "%s.tree"
+              (delete_leading_slash (Iri.path_string iri))
+          in
+          Eio.Path.(p / path_str)
+        in
+        if Eio.Path.is_file candidate then
+          let uri = Lsp.Uri.of_path (Eio.Path.native_exn candidate) in
+          Logs.debug (fun m -> m "found candidate %s" (Lsp.Uri.to_string uri));
+          Some uri
+        else
+          None
+    )
+
+let rec resolve_iri
+    : type a. iri -> a target -> State.t -> a option
+  = fun iri target forest ->
+    Logs.debug (fun m -> m "resolving %a to %s" pp_iri iri (show_target target));
+    match target with
+    | To_code ->
+      begin
+        match Forest.find_opt forest.parsed iri with
+        | Some code -> Some code
+        | None ->
+          match resolve_iri iri To_doc forest with
+          | Some doc ->
+            Parse.parse_document doc
+            |> Result.to_option
+            |> Fun.flip
+              Option.bind
+              (
+                fun code ->
+                  let source_path = (Lsp.Uri.to_path (Lsp.Text_document.documentUri doc)) in
+                  let addr = Iri_util.iri_to_addr iri in
+                  Some
+                    Code.{
+                      code;
+                      source_path = Some source_path;
+                      addr = Some addr;
+                    }
+              )
+          | None ->
+            Logs.debug (fun m -> m "Did not find document at %a. Trying to load document from FS" pp_iri iri);
+            (* resolve_iri iri To_doc forest *)
+            Option.bind
+              (resolve_iri iri To_uri forest)
+              (fun uri -> resolve_uri uri To_code forest)
+      end
+    | To_doc ->
+      Option.bind
+        (resolve_iri iri To_uri forest)
+        (fun uri -> resolve_uri uri To_doc forest)
+    | To_uri ->
+      begin
+        let paths =
+          Eio_util.paths_of_dirs
+            ~env: forest.env
+            forest.config.trees
+        in
+        find_candidate paths iri
+      end
+    | To_path -> resolve_iri iri To_uri forest |> Option.map Lsp.Uri.to_path
+
+and resolve_uri
+    : type a. Lsp.Uri.t -> a target -> State.t -> a option
+  = fun uri target forest ->
+    Logs.debug (fun m -> m "resolving %s to %s" (Lsp.Uri.to_string uri) (show_target target));
+    match target with
+    | To_uri -> Some uri
+    | To_path ->
+      Some (Lsp.Uri.to_path uri)
+    | To_doc ->
+      begin
+        match Hashtbl.find_opt forest.documents uri with
+        | Some doc -> Some doc
+        | None ->
+          let path = Eio.Path.(forest.env#fs / (delete_leading_slash (Lsp.Uri.to_path uri))) in
+          if Eio.Path.is_file path then
+            (
+              let content = Eio.Path.load path in
+              Some
+                (
+                  Lsp.Text_document.make
+                    ~position_encoding: `UTF8
+                    {
+                      textDocument =
+                      {
+                        languageId = "forester";
+                        text = content;
+                        uri;
+                        version = 1
+                      }
+                    }
+                )
+            )
+          else assert false
+      end
+    | To_code ->
+      resolve_iri
+        (Iri_util.uri_to_iri ~host: forest.config.host uri)
+        To_code
+        forest
 
 let resolve
     : type a. index -> a target -> State.t -> a option
   = fun index target forest ->
-    let host = forest.config.host in
-    let find_uri tbl iri =
-      tbl
-      |> Hashtbl.to_seq_keys
-      |> Seq.find (fun uri -> Iri_util.uri_to_iri ~host uri = iri)
-      |> function
-      | None -> None
-      | Some uri ->
-        Hashtbl.find_opt forest.documents uri
-        |> function
-        | None -> None
-        | Some doc ->
-          doc
-          |> Lsp.Text_document.documentUri
-          |> Option.some
-    in
-    match target with
-    | To_uri ->
-      begin
-        match index with
-        | Uri uri -> Some uri
-        | Iri iri -> find_uri forest.documents iri
-      end
-    | To_path ->
-      begin
-        match index with
-        | Uri uri -> Some (Lsp.Uri.to_path uri)
-        | Iri iri ->
-          (* We use the document store to resolve iris. It is the responsibility of
-             the initializing code and the didOpen/didChange handlers to ensure that
-             the hashtable remains accurate*)
-          find_uri forest.documents iri |> Option.map Lsp.Uri.to_path
-      end
-    | To_doc ->
-      begin
-        match index with
-        | Uri uri -> Hashtbl.find_opt forest.documents uri
-        | Iri iri ->
-          Option.bind
-            (find_uri forest.documents iri)
-            (Hashtbl.find_opt forest.documents)
-      end
-    | To_code ->
-      begin
-        match index with
-        | Uri uri ->
-          let iri = Iri_util.uri_to_iri ~host uri in
-          Forest.find_opt forest.parsed iri
-        | Iri iri -> Forest.find_opt forest.parsed iri
-      end
+    match index with
+    | Iri iri -> resolve_iri iri target forest
+    | Uri uri -> resolve_iri (Iri_util.uri_to_iri ~host: forest.config.host uri) target forest
