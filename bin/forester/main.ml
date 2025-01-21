@@ -313,9 +313,9 @@ let lsp_cmd ~env =
       $ arg_config
     )
 
-let render ~env target addr config =
+let render ~env _ target addr config =
   let config = Config_parser.parse_forest_config_file config in
-  Forester_frontend.Forester.render_tree ~env ~target ~config addr
+  Forester.render_tree ~env ~target ~config addr
 
 let render_cmd ~env =
   let open Cmdliner in
@@ -360,6 +360,7 @@ let render_cmd ~env =
     info
     Term.(
       const (render ~env)
+      $ arg_logs
       $ arg_format
       $ arg_addr
       $ arg_config
