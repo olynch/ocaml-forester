@@ -6,7 +6,9 @@
 
 (* At the moment, this module is mostly for marking up test cases *)
 
-module T = Forester_core.Types
+open Forester_core
+
+module T = Types
 
 let txt str = T.Text str
 
@@ -27,6 +29,16 @@ let results_of_query query = T.Results_of_query query
 let katex m content = T.KaTeX (m, content)
 let tex content = T.TeX_cs (Word content)
 let img href = T.(Img (Remote href))
+let route_of_iri iri = T.Route_of_iri iri
+
+module Datalog = struct
+  open Datalog_expr
+  let premises ~rel ~args = { rel; args }
+  let prop premises conclusion = { premises; conclusion }
+  let const v = Const v
+end
+
+let datalog_script script = T.Datalog_script script
 
 let section
     ~mainmatter

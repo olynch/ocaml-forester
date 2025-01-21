@@ -10,7 +10,7 @@ module T := Types
 type result = {
   articles: T.content T.article list;
   jobs: Job.job Range.located list
-}
+} [@@deriving show]
 
 val eval_tree :
   ?quit_on_failure: bool ->

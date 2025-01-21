@@ -177,7 +177,7 @@ let map_content f = function Content nodes -> Content (f nodes)
 let extract_content = function Content nodes -> nodes
 
 type query = (content vertex, Query.dbix) Query.expr
-type dx_query = (string, content vertex) Datalog_expr.query
+type dx_query = (string, content vertex) Datalog_expr.query [@@deriving show]
 
 let is_whitespace node =
   match node with

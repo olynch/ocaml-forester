@@ -126,7 +126,7 @@ let default_backmatter ~(iri : iri) : T.content =
       make_section "contributions" @@ Builtin_queries.contributions_datalog vtx
     ]
 
-type result = { articles: T.content T.article list; jobs: Job.job Range.located list }
+type result = { articles: T.content T.article list; jobs: Job.job Range.located list } [@@deriving show]
 
 module Tape = Tape_effect.Make ()
 module Lex_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)

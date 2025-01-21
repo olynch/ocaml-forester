@@ -10,6 +10,8 @@ open Forester_compiler
 open Forester_frontend
 open Testables
 
+open Export_for_test
+
 let () =
   let@ env = Eio_main.run in
   let open Alcotest in

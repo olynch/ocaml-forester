@@ -70,6 +70,7 @@
   Test_json_manifest_client
   Test_legacy_xml_client
   Test_parser
+  Test_eval
   ; Test_e2e
   ; Test_transclusion
   )
