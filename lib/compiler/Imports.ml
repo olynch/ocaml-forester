@@ -103,7 +103,12 @@ let run_builder ?root env =
     | Some iri ->
       begin
         match Iri_resolver.(resolve (Iri iri) To_code env.forest) with
-        | None -> ()
+        | None ->
+          Reporter.fatalf
+            Resource_not_found
+            "Could not find tree `%a'"
+            pp_iri
+            iri
         | Some tree -> analyse_tree [] tree
       end
     | None ->
