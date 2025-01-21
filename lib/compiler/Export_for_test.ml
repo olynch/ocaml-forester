@@ -5,3 +5,4 @@
  *)
 
 module LaTeX_template = LaTeX_template
+module Dir_scanner = Dir_scanner
