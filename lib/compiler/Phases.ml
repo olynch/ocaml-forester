@@ -8,11 +8,9 @@
 open Forester_prelude
 open Forester_core
 
-(**/**)
 module T = Types
 
 type state = State.t
-(**/**)
 
 type transition = state -> state
 
@@ -154,9 +152,9 @@ let build_import_graph
     forest
 
 let build_import_graph_for
-    : addr: iri -> state -> state
-  = fun ~addr forest ->
-    match Iri_resolver.(resolve (Iri addr) To_code forest) with
+    : iri: iri -> state -> state
+  = fun ~iri forest ->
+    match Iri_resolver.(resolve (Iri iri) To_code forest) with
     | None -> forest
     | Some tree ->
       let module Graphs = (val forest.graphs) in
@@ -261,7 +259,7 @@ let expand_only_aux
           units, diagnostics, trees
     in
     let units, diagnostics, expanded_trees =
-      Eio.traceln "Folding the import graph with %i vertices" (Forest_graph.nb_vertex import_graph);
+      Logs.debug (fun m -> m "Folding the import graph with %i vertices" (Forest_graph.nb_vertex import_graph));
       Forest_graph.topo_fold
         task
         import_graph
@@ -382,9 +380,19 @@ let eval
     forest
 
 let eval_only : iri -> transition = fun iri forest ->
-    match Forest.find_opt forest.resources iri with
+    match Forest.find_opt forest.expanded iri with
     | None -> assert false
-    | Some _ -> forest
+    | Some syn ->
+      let diagnostics, Eval.{ articles; jobs } =
+        Eval.eval_tree
+          ~quit_on_failure: false
+          ~host: forest.config.host
+          ~source_path: None
+          ~iri
+          syn
+      in
+      List.iter (fun article -> Forest.plant_resource (Article article) forest.graphs forest.resources) articles;
+      forest
 
 let implant_foreign
     : Eio.Fs.dir_ty Eio.Path.t list -> transition
