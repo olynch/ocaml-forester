@@ -7,7 +7,7 @@
 module Message :
 sig
   type t =
-    Tree_not_found of Base.iri
+    | Tree_not_found of Base.iri
     | Duplicate_tree of Base.iri
     | Parse_error
     | Type_error
