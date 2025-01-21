@@ -86,7 +86,6 @@ let render_tree
     string ->
     unit
   = fun ~env ~config ~target addr ->
-    let@ () = Reporter.silence in
     let dev = true in
     let iri = Iri_scheme.user_iri ~host: config.host addr in
     let Target tgt = target in

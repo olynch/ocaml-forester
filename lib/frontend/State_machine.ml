@@ -40,6 +40,14 @@ type ('r, 'e) result =
 let update
     : type a. a action -> state -> (a action * state * (a, _) result)
   = fun msg state ->
+    Logs.debug
+      (
+        fun m ->
+          m
+            "Running action %a"
+            (pp_action (fun fmt _ -> Format.pp_print_nothing fmt ()))
+            msg
+      );
     match msg with
     | Query q ->
       let r = Forest.run_datalog_query state.graphs q in
@@ -66,7 +74,11 @@ let update
       end
     | Quit -> exit 0
     | Load_all ->
-      (Parse_all, Phases.load_configured_dirs state, Nothing)
+      (
+        Parse_all,
+        Phases.load_configured_dirs state,
+        Nothing
+      )
     | Parse_all ->
       Reporter.log Format.pp_print_string "Parse trees";
       (
@@ -83,7 +95,7 @@ let update
     | Build_dependency_graph iri ->
       (
         Expand_only iri,
-        Phases.build_import_graph_for ~addr: iri state,
+        Phases.build_import_graph_for ~iri state,
         Nothing
       )
     | Expand_all ->
@@ -112,14 +124,25 @@ let update
         Nothing
       )
     | Plant_assets paths ->
-      (Do_nothing, Phases.plant_assets paths state, Nothing)
+      (
+        Do_nothing,
+        Phases.plant_assets paths state,
+        Nothing
+      )
     | Plant_foreign path ->
-      (Do_nothing, Phases.implant_foreign path state, Nothing)
+      (
+        Do_nothing,
+        Phases.implant_foreign path state,
+        Nothing
+      )
     | Parse _
-    | Cache_results _ ->
-      (Do_nothing, state, Nothing)
+    | Cache_results _
     | Do_nothing ->
-      (Do_nothing, state, Nothing)
+      (
+        Do_nothing,
+        state,
+        Nothing
+      )
 
 let run_action action ~(until : 'a action) state : state =
   let rec go action state =
@@ -171,6 +194,6 @@ let render_tree ~env ~config ~dev target iri =
     |> run_action (Build_dependency_graph iri) ~until: Do_nothing
   in
   match Forest.get_article iri forest.resources with
-  | None -> ""
+  | None -> assert false
   | Some article ->
     Format.asprintf "%a" Render.(pp ~dev forest target) (Article article)
