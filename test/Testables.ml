@@ -55,9 +55,7 @@ let document =
   let pp fmt t = Format.pp_print_string fmt (Lsp.Text_document.text t) in
   testable pp ( = )
 
-let code =
-  (module struct
-    type t = Code.t
-    let equal = ( = )
-    let pp = Code.pp
-  end: Alcotest.TESTABLE with type t = Code.t)
+let code = testable Code.pp ( = )
+let tree = testable Code.pp_tree ( = )
+
+let target = testable Iri_resolver.pp_target ( = )
