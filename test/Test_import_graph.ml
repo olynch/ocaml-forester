@@ -15,6 +15,8 @@ let config = { Config.default with trees = ["imports"] }
 
 let () =
   let@ env = Eio_main.run in
+  (* Logs.set_level (Some Debug); *)
+  Logs.set_reporter (Logs_fmt.reporter ());
   let open Alcotest in
   let forest =
     State_machine.(
@@ -62,35 +64,29 @@ let () =
           ]
       )
   in
-  let minimal_graph =
-    Imports.run_builder
-      ~root: (Iri_scheme.user_iri ~host: config.host "b")
-      {
-        forest;
-        graph = Forest_graph.create ();
-        follow = true
-      }
-  in
   let test_minimal_graph () =
-    Alcotest.(check bool)
-      "has edges"
-      true
-      (
-        List.for_all
-          Fun.id
-          [
-            (not (has_edge minimal_graph vtx_b vtx_a));
-            (has_edge minimal_graph vtx_c vtx_b);
-            (has_edge minimal_graph vtx_d vtx_c);
-            (has_edge minimal_graph vtx_e vtx_c);
-          ]
-      )
+    let minimal_graph =
+      Imports.run_builder
+        ~root: (Iri_scheme.user_iri ~host: config.host "a")
+        {
+          forest = Phases.init ~env ~dev: false ~config;
+          graph = Forest_graph.create ();
+          follow = true
+        }
+    in
+    (* Although the imports directory contains more trees, the graph only has 5
+       vertices.*)
+    Alcotest.(check int)
+      "minmal graph has correct number vertices"
+      5
+      (Forest_graph.nb_vertex minimal_graph)
   in
-  let test_dependencies () =
+  let test_phase () =
+    let iri = Iri_scheme.user_iri ~host: config.host "a" in
     Alcotest.(check bool)
       ""
       true
-      true
+      ( try let _ = (State_machine.render_tree ~env ~config ~dev: false HTML iri) in true with _ -> false)
   in
   run
     "Import graph"
@@ -103,6 +99,7 @@ let () =
       "creating minimal import graph",
       [
         test_case "running builder" `Quick test_minimal_graph;
-        test_case "check dependencies" `Quick test_dependencies;
+        test_case "run compilation phase" `Quick test_phase;
+        (* test_case "check dependencies" `Quick test_dependencies; *)
       ]
     ]

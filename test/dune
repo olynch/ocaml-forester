@@ -4,32 +4,36 @@
 
 (env
  (dev
-  (flags (:standard -w -66-32-26-27-33)))
+  (flags
+   (:standard -w -66-32-26-27-33)))
  (_
   (env-vars
    (FORESTERLSP_TEST true))))
 
 (cram
-  (applies_to :whole_subtree)
-  (deps
-    %{bin:forester}))
+ (applies_to :whole_subtree)
+ (deps %{bin:forester}))
 
 (cram
-  (applies_to Build)
-  (deps
-    (glob_files_rec ./cram-forest/*)))
+ (applies_to Server)
+ (deps %{bin:server}))
 
 (cram
-  (applies_to Export)
-  (deps
-    (glob_files_rec ./forest/*)))
+ (applies_to Build)
+ (deps
+  (glob_files_rec ./cram-forest/*)))
 
 (cram
-  (applies_to :whole_subtree)
-  (deps
-    %{bin:forester}
-    (glob_files_rec ./forest/*)
-    (glob_files_rec ./cram-forest/*)))
+ (applies_to Export)
+ (deps
+  (glob_files_rec ./forest/*)))
+
+(cram
+ (applies_to :whole_subtree)
+ (deps
+  %{bin:forester}
+  (glob_files_rec ./forest/*)
+  (glob_files_rec ./cram-forest/*)))
 
 (executable
  (name Test_http_server)
@@ -52,29 +56,29 @@
 
 (tests
  (names
-   Test_LaTeX_pipeline
-   Test_DSL
-   Test_compiler
-   Test_config
-   Test_errors
-   Test_expansion
-   Test_graph_database
-   Test_import_graph
-   Test_implanting
-   Test_iri_util
-   Test_json_manifest_client
-   Test_legacy_xml_client
-   Test_parser
-   ; Test_e2e
-   ; Test_transclusion
-   ; Test_machine
-   )
+  Test_LaTeX_pipeline
+  Test_DSL
+  Test_compiler
+  Test_config
+  Test_errors
+  Test_expansion
+  Test_graph_database
+  Test_iri_resolver
+  Test_import_graph
+  Test_implanting
+  Test_iri_util
+  Test_json_manifest_client
+  Test_legacy_xml_client
+  Test_parser
+  ; Test_e2e
+  ; Test_transclusion
+  )
  (preprocess
   (pps ppx_deriving.show ppx_yojson_conv))
  (deps
-   (glob_files_rec ./errors/*)
-   (glob_files_rec ./trees/*)
-   (glob_files_rec ./imports/*))
+  (glob_files_rec ./errors/*)
+  (glob_files_rec ./trees/*)
+  (glob_files_rec ./imports/*))
  (libraries
   alcotest
   fmt
@@ -85,6 +89,7 @@
   pure-html
   yuujinchou
   logs
+  logs.fmt
   iri
   eio
   eio.core
@@ -95,4 +100,3 @@
   lsp
   yojson
   jsonrpc))
-

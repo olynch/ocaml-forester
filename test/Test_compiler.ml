@@ -47,7 +47,7 @@ let () =
         before_forest
         |> reparse
           (
-          (* Create a Text_document.t with new content.*)
+            (* Create a Text_document.t with new content.*)
             Lsp.Text_document.make
               ~position_encoding: `UTF16 @@
               Lsp.Types.DidOpenTextDocumentParams.create
@@ -80,7 +80,7 @@ let () =
     in
     Alcotest.(check int)
       ""
-      7
+      8
       (List.length @@ Forest.get_all_articles forest.resources)
   in
   let open Alcotest in

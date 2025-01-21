@@ -86,7 +86,6 @@ let () =
         initialize_request
     in
     let paths = parse_paths env#fs @@ Sys.getenv "PATH" in
-    List.iter (fun p -> Format.printf "%a" Eio.Path.pp p) paths;
     let forester = Option.get @@ which "forester" paths in
     (* let _o = *)
     (*   pipe_into ~env stdin [forester; "lsp"] *)

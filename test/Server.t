@@ -1,21 +1,6 @@
-Run build:
-
   $ cd cram-forest
-  $ forester build forest.toml
-   ￮ Parse trees...
-  
-   ￮ Expand, evaluate and analyse forest...
-  
-
-  $ cat output/forest.json
-  {"index":{"title":"Hello","taxon":null,"tags":[],"route":"index.xml","metas":{}}}
-
-  $ ls output
-  forest.json
-  index.xml
-  $ cat output/index.xml
-  <?xml version="1.0" encoding="UTF-8"?>
-  <?xml-stylesheet type="text/xsl" href="default.xsl"?>
+  $ forester render --addr=index --format=xml
+  +Expanding forest://cram/index
   <fr:tree xmlns:fr="http://www.jonmsterling.com/jms-005P.xml" root="true">
     <fr:frontmatter>
       <fr:authors />
