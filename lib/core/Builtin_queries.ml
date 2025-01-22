@@ -54,3 +54,12 @@ let references_datalog vtx : _ Datalog_expr.query =
     positives = [Builtin_relation.references @* [const vtx; var x]];
     negatives = []
   }
+
+let imports_datalog vtx : _ Datalog_expr.query =
+  let open Dx.Notation in
+  let x = "X" in
+  Dx.{
+    var = x;
+    positives = [Builtin_relation.imports @* [const vtx; var x]];
+    negatives = [];
+  }

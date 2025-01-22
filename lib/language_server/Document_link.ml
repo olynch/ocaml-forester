@@ -6,21 +6,24 @@
  *)
 
 open Forester_core
+open Forester_frontend
 open Forester_compiler
 
 module L = Lsp.Types
-module F = Analysis.F
-module PT = Analysis.PT
 
 let (let*) = Option.bind
 
 (* TODO: handle external links as well? *)
 let compute (params : L.DocumentLinkParams.t) =
+  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let render = Render.render ~dev: true forest STRING in
+  let config = State.config forest in
   match params with
   | { textDocument; _ } ->
-    let server = State.get () in
+    let Lsp_state.{ forest; _ } = Lsp_state.get () in
     let links =
-      match Hashtbl.find_opt server.index.codes textDocument with
+      match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
+      | None -> []
       | Some tree ->
         begin
           tree.code
@@ -33,14 +36,14 @@ let compute (params : L.DocumentLinkParams.t) =
                 | Code.Group (Braces, [{ value = Text addr; _ }]) ->
                   (* TODO: Need to analyse syn *)
                   let range = (Lsp_shims.Loc.lsp_range_of_range node.loc) in
-                  let iri = (Iri_scheme.user_iri ~host: server.config.host addr) in
-                  let* target = Hashtbl.find_opt server.index.resolver iri in
-                  let* { frontmatter; _ } = F.get_article iri in
-                  let* tooltip = Option.map PT.string_of_content frontmatter.title in
+                  let iri = (Iri_scheme.user_iri ~host: config.host addr) in
+                  let* target = Iri_resolver.(resolve (Iri iri) To_uri forest) in
+                  let* { frontmatter; _ } = Forest.get_article iri forest.resources in
+                  let* tooltip = Option.map (fun c -> render (Content c)) frontmatter.title in
                   let link =
                     L.DocumentLink.create
                       ~range
-                      ~target: target.uri
+                      ~target
                       ~tooltip
                       ()
                   in
@@ -49,7 +52,5 @@ let compute (params : L.DocumentLinkParams.t) =
                   None
             )
         end
-      | None ->
-        []
     in
     Some links

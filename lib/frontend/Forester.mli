@@ -5,30 +5,29 @@
  *)
 
 open Forester_core
+open Forester_compiler
 
 type env = Eio_unix.Stdenv.base
 type dir = Eio.Fs.dir_ty Eio.Path.t
 
-val parse_trees_in_dirs :
-  dev: bool ->
-  ?ignore_malformed: bool ->
-  Eio.Fs.dir_ty Eio.Path.t list ->
-  Forester_compiler.Code.tree list
+type target = Target : 'a Render.target -> target
 
-val plant_raw_forest_from_dirs :
+val compile :
   env: env ->
-  host: string ->
   dev: bool ->
-  tree_dirs: dir list ->
-  asset_dirs: dir list ->
-  foreign_paths: dir list ->
-  unit
+  config: Config.t ->
+  State.t
 
 val render_forest :
-  env: env ->
   dev: bool ->
-  host: string ->
-  home: string option ->
+  forest: State.t ->
+  unit
+
+val render_tree :
+  env: env ->
+  config: Config.t ->
+  target: target ->
+  string ->
   unit
 
 val copy_contents_of_dir :
@@ -38,19 +37,24 @@ val copy_contents_of_dir :
 
 val create_tree :
   env: env ->
-  dest: dir ->
   prefix: string ->
   template: string option ->
   mode: [`Sequential | `Random] ->
+  config: Config.t ->
+  forest: State.t ->
   string
 
+(* val export_publication : *)
+(*   env:< cwd : [> Eio.Fs.dir_ty ] Eio.Path.t; .. > -> Forester_compiler.Job.publication -> unit *)
+
 val json_manifest :
-  host: string ->
-  home: string option ->
   dev: bool ->
+  forest: State.t ->
   string
 
 val complete :
-  host: string ->
+  forest: State.t ->
   string ->
   (iri * string) Seq.t
+
+val export : forest: State.t -> unit

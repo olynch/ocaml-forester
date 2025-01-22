@@ -6,6 +6,10 @@ node_modules
 build
 output
 latex
+.direnv
+
+# screen recordings
+casts
 
 # -*- mode: gitignore; -*-
 *.install
@@ -117,6 +121,7 @@ Temporary Items
 
 # ocamlbuild working directory
 _build/
+_coverage/
 
 # ocamlbuild targets
 *.byte

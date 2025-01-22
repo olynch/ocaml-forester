@@ -8,13 +8,10 @@ open Forester_core
 
 val parse :
   ?stop_on_err: bool ->
-  ?source: [`File of string | `String of Range.string_source] ->
+  source: [`File of string | `String of Range.string_source] ->
   Lexing.lexbuf ->
-  (Code.t, Reporter.Message.t Asai.Diagnostic.t) result
+  (Code.t, Reporter.diagnostic) result
 
-val parse_file : string -> (Code.t, Reporter.Message.t Asai.Diagnostic.t) result
+val parse_file : string -> (Code.t, Reporter.diagnostic) result
 
-val parse_string :
-  ?source: [`File of string | `String of Range.string_source] ->
-  string ->
-  (Code.t, Reporter.Message.t Asai.Diagnostic.t) result
+val parse_document : Lsp.Text_document.t -> (Code.t, Reporter.diagnostic) result

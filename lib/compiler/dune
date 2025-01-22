@@ -17,6 +17,7 @@
 
 (library
  (name Forester_compiler)
+ (instrumentation (backend bisect_ppx))
  (preprocess
   (pps ppx_deriving.show ppx_repr))
  (libraries
@@ -26,6 +27,9 @@
   forester.human_datetime
   yuujinchou
   asai
+  ocamlgraph
+  pure-html
+  str
   menhirLib
   bwd
   algaeff
@@ -34,13 +38,16 @@
   eio
   eio.core
   eio.unix
+  unix
   fmt
   multihash
   multihash-digestif
   multicodec
   multibase
+  logs
   cstruct
-  cid)
+  cid
+  lsp)
  (public_name forester.compiler))
 
 (env

@@ -4,7 +4,13 @@
 
 (library
  (name Forester_prelude)
- (libraries uucp bwd)
+ (instrumentation (backend bisect_ppx))
+ (libraries 
+   eio
+   eio.unix
+   eio.core
+   uucp
+   bwd)
  (preprocess
   (pps ppx_repr))
  (public_name forester.prelude))

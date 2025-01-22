@@ -82,13 +82,13 @@ and ident_init = parse
   | (simple_name as s) "/" { set_mode Ident_fragments; [Grammar.IDENT s; Grammar.SLASH] }
   | simple_name as s { drop_mode (); [Grammar.IDENT s] }
   | special_name as c { drop_mode (); [Grammar.IDENT (String.make 1 c)] }
-  | newline as s { drop_mode (); Lexing.new_line lexbuf; raise_err lexbuf }
+  | newline { drop_mode (); Lexing.new_line lexbuf; raise_err lexbuf }
   | _ { raise_err lexbuf }
 
 and ident_fragments = parse
   | (simple_name as s) "/" { [Grammar.IDENT s; Grammar.SLASH] }
   | simple_name as s { drop_mode (); [Grammar.IDENT s] }
-  | newline as s { drop_mode (); Lexing.new_line lexbuf; raise_err lexbuf }
+  | newline { drop_mode (); Lexing.new_line lexbuf; raise_err lexbuf }
   | _ { raise_err lexbuf }
 
 and comment = parse

@@ -6,6 +6,8 @@
 
 open Base
 
+(** Forester uses an IRI scheme that incorporates a host that demarcates the current forest. A typical tree has have an address like this: [forest://host/xxx-NNNN]. Resources such as PDFs or images will be referred to by their hash.*)
+
 val scheme : string
 
 val base_iri :

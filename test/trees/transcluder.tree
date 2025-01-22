@@ -1,0 +1,5 @@
+\import{importee}
+
+\foo
+\transclude{transcludee}
+\p{[link](linked)}

@@ -5,8 +5,8 @@
 (executable
  (public_name forester)
  (name main)
- (flags (-g))
- (link_flags (-g))
+ (flags (:standard -g))
+ (link_flags (:standard -g))
  (preprocess
   (pps ppx_deriving.show))
   (libraries
@@ -15,6 +15,9 @@
    forester.frontend
    forester.language_server
    forester.compiler
+   logs
+   logs.fmt
+   logs.cli
    cmdliner
    dune-build-info
    asai
@@ -23,4 +26,6 @@
    eio.unix
    bwd
    eio_main
-   fmt))
+   fmt
+   fmt.cli
+   fmt.tty))

@@ -27,6 +27,8 @@
 
 (license GPL-3.0-or-later)
 
+(cram enable)
+
 (package
  (name forester)
  (synopsis "A tool for tending mathematical forests")
@@ -69,7 +71,7 @@
   (uri
    (>= 4.4.0))
   (pure-html
-   (>= 3.6.1))
+   (>= 3.9.5))
   (base64
    (>= 3.5.1))
   (datalog
@@ -78,5 +80,14 @@
    (>= 0.1.0))
   (lsp
     (>= 0.19.0))
+  (jsonrpc
+    (>= 1.22.0))
   (ppx_yojson_conv
-    (>= 0.17.0))))
+    (>= 0.17.0))
+  (logs
+    (>= 0.7.0))
+  (bisect_ppx
+    (>= 2.8.3))
+  (cohttp-eio
+    (>= 6.0.0))
+  (alcotest :with-test)))
