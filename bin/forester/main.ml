@@ -61,7 +61,7 @@ let new_tree ~env config_filename prefix template random =
   let forest = Forester.compile ~env ~dev: true ~config in
   let mode = if random then `Random else `Sequential in
   let new_tree = Forester.create_tree ~env ~prefix ~template ~mode ~config ~forest in
-  Format.printf "%s.tree\n" new_tree
+  Format.printf "%s" new_tree
 
 let complete ~env config_filename title =
   let@ () = Reporter.silence in
