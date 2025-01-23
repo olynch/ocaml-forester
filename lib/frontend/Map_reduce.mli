@@ -33,7 +33,7 @@ module type S = sig
 end
 
 module Make
-  (I : Input) : S with
+  (I: Input) : S with
   type env := I.env
   and type input := I.input
   and type output := I.output

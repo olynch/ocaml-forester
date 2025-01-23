@@ -14,5 +14,5 @@ module type S = sig
   val string_of_int : int -> string
 end
 
-module Make (_ : I) : S
-module Base36 : S
+module Make (_: I) : S
+module Base36: S

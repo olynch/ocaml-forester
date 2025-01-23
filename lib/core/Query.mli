@@ -54,7 +54,7 @@ val vertex_expr_t :
   ('vertex, 'var) vertex_expr Repr.t
 
 (** Don't use the constructor/destructor unless you know what you are doing! *)
-type 'a binder = {body: 'a}
+type 'a binder = { body: 'a }
 val binder_t : 'a Repr.t -> 'a binder Repr.t
 
 type ('vertex, 'var) expr =
@@ -91,9 +91,9 @@ module type Name = sig
   val fresh : unit -> t
 end
 
-module Global_name : Name
+module Global_name: Name
 
-module Locally_nameless (N : Name) : sig
+module Locally_nameless (N: Name) : sig
   type 'vertex lnexpr = ('vertex, N.t lnvar) expr
 
   val distill : 'vertex lnexpr -> ('vertex, dbix) expr

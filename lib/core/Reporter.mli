@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-module Message :
+module Message:
 sig
   type t =
     | Tree_not_found of Base.iri
@@ -35,7 +35,7 @@ sig
 end
 
 include module type of Asai.Reporter.Make(Message)
-module Tty : module type of Asai.Tty.Make(Message)
+module Tty: module type of Asai.Tty.Make(Message)
 
 type diagnostic = Message.t Asai.Diagnostic.t
 val log : (Format.formatter -> 'a -> unit) -> 'a -> unit
