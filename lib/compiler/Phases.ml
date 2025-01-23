@@ -45,7 +45,7 @@ let load
     tree_dirs
     |> Forest_scanner.scan_directories
     |> Seq.iter
-      (
+      begin
         fun path ->
           (* WARNING: using realpath. This is necessary because later on,
              the lsp client will send notifications using the absolute path of
@@ -67,7 +67,7 @@ let load
               }
           in
           Hashtbl.replace forest.documents uri tree
-      );
+      end;
     let loaded = forest.documents |> Hashtbl.length in
     Logs.debug (fun m -> m "loaded %i trees" loaded);
     forest
@@ -84,21 +84,17 @@ let parse
     let host = forest.config.host in
     forest.documents
     |> Hashtbl.iter
-      (
+      begin
         fun uri doc ->
           let iri = Iri_util.uri_to_iri ~host uri in
           let source_path = Lsp.Uri.to_path uri in
           let parse_result =
-            Parse.parse_document doc
-            |> Result.map
-              (
-                fun code ->
-                  Code.{
-                    code;
-                    addr = Option.some (uri |> Iri_util.uri_to_addr);
-                    source_path = Option.some source_path;
-                  }
-              )
+            let@ code = Result.map @~ Parse.parse_document doc in
+            Code.{
+              code;
+              addr = Option.some (uri |> Iri_util.uri_to_addr);
+              source_path = Option.some source_path;
+            }
           in
           begin
             match parse_result with
@@ -112,7 +108,7 @@ let parse
                 Diagnostic_store.replace forest.diagnostics uri [diagnostic];
             | Ok tree -> Forest.add forest.parsed iri tree
           end;
-      );
+      end;
     let parsed = forest.parsed |> Forest.length in
     Logs.debug (fun m -> m "parsed %i trees" parsed);
     forest
@@ -195,7 +191,7 @@ let expand
     in
     expanded_trees
     |> List.iter
-      (
+      begin
         fun (diagnostics, source_path, (syn : Syn.tree)) ->
           let@ iri = Option.iter @~ Option.map (Iri_util.path_to_iri ~host: forest.config.host) source_path in
           Forest.replace forest.expanded iri syn;
@@ -208,7 +204,7 @@ let expand
             | diagnostics ->
               let uri = Lsp.Uri.of_path path in
               Diagnostic_store.append forest.diagnostics uri diagnostics
-      );
+      end;
     let expanded = forest.expanded |> Forest.length in
     let diagnostics = forest.diagnostics |> Diagnostic_store.length in
     Logs.debug (fun m -> m "expanded %i trees" expanded);
@@ -253,8 +249,7 @@ let expand_only_aux
               let uri = Lsp.Uri.of_path path in
               match ds with
               | [] -> ()
-              | ds ->
-                Diagnostic_store.add diagnostics uri ds
+              | ds -> Diagnostic_store.add diagnostics uri ds
           end;
           units, diagnostics, trees
     in
@@ -279,7 +274,7 @@ let expand_only
     in
     trees
     |> Forest.iter
-      (
+      begin
         fun iri tree ->
           Forest.replace forest.expanded iri tree;
           match Iri_resolver.resolve (Iri iri) To_uri forest with
@@ -287,17 +282,17 @@ let expand_only
           | Some _uri -> ()
         (* Eio.traceln "clearing diagnostics for %s" (Lsp.Uri.to_string uri); *)
         (* Diagnostics.remove forest.diagnostics uri *)
-      );
+      end;
     new_diagnostics
     |> Diagnostic_store.iter
-      (
+      begin
         fun uri diagnostics ->
           Eio.traceln "got some expansion diagnostics.";
           match diagnostics with
           | [] -> ()
           | diagnostics ->
             Diagnostic_store.append forest.diagnostics uri diagnostics
-      );
+      end;
     { forest with units }
 
 let export_publication ~env ~(forest : state) (publication : Job.publication) : unit =
@@ -329,7 +324,7 @@ let eval
     let env = forest.env in
     expanded
     |> Forest.iter
-      (
+      begin
         fun iri syn ->
           let source_path = if dev then Iri_resolver.(resolve (Iri iri) To_path forest) else None in
           let uri = Iri_resolver.(resolve (Iri iri) To_uri forest) in
@@ -342,14 +337,12 @@ let eval
               syn
           in
           begin
-            match uri with
-            | None -> ()
-            | Some uri ->
-              Diagnostic_store.append forest.diagnostics uri diagnostics
+            let@ uri = Option.iter @~ uri in
+            Diagnostic_store.append forest.diagnostics uri diagnostics
           end;
           articles
           |> List.iter
-            (
+            begin
               fun article ->
                 let resource = (T.Article article) in
                 match Forest.iri_for_resource resource with
@@ -357,10 +350,10 @@ let eval
                   Forest.plant_resource resource forest.graphs forest.resources
                 | None ->
                   Logs.debug (fun m -> m "failed to plant resource because an iri could not be guessed")
-            );
+            end;
           jobs
           |> List.iter
-            (
+            begin
               fun Range.{ value; loc } ->
                 match value with
                 | Job.LaTeX_to_svg { hash; source; content } ->
@@ -374,8 +367,8 @@ let eval
                   Forest.plant_resource (T.Article article) forest.graphs forest.resources
                 | Job.Publish publication ->
                   export_publication ~env ~forest publication
-            )
-      );
+            end
+      end;
     Logs.debug (fun m -> m "evaluated %i resources" (Forest.length forest.resources));
     forest
 
