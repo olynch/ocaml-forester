@@ -15,7 +15,7 @@
  (deps %{bin:forester}))
 
 (cram
- (applies_to Server)
+ (applies_to Render)
  (deps %{bin:server}))
 
 (cram
