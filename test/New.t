@@ -3,8 +3,6 @@
   index.tree
   $ forester new --prefix=foo
   ./trees/foo-0001.tree
-  $ echo $NEW_TREE
-  
   $ ls trees
   foo-0001.tree
   index.tree
