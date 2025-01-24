@@ -38,8 +38,8 @@ depends: [
   "logs" {>= "0.7.0"}
   "bisect_ppx" {>= "2.8.3"}
   "cohttp-eio" {>= "6.0.0"}
+  "odoc" {>= "2.4.4"}
   "alcotest" {with-test}
-  "odoc" {with-doc}
 ]
 build: [
   ["dune" "subst"] {dev}
