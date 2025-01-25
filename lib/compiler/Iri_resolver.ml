@@ -28,7 +28,7 @@ type _ target =
 [@@deriving show]
 
 let show_target
-    : type a. a target ->    string
+    : type a. a target -> string
   = function
   | To_uri -> "uri"
   | To_path -> "path"
