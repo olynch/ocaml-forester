@@ -24,7 +24,7 @@ let get_sorted_articles (forest : State.t) addrs =
   let module C = Types.Comparators(struct
     let string_of_content =
       Plain_text_client.string_of_content
-        forest.resources
+        ~forest: forest.resources
   end) in
   addrs
   |> Vertex_set.to_seq
@@ -212,7 +212,7 @@ and render_content_node
         | Display -> {|\[|}, {|\]|}
         | Inline -> {|\(|}, {|\)|}
       in
-      let body = Plain_text_client.string_of_content forest.resources content in
+      let body = Plain_text_client.string_of_content ~forest: forest.resources content in
       [P.txt ~raw: true "%s%s%s" l body r]
     | TeX_cs cs ->
       [P.txt ~raw: true "\\%s" (TeX_cs.show cs)]

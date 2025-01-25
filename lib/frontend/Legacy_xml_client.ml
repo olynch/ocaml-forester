@@ -35,7 +35,7 @@ let get_sorted_articles (forest : State.t) addrs =
   let module C = Types.Comparators(struct
     let string_of_content =
       Plain_text_client.string_of_content
-        forest.resources
+        ~forest: forest.resources
   end) in
   addrs
   |> Vertex_set.to_seq
@@ -129,7 +129,7 @@ let render_xml_qname qname =
   | _ -> Format.sprintf "%s:%s" qname.prefix qname.uname
 
 let render_xml_attr forest T.{ key; value } =
-  let str_value = Plain_text_client.string_of_content forest value in
+  let str_value = Plain_text_client.string_of_content ~forest value in
   P.string_attr (render_xml_qname key) "%s" str_value
 
 let render_prim_node p =
@@ -181,7 +181,7 @@ and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
           frontmatter.iri;
       begin
         let title = get_expanded_title frontmatter forest.resources in
-        X.title [X.text_ "%s" @@ Plain_text_client.string_of_content forest.resources title] @@
+        X.title [X.text_ "%s" @@ Plain_text_client.string_of_content ~forest: forest.resources title] @@
           render_content forest title
       end;
       begin
@@ -343,7 +343,7 @@ and render_link (forest : State.t) (link : T.content T.link) : P.node list =
     | Some article ->
       [
         X.optional_ (X.href "%s") @@ Option.map (route forest) article.frontmatter.iri;
-        X.title_ "%s" @@ Plain_text_client.string_of_content forest.resources @@ get_expanded_title article.frontmatter forest.resources;
+        X.title_ "%s" @@ Plain_text_client.string_of_content ~forest: forest.resources @@ get_expanded_title article.frontmatter forest.resources;
         X.optional_ (X.addr_ "%s") @@ Option.map (iri_to_string ~config) article.frontmatter.iri;
         X.type_ "local"
       ]

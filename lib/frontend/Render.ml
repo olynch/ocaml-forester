@@ -57,7 +57,7 @@ let render
         match renderable with
         | Content content ->
           `String
-            (Plain_text_client.string_of_content forest.resources content)
+            (Plain_text_client.string_of_content ~forest: forest.resources content)
         | Article article ->
           begin
             match (Json_manifest_client.render_tree ~dev ~forest article) with
@@ -86,7 +86,7 @@ let render
     | STRING ->
       begin
         match renderable with
-        | Content content -> Plain_text_client.string_of_content forest.resources content
+        | Content content -> Plain_text_client.string_of_content ~forest: forest.resources content
         | Article _ -> raise (Todo "render article to string")
         | Frontmatter _ -> raise (Todo "render frontmatter to string")
       end
