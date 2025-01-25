@@ -84,18 +84,15 @@ let rec resolve_iri
         | None ->
           match resolve_iri iri To_doc forest with
           | Some doc ->
-            Parse.parse_document doc
-            |> Result.to_option
-            |> Fun.flip Option.bind @@
-              fun code ->
-                let source_path = Lsp.Uri.to_path (Lsp.Text_document.documentUri doc) in
-                let addr = Iri_util.iri_to_addr iri in
-                Some
-                  Code.{
-                    code;
-                    source_path = Some source_path;
-                    addr = Some addr;
-                  }
+            let@ code = Option.bind @@ Result.to_option @@ Parse.parse_document doc in
+            let source_path = Lsp.Uri.to_path (Lsp.Text_document.documentUri doc) in
+            let addr = Iri_util.iri_to_addr iri in
+            Some
+              Code.{
+                code;
+                source_path = Some source_path;
+                addr = Some addr;
+              }
           | None ->
             Logs.debug (fun m -> m "Did not find document at %a. Trying to load document from FS" pp_iri iri);
             (* resolve_iri iri To_doc forest *)
@@ -108,14 +105,8 @@ let rec resolve_iri
         (resolve_iri iri To_uri forest)
         (fun uri -> resolve_uri uri To_doc forest)
     | To_uri ->
-      begin
-        let paths =
-          Eio_util.paths_of_dirs
-            ~env: forest.env
-            forest.config.trees
-        in
-        find_candidate paths iri
-      end
+      let paths = Eio_util.paths_of_dirs ~env: forest.env forest.config.trees in
+      find_candidate paths iri
     | To_path -> resolve_iri iri To_uri forest |> Option.map Lsp.Uri.to_path
 
 and resolve_uri
