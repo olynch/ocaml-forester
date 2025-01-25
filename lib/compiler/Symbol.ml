@@ -8,8 +8,11 @@ open Forester_core
 type t = (Trie.path [@repr Repr.(list string)]) * int
 [@@deriving repr]
 
+let counter = ref 0
+
 let named path =
-  path, Oo.id object end
+  counter := !counter + 1;
+  path, !counter
 
 let fresh () = named []
 
