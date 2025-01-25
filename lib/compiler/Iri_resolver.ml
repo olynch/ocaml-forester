@@ -39,13 +39,12 @@ let is_loaded iri forest = Hashtbl.mem forest iri
 
 let find iri ~(in_paths : Eio.Fs.dir_ty Eio.Path.t list) =
   let i = Iri.path_string iri in
+  let matches p =
+    let path = String.concat "/" p in
+    Filename.basename path = Filename.basename i
+  in
   Dir_scanner.scan_directories in_paths
-  |> Seq.find
-    begin
-      fun p ->
-        let path = String.concat "/" p in
-        Filename.basename path = Filename.basename i
-    end
+  |> Seq.find matches
   |> Option.map (String.concat "/")
 
 let delete_leading_slash path_str =
@@ -84,26 +83,19 @@ let rec resolve_iri
         | None ->
           match resolve_iri iri To_doc forest with
           | Some doc ->
-            let@ code = Option.bind @@ Result.to_option @@ Parse.parse_document doc in
+            let@ code = Option.map @~ Result.to_option @@ Parse.parse_document doc in
             let source_path = Lsp.Uri.to_path (Lsp.Text_document.documentUri doc) in
             let addr = Iri_util.iri_to_addr iri in
-            Some
-              Code.{
-                code;
-                source_path = Some source_path;
-                addr = Some addr;
-              }
+            Code.{ code; source_path = Some source_path; addr = Some addr }
           | None ->
             Logs.debug (fun m -> m "Did not find document at %a. Trying to load document from FS" pp_iri iri);
             (* resolve_iri iri To_doc forest *)
-            Option.bind
-              (resolve_iri iri To_uri forest)
-              (fun uri -> resolve_uri uri To_code forest)
+            let@ uri = Option.bind @@ resolve_iri iri To_uri forest in
+            resolve_uri uri To_code forest
       end
     | To_doc ->
-      Option.bind
-        (resolve_iri iri To_uri forest)
-        (fun uri -> resolve_uri uri To_doc forest)
+      let@ uri = Option.bind @@ resolve_iri iri To_uri forest in
+      resolve_uri uri To_doc forest
     | To_uri ->
       let paths = Eio_util.paths_of_dirs ~env: forest.env forest.config.trees in
       find_candidate paths iri
