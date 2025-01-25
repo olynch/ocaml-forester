@@ -19,7 +19,7 @@ let render_tree ~dev ~forest (doc : T.content T.article) : (string * Yojson.Safe
   let route = Legacy_xml_client.route forest iri in
   let title_string =
     String_util.sentence_case @@
-    PT.string_of_content ~forest: forest.resources @@
+    PT.string_of_content ~forest: forest.resources ~router: Iri.to_uri @@
     Forest.get_expanded_title doc.frontmatter forest.resources
   in
   let title = `String title_string in
@@ -28,19 +28,19 @@ let render_tree ~dev ~forest (doc : T.content T.article) : (string * Yojson.Safe
     | None -> `Null
     | Some vertex ->
       let content = T.apply_modifier_to_content Sentence_case vertex in
-      `String (PT.string_of_content ~forest: forest.resources content)
+      `String (PT.string_of_content ~forest: forest.resources ~router: Iri.to_uri content)
   in
   let tags =
     `List
       begin
         let@ tag = List.filter_map @~ doc.frontmatter.tags in
         let@ content = Option.map @~ Forest.get_title_or_content_of_vertex ~modifier: Identity tag forest.resources in
-        `String (PT.string_of_content ~forest: forest.resources content)
+        `String (PT.string_of_content ~forest: forest.resources ~router: Iri.to_uri content)
       end
   in
   let route = `String route in
   let metas =
-    let meta_string meta = String.trim @@ PT.string_of_content ~forest: forest.resources meta in
+    let meta_string meta = String.trim @@ PT.string_of_content ~forest: forest.resources ~router: Iri.to_uri meta in
     let meta_assoc (s, meta) = (s, `String (meta_string meta)) in
     `Assoc (List.map meta_assoc doc.frontmatter.metas)
   in
