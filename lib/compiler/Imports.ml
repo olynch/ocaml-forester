@@ -106,7 +106,7 @@ let run_builder ?root env =
         | None ->
           Reporter.fatalf
             Resource_not_found
-            "Could not find tree `%a'"
+            "Could not find tree `%a' when building import graph"
             pp_iri
             iri
         | Some tree -> analyse_tree [] tree
