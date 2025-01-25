@@ -48,10 +48,7 @@ let create_tree ~env ~prefix ~template ~mode ~config ~(forest : State.t) =
   let path =
     EP.(env#fs / next_dir / fname)
   in
-  EP.save
-    ~create
-    path @@
-  body ^ template_content;
+  EP.save ~create path @@ body ^ template_content;
   EP.native_exn path
 
 let complete ~forest prefix =

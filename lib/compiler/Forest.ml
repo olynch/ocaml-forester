@@ -246,27 +246,23 @@ let get_title_or_content_of_vertex ?(not_found = fun _ -> None) ~modifier vertex
   T.apply_modifier_to_content modifier content
 
 let get_all_articles resources =
+  let extract_article = function
+    | T.Article a -> Some a
+    | T.Asset _ -> None
+  in
   resources
   |> to_seq_values
-  |> Seq.filter_map
-    (
-      fun r ->
-        match r with
-        | T.Article a -> Some a
-        | T.Asset _ -> None
-    )
+  |> Seq.filter_map extract_article
   |> List.of_seq
 
 let get_all_assets resources =
+  let extract_asset = function
+    | T.Asset a -> Some a
+    | T.Article _ -> None
+  in
   resources
   |> to_seq_values
-  |> Seq.filter_map
-    (
-      fun r ->
-        match r with
-        | T.Asset a -> Some a
-        | T.Article _ -> None
-    )
+  |> Seq.filter_map extract_asset
   |> List.of_seq
 
 let get_all_resources resources =
