@@ -36,7 +36,7 @@ let get_sorted_articles (forest : State.t) addrs =
 
 let route forest addr =
   let config = State.config forest in
-  if Some addr = (Option.map (Iri_scheme.user_iri ~host: config.host) config.home) then
+  if Some addr = Option.map (Iri_scheme.user_iri ~host: config.host) config.home then
     "index.html"
   else
     Format.asprintf "%s" (Iri.path_string addr)
@@ -47,9 +47,7 @@ let render_xml_qname = function
 
 let render_xml_attr
     : T.content T.xml_attr -> _
-  = fun
-      T.{ key; value = _ }
-    ->
+  = fun T.{ key; value = _ } ->
     P.string_attr (render_xml_qname key) "todo"
 (* "%a" render_content value *)
 
@@ -244,14 +242,11 @@ and render_content_node
               []
           ]
       ]
+    | T.Datalog_script _ -> []
     | T.Artefact _
     | T.Iri _
-    | T.Route_of_iri _
-    | T.Datalog_script _ ->
+    | T.Route_of_iri _ ->
       [P.txt "todo"]
-(* | Resource resource -> *)
-(*   render_resource resource *)
-(* | _ -> [] *)
 
 and _render_resource resource =
   render_content resource.contents
@@ -271,53 +266,41 @@ and render_link (forest : State.t) (link : T.content T.link) : P.node list =
       [H.href "%s" (Format.asprintf "%a" Iri.pp link.href)]
     | Some article ->
       [
-        (
+        begin
           match article.frontmatter.iri with
-          | Some iri ->
-            (H.href "%s" @@ route forest iri)
+          | Some iri -> H.href "%s" @@ route forest iri
           | None -> P.HTML.null_
-        );
+        end;
         (* H.title_ "%s" @@ PT.string_of_content article.frontmatter.title *)
       ]
   in
   [H.a attrs @@ render_content forest link.content]
 
 let render_query_result (forest : State.t) vs =
+  let render_vertex = function
+    | T.Iri_vertex iri ->
+      begin
+        match Forest.find_opt forest.resources iri with
+        | None ->
+          H.li
+            []
+            [
+              H.a
+                [H.href "%s" (Format.asprintf "%a" pp_iri iri)]
+                [P.txt "%s" (Format.asprintf "%a" pp_iri iri)]
+            ]
+        | Some (T.Article a) ->
+          H.li
+            []
+            [
+              render_frontmatter forest a.frontmatter;
+              H.div [] @@ render_content forest a.mainmatter
+            ]
+        | Some (T.Asset _) ->
+          P.txt "todo: render asset"
+      end
+    | T.Content_vertex c -> H.div [] (render_content forest c)
+  in
   vs
-  |> Vertex_set.to_list
-  |> List.map
-    (
-      function
-      | T.Iri_vertex iri ->
-        begin
-          match Forest.find_opt forest.resources iri with
-          | None ->
-            H.li
-              []
-              [
-                H.a
-                  [
-                    H.href "%s" (Format.asprintf "%a" pp_iri iri)
-                  ]
-                  [P.txt "%s" (Format.asprintf "%a" pp_iri iri)]
-              ]
-          | Some resource ->
-            match resource with
-            | T.Article a ->
-              H.li
-                []
-                [
-                  (render_frontmatter forest a.frontmatter);
-                  H.div
-                    []
-                    (
-                      render_content
-                        forest
-                        a.mainmatter
-                    )
-                ]
-            | T.Asset _ ->
-              P.txt "todo: render asset"
-        end
-      | T.Content_vertex c -> H.div [] (render_content forest c)
-    )
+  |> Vertex_set.to_list (* TODO: Needs to be sorted *)
+  |> List.map render_vertex
