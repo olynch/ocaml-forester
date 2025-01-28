@@ -12,7 +12,6 @@ open Forester_core
     encounter \import{foo-0001}, which corresponds to a tree with source path
     ./trees/foo-0001.tree. Thus we have to check the configured directories one
     by one until we find a match.
-
 *)
 
 open Forester_prelude
@@ -37,39 +36,8 @@ let show_target
 
 let is_loaded iri forest = Hashtbl.mem forest iri
 
-let find iri ~(in_paths : Eio.Fs.dir_ty Eio.Path.t list) =
-  let i = Iri.path_string iri in
-  let matches p =
-    let path = String.concat "/" p in
-    Filename.basename path = Filename.basename i
-  in
-  Dir_scanner.scan_directories in_paths
-  |> Seq.find matches
-  |> Option.map (String.concat "/")
-
 let delete_leading_slash path_str =
   String.sub path_str 1 ((String.length path_str) - 1)
-
-(* FIXME: This does not search recursively. *)
-let find_candidate paths iri =
-  paths
-  |> List.find_map @@
-    fun p ->
-      let candidate =
-        (* Eio constructs an absolute path when the string starts with "/"*)
-        let path_str =
-          Format.asprintf
-            "%s.tree"
-            (delete_leading_slash (Iri.path_string iri))
-        in
-        Eio.Path.(p / path_str)
-      in
-      if Eio.Path.is_file candidate then
-        let uri = Lsp.Uri.of_path (Eio.Path.native_exn candidate) in
-        Logs.debug (fun m -> m "found candidate %s" (Lsp.Uri.to_string uri));
-        Some uri
-      else
-        None
 
 let rec resolve_iri
     : type a. iri -> a target -> State.t -> a option
@@ -89,7 +57,6 @@ let rec resolve_iri
             Code.{ code; source_path = Some source_path; addr = Some addr }
           | None ->
             Logs.debug (fun m -> m "Did not find document at %a. Trying to load document from FS" pp_iri iri);
-            (* resolve_iri iri To_doc forest *)
             let@ uri = Option.bind @@ resolve_iri iri To_uri forest in
             resolve_uri uri To_code forest
       end
@@ -98,7 +65,8 @@ let rec resolve_iri
       resolve_uri uri To_doc forest
     | To_uri ->
       let paths = Eio_util.paths_of_dirs ~env: forest.env forest.config.trees in
-      find_candidate paths iri
+      let@ path = Option.bind @@ Dir_scanner.find_tree paths (Iri_util.iri_to_addr iri) in
+      Some (Lsp.Uri.of_string path)
     | To_path -> resolve_iri iri To_uri forest |> Option.map Lsp.Uri.to_path
 
 and resolve_uri

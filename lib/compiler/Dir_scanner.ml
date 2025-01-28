@@ -6,30 +6,47 @@
 
 open Forester_prelude
 module EP = Eio.Path
-module S = Algaeff.Sequencer.Make(struct type t = string list end)
+module S = Algaeff.Sequencer.Make(struct type t = Eio.Fs.dir_ty EP.t end)
 
-let rec process_file dirs fp =
+let rec process_file condition fp =
   if EP.is_directory fp then
-    let dirs =
-      match EP.split fp with
-      | Some (_, basename) -> dirs @ [basename]
-      | None -> dirs
-    in
-    process_dir dirs fp
-  else
-    let@ _, basename = Option.iter @~ EP.split fp in
-    if not @@ String.starts_with ~prefix: "." basename then
-      S.yield (dirs @ [basename])
+    process_dir condition fp
+  else if condition fp then
+    S.yield fp
 
-and process_dir dirs dir =
+and process_dir condition dir =
   try
     let@ fp = List.iter @~ EP.read_dir dir in
-    process_file dirs EP.(dir / fp)
+    process_file condition EP.(dir / fp)
   with
     | Eio.Io (Eio.Fs.E (Permission_denied _), _) -> ()
+
+let is_tree fp =
+  match EP.split fp with
+  | None -> false
+  | Some (_, basename) ->
+    Filename.extension basename = ".tree" && not @@ String.starts_with ~prefix: "." basename
+
+let matching_basename str fp =
+  match EP.split fp with
+  | None -> false
+  | Some (_, basename) ->
+    is_tree fp
+    && Filename.chop_extension basename = str
 
 let scan_directories dirs =
   let@ () = S.run in
   let@ fp = List.iter @~ dirs in
-  let@ _, basename = Option.iter @~ EP.split fp in
-  process_dir [basename] fp
+  process_dir is_tree fp
+
+let find_tree dirs name =
+  let matches =
+    let@ () = S.run in
+    let@ fp = List.iter @~ dirs in
+    process_dir (matching_basename name) fp
+  in
+  try
+    let first_match = List.hd @@ List.of_seq matches in
+    Some (Eio.Path.native_exn first_match)
+  with
+    | _ -> None

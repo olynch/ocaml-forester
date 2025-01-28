@@ -15,6 +15,7 @@ open Export_for_test
 let () =
   let@ env = Eio_main.run in
   let open Alcotest in
+  Logs.set_level (Some Debug);
   Logs.set_reporter (Logs_fmt.reporter ());
   let forest =
     Phases.init
@@ -24,32 +25,31 @@ let () =
   in
   let test_dir_scanner () =
     let dirs = Eio_util.paths_of_dirs ~env Config.default.trees in
-    Alcotest.(check @@ list @@ list string)
+    Alcotest.(check @@ list string)
       ""
       [
-        ["trees"; "importee.tree"];
-        ["trees"; "importer.tree"];
-        ["trees"; "index.tree"];
-        ["trees"; "linked.tree"];
-        ["trees"; "linker.tree"];
-        ["trees"; "reparse.tree"];
-        ["trees"; "transcludee.tree"];
-        ["trees"; "transcluder.tree"]
+        "./trees/importee.tree";
+        "./trees/importer.tree";
+        "./trees/index.tree";
+        "./trees/linked.tree";
+        "./trees/linker.tree";
+        "./trees/reparse.tree";
+        "./trees/transcludee.tree";
+        "./trees/transcluder.tree";
       ]
       (
         Dir_scanner.scan_directories dirs
+        |> Seq.map Eio.Path.native_exn
         |> List.of_seq
       )
   in
-  let test_find () =
+  let test_find_tree () =
     let dirs = Eio_util.paths_of_dirs ~env Config.default.trees in
     Alcotest.(check @@ option string)
       ""
-      (Some "trees/index.tree")
+      (Some "./trees/index.tree")
       (
-        Iri_resolver.find
-          (Iri.of_string "forest://my-forest/index.tree")
-          ~in_paths: dirs
+        Dir_scanner.find_tree dirs "index"
       )
   in
   let test_resolve_unloaded target () =
@@ -72,9 +72,9 @@ let () =
       [
         test_case "" `Quick test_dir_scanner;
       ];
-      "find",
+      "find_tree",
       [
-        test_case "" `Quick test_find;
+        test_case "" `Quick test_find_tree;
       ];
       "resolving_unloaded",
       [
@@ -82,11 +82,4 @@ let () =
         test_case "resolve to uri" `Quick (test_resolve_unloaded To_uri);
         test_case "resolve to path" `Quick (test_resolve_unloaded To_path);
       ];
-      "resolving loaded",
-      [
-        (* test_case "" `Quick test_resolve_loaded_to_uri; *)
-        (* test_case "" `Quick test_resolve_loaded_to_path; *)
-        (* test_case "" `Quick test_resolve_loaded_to_doc; *)
-        (* test_case "" `Quick test_resolve_loaded_to_code; *)
-      ]
     ]

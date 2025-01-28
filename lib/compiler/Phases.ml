@@ -43,7 +43,7 @@ let load
   = fun tree_dirs forest ->
     Logs.debug (fun m -> m "loading trees from file system");
     tree_dirs
-    |> Forest_scanner.scan_directories
+    |> Dir_scanner.scan_directories
     |> Seq.iter
       begin
         fun path ->
@@ -415,10 +415,9 @@ let plant_assets
     let module EP = Eio.Path in
     Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
     begin
-      let@ source_path = Seq.iter @~ paths in
-      let source_path = String.concat "/" source_path in
-      let cwd = Eio.Stdenv.cwd state.env in
-      let content = EP.load EP.(cwd / source_path) in
+      let@ path = Seq.iter @~ paths in
+      let content = EP.load path in
+      let source_path = Eio.Path.native_exn path in
       let iri = Asset_router.install ~host: state.config.host ~source_path ~content in
       Forest.plant_resource (T.Asset { iri; host = state.config.host; content }) state.graphs state.resources;
     end;
