@@ -5,7 +5,7 @@
  *)
 
 open Eio
-open Fun_util
+open Forester_prelude
 
 (* let ( / ) = Eio.Path.( / ) *)
 

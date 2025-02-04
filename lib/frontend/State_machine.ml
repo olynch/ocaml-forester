@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-open Forester_prelude
 open Forester_core
 open Forester_compiler
 

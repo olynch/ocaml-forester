@@ -75,4 +75,5 @@ module LaTeX_template = LaTeX_template
 module Job = Job
 (** Definition of LaTeX jobs*)
 
+module Eio_util = Eio_util
 module Export_for_test = Export_for_test
