@@ -1,0 +1,29 @@
+;;; SPDX-FileCopyrightText: 2024 The Forester Project Contributors
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+
+(ocamllex Lexer)
+
+(menhir
+ (modules Grammar)
+ (explain true)
+ (flags --inspection --table --dump))
+
+; The target for saving menhir's stdout to Grammar_messages.ml
+
+(rule
+ (targets Grammar_messages.ml)
+ (deps Grammar.messages Grammar.mly)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run menhir --compile-errors %{deps}))))
+
+(library
+ (name Forester_parser)
+ (instrumentation
+  (backend bisect_ppx))
+ (preprocess
+  (pps ppx_deriving.show ppx_repr))
+ (libraries forester.prelude forester.core asai menhirLib)
+ (public_name forester.parser))

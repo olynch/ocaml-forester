@@ -24,8 +24,6 @@ module Xml_forester = Xml_forester
 
     The lexer and parser are implemented with {{: https://ocaml.org/manual/5.3/lexyacc.html} ocamllex} and {{: https://gallium.inria.fr/~fpottier/menhir/} menhir}*)
 
-module Lexer = Lexer
-
 module Parse = Parse
 
 module Resolver = Resolver

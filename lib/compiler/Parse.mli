@@ -4,14 +4,13 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-open Forester_core
+include module type of Forester_parser.Parse
 
-val parse :
-  ?stop_on_err: bool ->
-  source: [`File of string | `String of Range.string_source] ->
-  Lexing.lexbuf ->
-  (Code.t, Reporter.diagnostic) result
+val parse_document :
+  Lsp.Text_document.t ->
+  (Forester_parser.Code.t, Forester_core.Reporter.diagnostic) result
 
-val parse_file : string -> (Code.t, Reporter.diagnostic) result
+val parse_file :
+  string ->
+  (Forester_parser.Code.t, Forester_core.Reporter.diagnostic) result
 
-val parse_document : Lsp.Text_document.t -> (Code.t, Reporter.diagnostic) result

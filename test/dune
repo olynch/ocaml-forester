@@ -87,6 +87,7 @@
   forester.prelude
   forester.compiler
   forester.core
+  forester.parser
   pure-html
   yuujinchou
   logs
