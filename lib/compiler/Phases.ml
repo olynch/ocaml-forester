@@ -42,8 +42,8 @@ let load
     : Eio.Fs.dir_ty Eio.Path.t list -> transition
   = fun tree_dirs forest ->
     Logs.debug (fun m -> m "loading trees from file system");
-    tree_dirs
-    |> Dir_scanner.scan_directories
+    let paths = tree_dirs |> Dir_scanner.scan_directories in
+    paths
     |> Seq.iter
       begin
         fun path ->
@@ -69,6 +69,7 @@ let load
           Hashtbl.replace forest.documents uri tree
       end;
     let loaded = forest.documents |> Hashtbl.length in
+    assert (loaded = Seq.length paths);
     Logs.debug (fun m -> m "loaded %i trees" loaded);
     forest
 
@@ -110,10 +111,14 @@ let parse
           end;
       end;
     let parsed = forest.parsed |> Forest.length in
+    if not quit_on_error then
+      (* If quit_on_error is true, we have already exited at this point. This
+         means there should be exactly as many parsed trees as loaded documents*)
+      assert (parsed = Hashtbl.length forest.documents);
     Logs.debug (fun m -> m "parsed %i trees" parsed);
     forest
 
-(* TODO: Amend import graph *)
+(* FIXME: Amend import graph *)
 let reparse
     : Lsp.Text_document.t -> transition
   = fun doc forest ->
@@ -151,7 +156,7 @@ let build_import_graph_for
     : iri: iri -> state -> state
   = fun ~iri forest ->
     match Iri_resolver.(resolve (Iri iri) To_code forest) with
-    | None -> forest
+    | None -> assert false
     | Some tree ->
       let module Graphs = (val forest.graphs) in
       let import_graph = Imports.dependencies tree forest in
@@ -197,8 +202,10 @@ let expand
           Forest.replace forest.expanded iri syn;
           match source_path with
           | None ->
-            Logs.warn (fun m -> m "tree at %a has no source path." pp_iri iri)
+            Logs.warn (fun m -> m "tree at %a has no source path." pp_iri iri);
+            if forest.dev then assert false
           | Some path ->
+            assert (not (Filename.is_relative path));
             match diagnostics with
             | [] -> ()
             | diagnostics ->
@@ -278,7 +285,7 @@ let expand_only
         fun iri tree ->
           Forest.replace forest.expanded iri tree;
           match Iri_resolver.resolve (Iri iri) To_uri forest with
-          | None -> ()
+          | None -> assert false
           | Some _uri -> ()
         (* Eio.traceln "clearing diagnostics for %s" (Lsp.Uri.to_string uri); *)
         (* Diagnostics.remove forest.diagnostics uri *)
@@ -287,7 +294,7 @@ let expand_only
     |> Diagnostic_store.iter
       begin
         fun uri diagnostics ->
-          Eio.traceln "got some expansion diagnostics.";
+          Logs.debug (fun m -> m "%s got some expansion diagnostics." (Lsp.Uri.to_string uri));
           match diagnostics with
           | [] -> ()
           | diagnostics ->
@@ -310,11 +317,10 @@ let export_publication ~env ~(forest : state) (publication : Job.publication) : 
     let cwd = Eio.Stdenv.cwd env in
     let dir = Eio.Path.(cwd / "publications") in
     let filename = publication.name ^ ".json" in
+    let path = Eio.Path.(dir / filename) in
     Eio.Path.mkdirs ~exists_ok: true ~perm: 0o755 dir;
-    Eio.Path.save
-      ~create: (`Or_truncate 0o644)
-      Eio.Path.(dir / filename)
-      blob
+    Eio.Path.save ~create: (`Or_truncate 0o644) path blob;
+    assert (Eio.Path.is_file path)
 
 let eval
     : dev: bool -> transition
@@ -349,7 +355,8 @@ let eval
                 | Some iri ->
                   Forest.plant_resource resource forest.graphs forest.resources
                 | None ->
-                  Logs.debug (fun m -> m "failed to plant resource because an iri could not be guessed")
+                  Logs.debug (fun m -> m "failed to plant resource because an iri could not be guessed");
+                  assert false
             end;
           jobs
           |> List.iter
@@ -363,7 +370,6 @@ let eval
                   let mainmatter = content ~svg in
                   let backmatter = T.Content [] in
                   let article = T.{ frontmatter; mainmatter; backmatter } in
-                  (* Forest.add forest.resources iri (T.Article article) *)
                   Forest.plant_resource (T.Article article) forest.graphs forest.resources
                 | Job.Publish publication ->
                   export_publication ~env ~forest publication

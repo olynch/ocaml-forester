@@ -34,7 +34,7 @@ let () =
   let mk_iri addr = Iri_scheme.user_iri ~host: config.host addr in
   let _, forest, _ =
     Phases.init ~env ~config ~dev: false
-    |> State_machine.(update Load_all)
+    |> State_machine.(update Load_all_configured_dirs)
   in
   let documents = State.documents forest in
   let parse_error_uri =

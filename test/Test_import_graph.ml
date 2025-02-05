@@ -21,7 +21,7 @@ let () =
   let forest =
     State_machine.(
       Phases.init ~env ~config ~dev: false
-      |> run_action Load_all ~until: Expand_all
+      |> run_action Load_all_configured_dirs
     )
   in
   let batch_graph =

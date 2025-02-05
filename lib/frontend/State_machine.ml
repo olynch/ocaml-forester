@@ -17,8 +17,8 @@ type 'a action =
   | Build_dependency_graph of iri
   | Plant_assets of (Eio.Fs.dir_ty Eio.Path.t list [@opaque ])
   | Plant_foreign of (Eio.Fs.dir_ty Eio.Path.t list [@opaque ])
-  | Do_nothing
-  | Load_all
+  | Done
+  | Load_all_configured_dirs
   | Parse_all
   | Expand_all
   | Eval_all
@@ -56,23 +56,20 @@ let update
         match Forest.get_article iri state.resources with
         | Some article ->
           let result =
-            try
-              Render_result
-                (
-                  Render.render
-                    ~dev: true
-                    state
-                    target
-                    (Article article)
-                )
-            with
-              | _ -> Error (`Failed_to_render iri)
+            Render_result
+              (
+                Render.render
+                  ~dev: true
+                  state
+                  target
+                  (Article article)
+              )
           in
-          (Do_nothing, state, result)
-        | None -> (Do_nothing, state, Error (`Not_found iri))
+          (Done, state, result)
+        | None -> (Done, state, Error (`Not_found iri))
       end
     | Quit -> exit 0
-    | Load_all ->
+    | Load_all_configured_dirs ->
       (
         Parse_all,
         Phases.load_configured_dirs state,
@@ -112,42 +109,42 @@ let update
       )
     | Eval_all ->
       (
-        Do_nothing,
+        Done,
         Phases.eval ~dev: true state,
         Nothing
       )
     | Eval_only iri ->
       (
-        Do_nothing,
+        Done,
         Phases.eval_only iri state,
         Nothing
       )
     | Plant_assets paths ->
       (
-        Do_nothing,
+        Done,
         Phases.plant_assets paths state,
         Nothing
       )
     | Plant_foreign path ->
       (
-        Do_nothing,
+        Done,
         Phases.implant_foreign path state,
         Nothing
       )
     | Parse _
     | Cache_results _
-    | Do_nothing ->
+    | Done ->
       (
-        Do_nothing,
+        Done,
         state,
         Nothing
       )
 
-let run_action action ~(until : 'a action) state : state =
+let run_action action state : state =
   let rec go action state =
     match update action state with
     | (new_action, new_state, result) ->
-      if until = action then (new_state, result)
+      if action = Done then (new_state, result)
       else
         go new_action new_state
   in
@@ -167,13 +164,11 @@ let implant_foreign paths state =
   state
   |> run_action
     (Plant_foreign paths)
-    ~until: Do_nothing
 
 let plant_assets paths state =
   state
   |> run_action
     (Plant_assets paths)
-    ~until: Do_nothing
 
 let batch_run ~env ~(config : Config.t) ~dev =
   let asset_paths = Eio_util.paths_of_dirs ~env config.assets in
@@ -181,7 +176,7 @@ let batch_run ~env ~(config : Config.t) ~dev =
   Phases.init ~env ~config ~dev
   |> plant_assets asset_paths
   |> implant_foreign foreign_paths
-  |> run_action Load_all ~until: Do_nothing
+  |> run_action Load_all_configured_dirs
 
 let language_server
     : state -> unit
@@ -190,7 +185,7 @@ let language_server
 let render_tree ~env ~config ~dev target iri =
   let forest =
     Phases.init ~env ~config ~dev
-    |> run_action (Build_dependency_graph iri) ~until: Do_nothing
+    |> run_action (Build_dependency_graph iri)
   in
   match Forest.get_article iri forest.resources with
   | None -> assert false
