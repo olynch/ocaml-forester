@@ -5,8 +5,6 @@
  *
  *)
 
-open Forester_core
-
 (*  NOTE: Depending on the mode of compilation, we might encouter IRIs
     corresponding to trees that have not been loaded yet. For example, we might
     encounter \import{foo-0001}, which corresponds to a tree with source path

@@ -5,8 +5,6 @@
  *
  *)
 
-open Forester_core
-
 type transition = State.t -> State.t
 
 val init : env: Eio_unix.Stdenv.base -> config: Config.t -> dev: bool -> State.t

@@ -350,13 +350,7 @@ let eval
           |> List.iter
             begin
               fun article ->
-                let resource = (T.Article article) in
-                match Forest.iri_for_resource resource with
-                | Some iri ->
-                  Forest.plant_resource resource forest.graphs forest.resources
-                | None ->
-                  Logs.debug (fun m -> m "failed to plant resource because an iri could not be guessed");
-                  assert false
+                Forest.plant_resource (T.Article article) forest.graphs forest.resources
             end;
           jobs
           |> List.iter
@@ -382,7 +376,8 @@ let eval_only : iri -> transition = fun iri forest ->
     match Forest.find_opt forest.expanded iri with
     | None -> assert false
     | Some syn ->
-      let diagnostics, Eval.{ articles; jobs } =
+      (* NOTE: Not running jobs. *)
+      let diagnostics, Eval.{ articles; jobs = _ } =
         Eval.eval_tree
           ~quit_on_failure: false
           ~host: forest.config.host

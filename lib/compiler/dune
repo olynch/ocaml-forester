@@ -37,8 +37,3 @@
   cid
   lsp)
  (public_name forester.compiler))
-
-(env
- (dev
-  (flags
-   (:standard -w -66-32-33-27-26-69))))

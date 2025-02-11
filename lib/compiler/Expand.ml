@@ -342,7 +342,7 @@ and expand_xml_ident loc (prefix, uname) =
   | None -> { xmlns = None; prefix = ""; uname }
   | Some prefix ->
     match Sc.resolve ["xmlns"; prefix] with
-    | Some (Xmlns { xmlns; prefix }, loc) ->
+    | Some (Xmlns { xmlns; prefix }, _) ->
       { xmlns = Some xmlns; prefix = prefix; uname }
     | _ ->
       Reporter.fatalf
@@ -456,11 +456,8 @@ let expand_tree
             push d;
             if quit_on_error then
               begin
-                match d with
-                | { severity; message; explanation; backtrace; extra_remarks } ->
-                  (* Logs.debug (fun m -> m "%a\n%s" (Format.pp_print_option Asai.Range.dump) explanation.loc (Asai.Diagnostic.string_of_text explanation.value)); *)
-                  Reporter.Tty.display d;
-                  exit 1
+                Reporter.Tty.display d;
+                exit 1
               end
             else
               Unit_map.empty,
