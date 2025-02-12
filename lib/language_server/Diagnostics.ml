@@ -17,7 +17,7 @@ let compute (document : Lsp.Text_document.t) =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
   let config = State.config forest in
   let uri = Lsp.Text_document.documentUri document in
-  let iri = uri |> Iri_util.uri_to_iri ~host: config.host in
+  let iri = Iri_util.uri_to_iri ~host: config.host uri in
   Phases.(
     forest
     |> reparse document
@@ -28,7 +28,9 @@ let compute (document : Lsp.Text_document.t) =
       (
         fun uri diagnostics ->
           match diagnostics with
-          | [] -> Publish.publish uri []
+          | [] ->
+            Eio.traceln "Clearing diagnostics for %s" (Lsp.Uri.to_path uri);
+            Publish.publish uri []
           | diagnostics ->
             Eio.traceln "publishing %i diagnostics to %s" (List.length diagnostics) (Lsp.Uri.to_path uri);
             List.iter

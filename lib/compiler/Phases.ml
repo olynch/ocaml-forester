@@ -136,7 +136,7 @@ let reparse
         }
       in
       Forest.add forest.parsed (Iri_util.uri_to_iri ~host uri) tree;
-      Eio.traceln "No parse errors. clearing previous diagnostics";
+      Eio.traceln "No parse errors. Clearing previous diagnostics";
       Diagnostic_store.remove forest.diagnostics uri;
       forest
     | Error d ->
@@ -386,6 +386,13 @@ let eval_only : iri -> transition = fun iri forest ->
           syn
       in
       List.iter (fun article -> Forest.plant_resource (Article article) forest.graphs forest.resources) articles;
+      begin
+        let@ uri = Option.iter @~ (Iri_resolver.resolve (Iri iri) To_uri forest) in
+        Diagnostic_store.append
+          forest.diagnostics
+          uri
+          diagnostics;
+      end;
       forest
 
 let implant_foreign
