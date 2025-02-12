@@ -110,7 +110,7 @@ let update
     | Eval_all ->
       (
         Done,
-        Phases.eval ~dev: true state,
+        Phases.eval state,
         Nothing
       )
     | Eval_only iri ->

@@ -22,7 +22,7 @@ let compute (document : Lsp.Text_document.t) =
     forest
     |> reparse document
     |> expand_only iri
-    |> eval ~dev: true
+    |> eval
     |> State.diagnostics
     |> Diagnostic_store.iter
       (

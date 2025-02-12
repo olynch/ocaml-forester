@@ -83,6 +83,42 @@ let () =
       8
       (List.length @@ Forest.get_all_articles forest.resources)
   in
+  let test_includes_paths () =
+    let forest =
+      State_machine.batch_run
+        ~env
+        ~config
+        ~dev: true
+    in
+    let path =
+      let@ { frontmatter = { source_path; _ }; _ } =
+        Option.bind @@ Forest.get_article (Iri.of_string "forest://my-forest/index") forest.resources
+      in
+      source_path
+    in
+    Alcotest.(check bool)
+      ""
+      true
+      (Option.is_some path)
+  in
+  let test_omits_paths () =
+    let forest =
+      State_machine.batch_run
+        ~env
+        ~config
+        ~dev: false
+    in
+    let path =
+      let@ { frontmatter = { source_path; _ }; _ } =
+        Option.bind @@ Forest.get_article (Iri.of_string "forest://my-forest/index") forest.resources
+      in
+      source_path
+    in
+    Alcotest.(check bool)
+      ""
+      true
+      (Option.is_none path)
+  in
   let open Alcotest in
   run
     "check compiler internals"
@@ -91,5 +127,10 @@ let () =
       [
         test_case "basic batch run" `Quick test_batch_run;
         test_case "reparsing" `Quick test_reparsing
+      ];
+      "dev mode",
+      [
+        test_case "includes paths in dev mode" `Quick test_includes_paths;
+        test_case "omits paths outside dev mode" `Quick test_omits_paths;
       ]
     ]

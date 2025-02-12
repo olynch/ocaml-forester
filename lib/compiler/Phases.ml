@@ -323,8 +323,8 @@ let export_publication ~env ~(forest : state) (publication : Job.publication) : 
     assert (Eio.Path.is_file path)
 
 let eval
-    : dev: bool -> transition
-  = fun ~dev forest ->
+    : transition
+  = fun forest ->
     let host = forest.config.host in
     let expanded = forest.expanded in
     let env = forest.env in
@@ -332,7 +332,7 @@ let eval
     |> Forest.iter
       begin
         fun iri syn ->
-          let source_path = if dev then Iri_resolver.(resolve (Iri iri) To_path forest) else None in
+          let source_path = if forest.dev then Iri_resolver.(resolve (Iri iri) To_path forest) else None in
           let uri = Iri_resolver.(resolve (Iri iri) To_uri forest) in
           let diagnostics, Eval.{ articles; jobs } =
             Eval.eval_tree
