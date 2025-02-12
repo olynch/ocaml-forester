@@ -82,6 +82,7 @@
   (glob_files_rec ./imports/*))
  (libraries
   alcotest
+  unix
   fmt
   forester.frontend
   forester.prelude

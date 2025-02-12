@@ -65,6 +65,7 @@ let () =
       )
   in
   let test_minimal_graph () =
+    let@ () = Reporter.easy_run in
     let minimal_graph =
       Imports.run_builder
         ~root: (Iri_scheme.user_iri ~host: config.host "a")

@@ -15,6 +15,7 @@ let rec process_file condition fp =
     S.yield fp
 
 and process_dir condition dir =
+  assert (not @@ Filename.is_relative @@ EP.native_exn dir);
   try
     let@ fp = List.iter @~ EP.read_dir dir in
     process_file condition EP.(dir / fp)
@@ -39,6 +40,8 @@ let scan_directories dirs =
   let@ fp = List.iter @~ dirs in
   process_dir is_tree fp
 
+exception Is_relative of string
+
 let find_tree dirs name =
   let matches =
     let@ () = S.run in
@@ -47,6 +50,9 @@ let find_tree dirs name =
   in
   try
     let first_match = List.hd @@ List.of_seq matches in
-    Some (Eio.Path.native_exn first_match)
+    let native = Eio.Path.native_exn first_match in
+    if Filename.is_relative native then raise (Is_relative native);
+    Some native
   with
-    | _ -> None
+    | Is_relative _ -> assert false
+    | Failure _ -> None

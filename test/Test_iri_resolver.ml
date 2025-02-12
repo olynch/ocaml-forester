@@ -27,16 +27,20 @@ let () =
     let dirs = Eio_util.paths_of_dirs ~env Config.default.trees in
     Alcotest.(check @@ list string)
       ""
-      [
-        "./trees/importee.tree";
-        "./trees/importer.tree";
-        "./trees/index.tree";
-        "./trees/linked.tree";
-        "./trees/linker.tree";
-        "./trees/reparse.tree";
-        "./trees/transcludee.tree";
-        "./trees/transcluder.tree";
-      ]
+      (
+        List.map
+          Unix.realpath
+          [
+            "./trees/importee.tree";
+            "./trees/importer.tree";
+            "./trees/index.tree";
+            "./trees/linked.tree";
+            "./trees/linker.tree";
+            "./trees/reparse.tree";
+            "./trees/transcludee.tree";
+            "./trees/transcluder.tree";
+          ]
+      )
       (
         Dir_scanner.scan_directories dirs
         |> Seq.map Eio.Path.native_exn
@@ -47,7 +51,7 @@ let () =
     let dirs = Eio_util.paths_of_dirs ~env Config.default.trees in
     Alcotest.(check @@ option string)
       ""
-      (Some "./trees/index.tree")
+      (Some (Unix.realpath "./trees/index.tree"))
       (
         Dir_scanner.find_tree dirs "index"
       )

@@ -7,10 +7,8 @@
 open Eio
 open Forester_prelude
 
-(* let ( / ) = Eio.Path.( / ) *)
-
 let path_of_dir ~env dir =
-  Path.(Eio.Stdenv.fs env / dir)
+  Path.(Eio.Stdenv.fs env / (Unix.realpath dir))
 
 let paths_of_dirs ~env =
   List.map (path_of_dir ~env)

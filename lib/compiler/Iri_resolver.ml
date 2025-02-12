@@ -34,9 +34,6 @@ let show_target
 
 let is_loaded iri forest = Hashtbl.mem forest iri
 
-let delete_leading_slash path_str =
-  String.sub path_str 1 ((String.length path_str) - 1)
-
 let rec resolve_iri
     : type a. iri -> a target -> State.t -> a option
   = fun iri target forest ->
@@ -64,6 +61,7 @@ let rec resolve_iri
     | To_uri ->
       let paths = Eio_util.paths_of_dirs ~env: forest.env forest.config.trees in
       let@ path = Option.bind @@ Dir_scanner.find_tree paths (Iri_util.iri_to_addr iri) in
+      assert (not @@ Filename.is_relative path);
       Some (Lsp.Uri.of_string path)
     | To_path -> resolve_iri iri To_uri forest |> Option.map Lsp.Uri.to_path
 
@@ -80,7 +78,7 @@ and resolve_uri
         match Hashtbl.find_opt forest.documents uri with
         | Some doc -> Some doc
         | None ->
-          let path = Eio.Path.(forest.env#fs / delete_leading_slash (Lsp.Uri.to_path uri)) in
+          let path = Eio.Path.(forest.env#fs / Lsp.Uri.to_path uri) in
           assert (Eio.Path.is_file path);
           let content = Eio.Path.load path in
           let textDocument =
