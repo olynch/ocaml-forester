@@ -28,6 +28,12 @@ let is_tree fp =
   | Some (_, basename) ->
     Filename.extension basename = ".tree" && not @@ String.starts_with ~prefix: "." basename
 
+let is_not_hidden fp =
+  match EP.split fp with
+  | None -> false
+  | Some (_, basename) ->
+    not @@ String.starts_with ~prefix: "." basename
+
 let matching_basename str fp =
   match EP.split fp with
   | None -> false
@@ -39,6 +45,11 @@ let scan_directories dirs =
   let@ () = S.run in
   let@ fp = List.iter @~ dirs in
   process_dir is_tree fp
+
+let scan_asset_directories dirs =
+  let@ () = S.run in
+  let@ fp = List.iter @~ dirs in
+  process_dir is_not_hidden fp
 
 exception Is_relative of string
 

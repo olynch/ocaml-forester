@@ -419,7 +419,7 @@ let implant_foreign
 let plant_assets
     : Eio.Fs.dir_ty Eio.Path.t list -> transition
   = fun asset_dirs state ->
-    let paths = Dir_scanner.scan_directories asset_dirs in
+    let paths = Dir_scanner.scan_asset_directories asset_dirs in
     let module EP = Eio.Path in
     Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
     begin
