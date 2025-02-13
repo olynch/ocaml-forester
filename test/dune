@@ -11,17 +11,8 @@
    (FORESTERLSP_TEST true))))
 
 (cram
- (applies_to :whole_subtree)
- (deps %{bin:forester}))
-
-(cram
  (applies_to Render)
  (deps %{bin:server}))
-
-(cram
- (applies_to Build)
- (deps
-  (glob_files_rec ./cram-forest/*)))
 
 (cram
  (applies_to Export)
@@ -32,8 +23,7 @@
  (applies_to :whole_subtree)
  (deps
   %{bin:forester}
-  (glob_files_rec ./forest/*)
-  (glob_files_rec ./cram-forest/*)))
+  (glob_files_rec ./forest/*)))
 
 (executable
  (name Test_http_server)
@@ -56,6 +46,8 @@
 
 (tests
  (names
+  Generators_core
+  Generators_eval
   Test_LaTeX_pipeline
   Test_DSL
   Test_compiler
@@ -77,12 +69,14 @@
  (preprocess
   (pps ppx_deriving.show ppx_yojson_conv))
  (deps
+  ; (glob_files_rec ./forest*)
   (glob_files_rec ./errors/*)
   (glob_files_rec ./trees/*)
   (glob_files_rec ./imports/*))
  (libraries
   alcotest
   unix
+  qcheck-core
   fmt
   forester.frontend
   forester.prelude

@@ -89,6 +89,7 @@ let render_tree
     let result = State_machine.render_tree ~env ~config ~dev tgt iri in
     Format.printf "%s" result
 
+(* FIXME: deprecate this*)
 let compile ~env ~dev ~(config : Config.t) : State.t =
   State_machine.batch_run ~env ~config ~dev
 

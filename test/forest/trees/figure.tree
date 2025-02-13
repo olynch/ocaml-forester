@@ -1,0 +1,28 @@
+\xmlns:html{http://www.w3.org/1999/xhtml}
+
+\def\NFA/ep{NFA\<html:sup>{#{\varepsilon}}}
+
+\def\automata/tex-preamble{
+  \usepackage{tikz}
+  \usepackage{amssymb}
+  %\usepackage[tt=false]{libertine}
+  \usetikzlibrary{automata,positioning}
+}
+
+\figure{
+ \tex{\automata/tex-preamble}{
+  \begin{tikzpicture}[node distance=1.5cm,on grid]
+    \node[state,initial] (q0) {$q_0$};
+    \node[state,above=of q0] (q1) {$q_1$};
+    \node[state,accepting,below=of q0] (q2) {$q_2$};
+    \path[->]
+      (q0) edge[loop right] node {$a$} ()
+      (q1) edge[loop above] node {$a$} ()
+      (q2) edge[loop below] node {$b$} ()
+      (q0) edge node[left] {$\varepsilon$} (q1)
+      (q0) edge node[left] {$\varepsilon$} (q2)
+    ;
+  \end{tikzpicture}
+ }
+ \figcaption{A sample \NFA/ep #{M} over #{\Sigma=\brc{a,b}}, where #{\lang{M}=\brc{a^mb^n}=\lang{a{*}b{*}}}.}
+}

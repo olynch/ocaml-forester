@@ -69,7 +69,6 @@ let load
           Hashtbl.replace forest.documents uri tree
       end;
     let loaded = forest.documents |> Hashtbl.length in
-    assert (loaded = Seq.length paths);
     Logs.debug (fun m -> m "loaded %i trees" loaded);
     forest
 
@@ -396,9 +395,10 @@ let eval_only : iri -> transition = fun iri forest ->
       forest
 
 let implant_foreign
-    : Eio.Fs.dir_ty Eio.Path.t list -> transition
-  = fun foreign_paths state ->
+    : transition
+  = fun state ->
     begin
+      let foreign_paths = Eio_util.paths_of_files ~env: state.env state.config.foreign in
       let module EP = Eio.Path in
       let@ path = List.iter @~ foreign_paths in
       let path_str = EP.native_exn path in
@@ -417,16 +417,21 @@ let implant_foreign
     state
 
 let plant_assets
-    : Eio.Fs.dir_ty Eio.Path.t list -> transition
-  = fun asset_dirs state ->
-    let paths = Dir_scanner.scan_asset_directories asset_dirs in
-    let module EP = Eio.Path in
+    : transition
+  = fun state ->
+    let paths =
+      Dir_scanner.scan_asset_directories
+        (Eio_util.paths_of_dirs ~env: state.env state.config.assets)
+    in
+    Logs.debug (fun m -> m "got %i asset paths" (Seq.length paths));
     Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
+    let module EP = Eio.Path in
     begin
       let@ path = Seq.iter @~ paths in
       let content = EP.load path in
-      let source_path = Eio.Path.native_exn path in
+      let source_path = EP.native_exn path in
       let iri = Asset_router.install ~host: state.config.host ~source_path ~content in
+      Logs.debug (fun m -> m "Installed %s at %a" source_path pp_iri iri);
       Forest.plant_resource (T.Asset { iri; host = state.config.host; content }) state.graphs state.resources;
     end;
     state

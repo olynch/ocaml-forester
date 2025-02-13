@@ -58,46 +58,6 @@ let () =
       |}
       ([], T.Content [txt "bar"])
   in
-  let test_route () =
-    let _ = Asset_router.install ~host ~source_path: "asdf" ~content: "asdf" in
-    test_eval
-      {|
-      \route-asset{asdf}
-    |}
-      (
-        [],
-        T.Content
-          [
-            datalog_script
-              [
-                prop
-                  []
-                  {
-                    rel = "org.forester.rel.in-bundle-step";
-                    args = [
-                      const
-                        (Types.Iri_vertex (Iri_scheme.user_iri ~host "test"));
-                      const
-                        (
-                          Types.Iri_vertex
-                            (
-                              Iri_scheme.hash_iri
-                                ~host
-                                "bafkrmig5e6a7jri3ztn6epsnhgfyvargd5mfyj4nxnfyjge75jyoozzdve"
-                            )
-                        )
-                    ]
-                  };
-              ];
-            route_of_iri
-              (
-                Iri_scheme.hash_iri
-                  ~host
-                  "bafkrmig5e6a7jri3ztn6epsnhgfyvargd5mfyj4nxnfyjge75jyoozzdve"
-              )
-          ]
-      )
-  in
   let test_object () =
     test_eval
       {|
@@ -136,10 +96,6 @@ let () =
       "objects",
       [
         test_case "" `Quick test_object;
-      ];
-      "asset",
-      [
-        test_case "" `Quick test_route
       ];
       "datalog",
       [

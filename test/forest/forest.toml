@@ -4,4 +4,5 @@ trees = ["trees" ]
 theme = "theme"
 home = "index"
 prefixes = ["test"]
+assets = ["assets"]
 foreign = ["export/foreign.json"]

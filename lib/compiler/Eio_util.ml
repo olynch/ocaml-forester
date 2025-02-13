@@ -7,11 +7,25 @@
 open Eio
 open Forester_prelude
 
+(** FIXME: These functions can fail when things are misconfigured by the
+    user, but the error messages are confusing because they are not handled by
+    Asai. We should go over all usages and emit useful errors. *)
+
 let path_of_dir ~env dir =
-  Path.(Eio.Stdenv.fs env / (Unix.realpath dir))
+  let path = Path.(Eio.Stdenv.fs env / (Unix.realpath dir)) in
+  assert (Path.is_directory path);
+  path
+
+let path_of_file ~env file =
+  let path = Path.(Eio.Stdenv.fs env / (Unix.realpath file)) in
+  assert (Path.is_file path);
+  path
 
 let paths_of_dirs ~env =
   List.map (path_of_dir ~env)
+
+let paths_of_files ~env =
+  List.map (path_of_file ~env)
 
 module NullSink: Flow.Pi.SINK with type t = unit = struct
   type t = unit

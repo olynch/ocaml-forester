@@ -18,3 +18,6 @@ Verify that the foreign blob can be implanted.
   
   forester: [INFO] Expand, evaluate and analyse forest...
   
+   ￫ info[Reporter.Message.Log]
+   ￮ Building ./build/resources/4f2455dfdf10f6ad466d28c223f6bc39.svg
+  

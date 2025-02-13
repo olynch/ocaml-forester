@@ -1,6 +1,0 @@
-[forest]
-host = "cram"
-trees = ["trees" ]
-assets = []
-theme = "theme"
-home = "index"

@@ -27,7 +27,7 @@ module Vertex_set = Vertex_set
 module Reporter = Reporter
 
 (** {2 Source locations}
-    Among other things these are used by compiler diagnostics and the language server.*)
+    These are used by compiler diagnostics and the language server.*)
 
 module Range = Range
 

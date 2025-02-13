@@ -15,8 +15,8 @@ type 'a action =
   | Quit
   | Build_import_graph
   | Build_dependency_graph of iri
-  | Plant_assets of (Eio.Fs.dir_ty Eio.Path.t list [@opaque ])
-  | Plant_foreign of (Eio.Fs.dir_ty Eio.Path.t list [@opaque ])
+  | Plant_assets
+  | Plant_foreign
   | Done
   | Load_all_configured_dirs
   | Parse_all
@@ -119,16 +119,16 @@ let update
         Phases.eval_only iri state,
         Nothing
       )
-    | Plant_assets paths ->
+    | Plant_assets ->
       (
         Done,
-        Phases.plant_assets paths state,
+        Phases.plant_assets state,
         Nothing
       )
-    | Plant_foreign path ->
+    | Plant_foreign ->
       (
         Done,
-        Phases.implant_foreign path state,
+        Phases.implant_foreign state,
         Nothing
       )
     | Parse _
@@ -160,22 +160,14 @@ let rec force
       let _discard, new_state, _ = update msg state in
       force remaining new_state
 
-let implant_foreign paths state =
-  state
-  |> run_action
-    (Plant_foreign paths)
+let implant_foreign = run_action Plant_foreign
 
-let plant_assets paths state =
-  state
-  |> run_action
-    (Plant_assets paths)
+let plant_assets = run_action Plant_assets
 
 let batch_run ~env ~(config : Config.t) ~dev =
-  let asset_paths = Eio_util.paths_of_dirs ~env config.assets in
-  let foreign_paths = Eio_util.paths_of_dirs ~env config.foreign in
   Phases.init ~env ~config ~dev
-  |> plant_assets asset_paths
-  |> implant_foreign foreign_paths
+  |> plant_assets
+  |> implant_foreign
   |> run_action Load_all_configured_dirs
 
 let language_server

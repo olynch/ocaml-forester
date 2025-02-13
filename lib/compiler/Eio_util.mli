@@ -18,6 +18,16 @@ val paths_of_dirs :
   string list ->
   'a Path.t list
 
+val path_of_file :
+  env: < fs: ([> Fs.dir_ty] as 'a) Path.t; .. > ->
+  string ->
+  'a Path.t
+
+val paths_of_files :
+  env: < fs: ([> Fs.dir_ty] as 'a) Path.t; .. > ->
+  string list ->
+  'a Path.t list
+
 val null_sink : unit -> Flow.sink_ty Resource.t
 
 val ensure_context_of_path :
