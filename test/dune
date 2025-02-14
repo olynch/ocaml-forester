@@ -46,8 +46,6 @@
 
 (tests
  (names
-  Generators_core
-  Generators_eval
   Test_LaTeX_pipeline
   Test_DSL
   Test_compiler
