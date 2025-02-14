@@ -76,7 +76,6 @@
  (libraries
   alcotest
   unix
-  qcheck-core
   fmt
   forester.frontend
   forester.prelude
