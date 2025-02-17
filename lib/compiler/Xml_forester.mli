@@ -36,7 +36,6 @@ val frontmatter : std_tag
 val mainmatter : std_tag
 val backmatter : std_tag
 
-val anchor : _ text_tag
 val taxon : std_tag
 val addr : _ text_tag
 val route : _ text_tag

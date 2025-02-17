@@ -6,7 +6,7 @@ Run build:
    ￫ info[Reporter.Message.Log]
    ꭍ ￮ when evaluating forest://lsp-test/figure
    ￮ Building ./build/resources/4f2455dfdf10f6ad466d28c223f6bc39.svg
-  
+
 
   $ cat output/forest.json
   {"hello":{"title":"Hello","taxon":null,"tags":[],"route":"hello.xml","metas":{}},"forest://foreign/index":{"title":"I am exported","taxon":null,"tags":[],"route":"foreign-foreign-index.xml","metas":{}},"index":{"title":"Hello","taxon":null,"tags":[],"route":"index.xml","metas":{}},"nested":{"title":"I am nested","taxon":null,"tags":[],"route":"nested.xml","metas":{}},"lorem":{"title":"Forest://lsp-test/lorem","taxon":null,"tags":[],"route":"lorem.xml","metas":{}},"asset":{"title":"Forest://lsp-test/asset","taxon":null,"tags":[],"route":"asset.xml","metas":{}},"hash/4f2455dfdf10f6ad466d28c223f6bc39":{"title":"Forest://lsp-test/hash/4f2455dfdf10f6ad466d28c223f6bc39","taxon":null,"tags":[],"route":"hash-4f2455dfdf10f6ad466d28c223f6bc39.xml","metas":{}},"person":{"title":"Author Testington","taxon":"Person","tags":[],"route":"person.xml","metas":{}},"figure":{"title":"Forest://lsp-test/figure","taxon":null,"tags":[],"route":"figure.xml","metas":{}}}
@@ -29,8 +29,7 @@ Run build:
   <fr:tree xmlns:fr="http://www.jonmsterling.com/jms-005P.xml" root="true">
     <fr:frontmatter>
       <fr:authors />
-      <fr:anchor>427</fr:anchor>
-      <fr:addr type="user">index</fr:addr>
+      <fr:addr>index</fr:addr>
       <fr:route>index.xml</fr:route>
       <fr:title text="Hello">Hello</fr:title>
     </fr:frontmatter>
@@ -38,35 +37,30 @@ Run build:
     <fr:backmatter>
       <fr:tree show-metadata="false" hidden-when-empty="true">
         <fr:frontmatter>
-          <fr:anchor>422</fr:anchor>
           <fr:title text="References">References</fr:title>
         </fr:frontmatter>
         <fr:mainmatter />
       </fr:tree>
       <fr:tree show-metadata="false" hidden-when-empty="true">
         <fr:frontmatter>
-          <fr:anchor>423</fr:anchor>
           <fr:title text="Context">Context</fr:title>
         </fr:frontmatter>
         <fr:mainmatter />
       </fr:tree>
       <fr:tree show-metadata="false" hidden-when-empty="true">
         <fr:frontmatter>
-          <fr:anchor>424</fr:anchor>
           <fr:title text="Backlinks">Backlinks</fr:title>
         </fr:frontmatter>
         <fr:mainmatter />
       </fr:tree>
       <fr:tree show-metadata="false" hidden-when-empty="true">
         <fr:frontmatter>
-          <fr:anchor>425</fr:anchor>
           <fr:title text="Related">Related</fr:title>
         </fr:frontmatter>
         <fr:mainmatter />
       </fr:tree>
       <fr:tree show-metadata="false" hidden-when-empty="true">
         <fr:frontmatter>
-          <fr:anchor>426</fr:anchor>
           <fr:title text="Contributions">Contributions</fr:title>
         </fr:frontmatter>
         <fr:mainmatter />

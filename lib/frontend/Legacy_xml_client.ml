@@ -166,8 +166,6 @@ and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
       render_attributions forest frontmatter.iri frontmatter.attributions;
       render_dates forest frontmatter.dates;
       X.conditional forest.dev (X.optional (X.source_path [] "%s") frontmatter.source_path);
-      (* This introduces nondeterminism that breaks tests.*)
-      X.anchor [] "%i" @@ Oo.id ( object end);
       X.optional (fun iri -> X.addr [] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
       X.optional (X.route [] "%s") @@
         Option.map

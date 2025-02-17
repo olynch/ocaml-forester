@@ -53,7 +53,6 @@ let frontmatter = f_std_tag "frontmatter"
 let mainmatter = f_std_tag "mainmatter"
 let backmatter = f_std_tag "backmatter"
 
-let anchor attrs = f_text_tag "anchor" attrs
 let taxon attrs = f_std_tag "taxon" attrs
 let addr attrs = f_text_tag "addr" attrs
 let route attrs = f_text_tag "route" attrs

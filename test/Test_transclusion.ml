@@ -76,7 +76,7 @@ let () =
       Transclusions.full_default
       (
         Some
-          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<fr:tree xmlns:fr=\"http://www.jonmsterling.com/jms-005P.xml\" root=\"false\">\n  <fr:frontmatter>\n    <fr:authors />\n    <fr:anchor>394</fr:anchor>\n    <fr:addr type=\"user\">transcludee</fr:addr>\n    <fr:route>transcludee.xml</fr:route>\n    <fr:title text=\"\" />\n  </fr:frontmatter>\n  <fr:mainmatter>\n    <fr:tree show-metadata=\"false\">\n      <fr:frontmatter>\n        <fr:authors />\n        <fr:anchor>393</fr:anchor>\n        <fr:addr type=\"user\">transcludee</fr:addr>\n        <fr:route>transcludee.xml</fr:route>\n        <fr:title text=\"I am being transcluded\">I am being transcluded</fr:title>\n      </fr:frontmatter>\n      <fr:mainmatter />\n    </fr:tree>\n  </fr:mainmatter>\n  <fr:backmatter />\n</fr:tree>\n"
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<fr:tree xmlns:fr=\"http://www.jonmsterling.com/jms-005P.xml\" root=\"false\">\n  <fr:frontmatter>\n    <fr:authors />\n    <fr:addr>transcludee</fr:addr>\n    <fr:route>transcludee.xml</fr:route>\n    <fr:title text=\"\" />\n  </fr:frontmatter>\n  <fr:mainmatter>\n    <fr:tree show-metadata=\"false\">\n      <fr:frontmatter>\n        <fr:authors />\n        <fr:addr>transcludee</fr:addr>\n        <fr:route>transcludee.xml</fr:route>\n        <fr:title text=\"I am being transcluded\">I am being transcluded</fr:title>\n      </fr:frontmatter>\n      <fr:mainmatter />\n    </fr:tree>\n  </fr:mainmatter>\n  <fr:backmatter />\n</fr:tree>\n"
       )
   in
   let test_title_default () =
@@ -84,7 +84,7 @@ let () =
       { href = iri; target = Title { empty_when_untitled = false }; modifier = Identity }
       (
         Some
-          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<fr:tree xmlns:fr=\"http://www.jonmsterling.com/jms-005P.xml\" root=\"false\">\n  <fr:frontmatter>\n    <fr:authors />\n    <fr:anchor>395</fr:anchor>\n    <fr:addr type=\"user\">transcludee</fr:addr>\n    <fr:route>transcludee.xml</fr:route>\n    <fr:title text=\"\" />\n  </fr:frontmatter>\n  <fr:mainmatter>I am being transcluded</fr:mainmatter>\n  <fr:backmatter />\n</fr:tree>\n"
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<fr:tree xmlns:fr=\"http://www.jonmsterling.com/jms-005P.xml\" root=\"false\">\n  <fr:frontmatter>\n    <fr:authors />\n    <fr:addr>transcludee</fr:addr>\n    <fr:route>transcludee.xml</fr:route>\n    <fr:title text=\"\" />\n  </fr:frontmatter>\n  <fr:mainmatter>I am being transcluded</fr:mainmatter>\n  <fr:backmatter />\n</fr:tree>\n"
       )
   in
   let test_full_metadata () =
@@ -92,7 +92,7 @@ let () =
       { href = iri; target = Full Transclusions.metadata_shown; modifier = Identity }
       (
         Some
-          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<fr:tree xmlns:fr=\"http://www.jonmsterling.com/jms-005P.xml\" root=\"false\">\n  <fr:frontmatter>\n    <fr:authors />\n    <fr:anchor>397</fr:anchor>\n    <fr:addr type=\"user\">transcludee</fr:addr>\n    <fr:route>transcludee.xml</fr:route>\n    <fr:title text=\"\" />\n  </fr:frontmatter>\n  <fr:mainmatter>\n    <fr:tree show-metadata=\"true\">\n      <fr:frontmatter>\n        <fr:authors />\n        <fr:anchor>396</fr:anchor>\n        <fr:addr type=\"user\">transcludee</fr:addr>\n        <fr:route>transcludee.xml</fr:route>\n        <fr:title text=\"I am being transcluded\">I am being transcluded</fr:title>\n      </fr:frontmatter>\n      <fr:mainmatter />\n    </fr:tree>\n  </fr:mainmatter>\n  <fr:backmatter />\n</fr:tree>\n"
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<fr:tree xmlns:fr=\"http://www.jonmsterling.com/jms-005P.xml\" root=\"false\">\n  <fr:frontmatter>\n    <fr:authors />\n    <fr:addr>transcludee</fr:addr>\n    <fr:route>transcludee.xml</fr:route>\n    <fr:title text=\"\" />\n  </fr:frontmatter>\n  <fr:mainmatter>\n    <fr:tree show-metadata=\"true\">\n      <fr:frontmatter>\n        <fr:authors />\n        <fr:addr>transcludee</fr:addr>\n        <fr:route>transcludee.xml</fr:route>\n        <fr:title text=\"I am being transcluded\">I am being transcluded</fr:title>\n      </fr:frontmatter>\n      <fr:mainmatter />\n    </fr:tree>\n  </fr:mainmatter>\n  <fr:backmatter />\n</fr:tree>\n"
       )
   in
   run
