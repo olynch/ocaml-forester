@@ -1,7 +1,6 @@
   $ mkdir new-forest
   $ cd new-forest
   $ forester init
-  Initialized empty Git repository in $TESTCASE_ROOT/new-forest/.git/
   Cloning into '$TESTCASE_ROOT/new-forest/theme'...
   Note: switching to '4.3.0'.
   
