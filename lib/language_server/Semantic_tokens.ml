@@ -309,10 +309,10 @@ let semantic_tokens_delta
 let tokenize_document
     : L.TextDocumentIdentifier.t ->
     L.SemanticTokens.t option
-  = fun { uri = _ } ->
-    let Lsp_state.{ forest = _; _ } = Lsp_state.get () in
-    (* match Iri_resolver.(resolve (Uri uri) To_code forest) with *)
-    match assert false with
+  = fun { uri } ->
+    let Lsp_state.{ forest; _ } = Lsp_state.get () in
+    let iri = Iri_scheme.uri_to_iri ~host: forest.config.host uri in
+    match Imports.resolve_iri_to_code iri forest with
     | Some Code.{ code; _ } ->
       let tokens = tokens code in
       Format.(
@@ -334,14 +334,14 @@ let tokenize_document
 let tokenize_document_delta
     : L.TextDocumentIdentifier.t -> L.SemanticTokensDelta.t option
   = fun
-      _textDocument
+      textDocument
     ->
-    let Lsp_state.{ forest = _; _ } = Lsp_state.get () in
-    (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
-    match assert false with
+    let Lsp_state.{ forest; _ } = Lsp_state.get () in
+    let iri = Iri_scheme.uri_to_iri ~host: forest.config.host textDocument.uri in
+    match Imports.resolve_iri_to_code iri forest with
     | None -> None
     | Some tree ->
-      Some (semantic_tokens_delta Code.(tree.code))
+      Some (semantic_tokens_delta tree.code)
 
 let on_full_request
     : L.SemanticTokensParams.t ->

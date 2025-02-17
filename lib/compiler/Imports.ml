@@ -67,13 +67,10 @@ and analyse_node roots (node : Code.node Asai.Range.located) =
     let dep_iri = Iri_scheme.user_iri ~host dep in
     let dependency = T.Iri_vertex dep_iri in
     let@ iri = List.iter @~ roots in
-    (* let target = T.Iri_vertex (Iri_scheme.user_iri ~host addr) in *)
     let target = T.Iri_vertex iri in
     Forest_graph.add_edge env.graph dependency target;
     begin
       if env.follow then
-        (* assert false *)
-        (* match Iri_resolver.(resolve (Iri dep_iri) To_code env.forest) with *)
         match resolve_iri_to_code dep_iri env.forest with
         | None -> assert false
         | Some tree -> analyse_tree [] tree
@@ -128,7 +125,6 @@ let run_builder ?root env =
     | Some iri ->
       begin
         match resolve_iri_to_code iri env.forest with
-        (* match Iri_resolver.(resolve (Iri iri) To_code env.forest) with *)
         | None ->
           Reporter.fatalf
             Resource_not_found

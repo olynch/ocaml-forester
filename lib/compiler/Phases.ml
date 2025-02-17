@@ -136,7 +136,6 @@ let reparse
         Code.{
           code;
           iri = Option.some @@ Iri_scheme.uri_to_iri ~host uri;
-          (* iri = Option.some (uri |> Iri_util.uri_to_addr); *)
           source_path = Some path
         }
       in
@@ -212,10 +211,6 @@ let expand
     |> List.iter
       begin
         fun (diagnostics, source_path, (syn : Syn.tree)) ->
-          (* let@ iri = *)
-          (*   Option.iter @~ *)
-          (*     Option.map (Iri_scheme.path_to_iri ~host: forest.config.host) source_path *)
-          (* in *)
           let@ iri = Option.iter @~ syn.iri in
           Forest.replace forest.expanded iri syn;
           match source_path with
@@ -316,9 +311,7 @@ let expand_only
       begin
         fun iri tree ->
           Forest.replace forest.expanded iri tree;
-          (* assert false *)
           match Hashtbl.find_opt forest.resolver iri with
-          (* match Iri_resolver.resolve (Iri iri) To_uri forest with *)
           | None ->
             Logs.debug (fun m -> m "resolver knows about %i paths" (Hashtbl.length forest.resolver));
             assert false

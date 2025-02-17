@@ -23,7 +23,6 @@ let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
     let render = Render.render forest STRING in
     let config = State.config forest in
     let host = config.host in
-    (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
     match Forest.find_opt (State.parsed forest) (Iri_scheme.uri_to_iri ~host textDocument.uri) with
     | None ->
       None

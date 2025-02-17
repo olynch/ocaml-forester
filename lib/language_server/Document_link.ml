@@ -19,11 +19,11 @@ let compute (params : L.DocumentLinkParams.t) =
   let render = Render.render ~dev: true forest STRING in
   let config = State.config forest in
   match params with
-  | { textDocument = _; _ } ->
+  | { textDocument; _ } ->
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
     let links =
-      (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
-      match assert false with
+      let iri = Iri_scheme.uri_to_iri ~host: forest.config.host textDocument.uri in
+      match Imports.resolve_iri_to_code iri forest with
       | None -> []
       | Some tree ->
         begin

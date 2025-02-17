@@ -106,7 +106,6 @@ let compute
       | None -> None
     in
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
-    let _config = State.config forest in
     let addr_items () =
       forest
       |> State.parsed
@@ -118,7 +117,7 @@ let compute
             let* { frontmatter; mainmatter; _ } =
               (Forest.get_article iri forest.resources)
             in
-            let _documentation =
+            let documentation =
               let render = Render.render ~dev: true forest STRING in
               let title = frontmatter.title in
               let taxon = frontmatter.taxon in
@@ -131,17 +130,15 @@ let compute
               in
               Some (`String content)
             in
-            let _insertText =
-              (*TODO if host = current_host insert shortform else insert fully qualified iri*)
-              (* match triggerCharacter with *)
-              (* | Some "{" -> addr ^ "}" *)
-              (* | Some "(" -> addr ^ ")" *)
-              (* | Some "[" -> addr ^ "]" *)
+            let insertText =
+              (* TODO if host = current_host insert shortform else insert fully qualified iri*)
               match triggerCharacter with
-              | _ -> "todo"
+              | Some "{" -> Iri_scheme.name iri ^ "}"
+              | Some "(" -> Iri_scheme.name iri ^ ")"
+              | Some "[" -> Iri_scheme.name iri ^ "]"
+              | _ -> ""
             in
-            (* Some (L.CompletionItem.create ?documentation ~label: addr ~insertText ()) *)
-            None
+            Some (L.CompletionItem.create ?documentation ~label: (Iri_scheme.name iri) ~insertText ())
         )
       |> List.of_seq
     in

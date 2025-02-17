@@ -61,11 +61,11 @@ let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
       Some (link_items @ transclusion_items)
 
 let compute (params : L.CallHierarchyPrepareParams.t) =
-  let Lsp_state.{ forest = _; _ } = Lsp_state.get () in
+  let Lsp_state.{ forest; _ } = Lsp_state.get () in
   match params with
-  | { position; textDocument = _; _ } ->
-    (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
-    match assert false with
+  | { position; textDocument; _ } ->
+    let iri = Iri_scheme.uri_to_iri ~host: forest.config.host textDocument.uri in
+    match Imports.resolve_iri_to_code iri forest with
     | None -> None
     | Some tree ->
       let item =

@@ -15,7 +15,6 @@ let compute (params : L.DocumentHighlightParams.t) =
   match params with
   | { textDocument; _ } ->
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
-    (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
     match Forest.find_opt
       forest.parsed
       (Iri_scheme.uri_to_iri ~host: forest.config.host textDocument.uri) with
