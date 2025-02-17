@@ -133,6 +133,7 @@ module Lex_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
 module Dyn_env = Algaeff.Reader.Make(struct type t = V.t Env.t end)
 module Host_env = Algaeff.Reader.Make(struct type t = string end)
 module Heap = Algaeff.State.Make(struct type t = V.obj Env.t end)
+module Anon_subtree_ix = Algaeff.State.Make(struct type t = int end)
 module Emitted_trees = Algaeff.State.Make(struct type t = T.content T.article list end)
 module Jobs = Algaeff.State.Make(struct type t = Job.job Range.located list end)
 module Frontmatter = Algaeff.State.Make(struct type t = T.content T.frontmatter end)
@@ -196,6 +197,13 @@ let extract_query_vertex_expr ~host: _ ~type_ (node : V.located) =
     match extract_vertex ~type_ node with
     | Ok vtx -> Query.Vertex vtx
     | Error _ -> Reporter.fatalf ?loc: node.loc Type_error "Expected valid RFC 3987 IRI in query expression"
+
+let anon_iri base =
+  let ix = Anon_subtree_ix.get () in
+  let ix' = ix + 1 in
+  Anon_subtree_ix.set ix';
+  let segment = Format.sprintf "%i" ix in
+  Iri.resolve ~base (Iri.of_string segment)
 
 let rec process_tape () =
   match Tape.pop_node_opt () with
@@ -363,7 +371,13 @@ and eval_node node : V.t =
     let iri =
       match addr_opt with
       | Some addr -> Iri_scheme.user_iri ~host addr
-      | None -> Iri_scheme.fresh ~host
+      | None ->
+        let fm = Frontmatter.get () in
+        match fm.iri with
+        | None ->
+          (* Currently the only source of trees without IRIs are the backmatter subtrees (backlinks, context, references, etc.). I believe that this case is therefore unreachable.*)
+          assert false
+        | Some current_iri -> anon_iri current_iri
     in
     let subtree = eval_tree_inner ~iri nodes in
     let frontmatter = Frontmatter.get () in
@@ -711,6 +725,7 @@ and eval_tree_inner ~(iri : iri) (tree : Syn.tree) : T.content T.article =
       ~dates: outer_frontmatter.dates
       ()
   in
+  let@ () = Anon_subtree_ix.run ~init: 0 in
   let@ () = Frontmatter.run ~init: frontmatter in
   let mainmatter = { value = eval_tape tree; loc = None } |> V.extract_content in
   let frontmatter = Frontmatter.get () in

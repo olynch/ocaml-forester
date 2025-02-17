@@ -25,13 +25,6 @@ let hash_iri ~host hash_str =
     ~path: (Absolute ["hash"; hash_str])
     ()
 
-let fresh ~host =
-  Iri.iri
-    ~host
-    ~scheme
-    ~path: (Absolute ["unstable"; string_of_int (Oo.id object end)])
-    ()
-
 let is_named_iri iri =
   match Iri.scheme iri, Iri.path iri with
   | sch, Absolute (("unstable" | "hash") :: _) when sch = scheme -> false

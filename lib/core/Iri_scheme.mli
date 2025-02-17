@@ -24,10 +24,6 @@ val hash_iri :
   string ->
   iri
 
-val fresh :
-  host: string ->
-  iri
-
 val is_named_iri : iri -> bool
 
 val relativise_iri :
