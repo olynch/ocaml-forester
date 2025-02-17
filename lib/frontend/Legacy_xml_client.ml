@@ -49,13 +49,6 @@ let iri_to_string ~config iri =
   | _ ->
     Iri.to_string ~pctencode: false iri
 
-let iri_type iri =
-  match Iri.path iri with
-  | Absolute ["unstable"; _] -> "machine"
-  | Absolute ["hash"; _] -> "hash"
-  | Absolute [_] -> "user"
-  | _ -> failwith "addr_type"
-
 let home_iri ~(config : Config.t) =
   (* let config = State.get_config forest in *)
   let@ root = Option.bind config.home in
@@ -175,7 +168,7 @@ and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
       X.conditional forest.dev (X.optional (X.source_path [] "%s") frontmatter.source_path);
       (* This introduces nondeterminism that breaks tests.*)
       X.anchor [] "%i" @@ Oo.id ( object end);
-      X.optional (fun iri -> X.addr [X.type_ "%s" @@ iri_type iri] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
+      X.optional (fun iri -> X.addr [] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
       X.optional (X.route [] "%s") @@
         Option.map
           (fun iri -> route forest iri)
