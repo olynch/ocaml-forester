@@ -6,6 +6,7 @@ image: nixos/24.05
 
 environment:
   NIX_CONFIG: "experimental-features = nix-command flakes"
+  cache: https://forester.cachix.org/
 
 secrets:
     - d3cd871a-da6f-4ee3-94e9-fe8bc36233cc
@@ -13,8 +14,6 @@ secrets:
 sources:
     - https://git.sr.ht/~jonsterling/ocaml-forester
 
-environment:
-    cache: https://forester.cachix.org/
 
 tasks:
     - setup: |
@@ -30,3 +29,8 @@ tasks:
 
 artifacts:
     - ocaml-forester/result/bin/forester
+
+triggers:
+    - action: email
+      condition: always
+      to: kentookura@gmail.com
