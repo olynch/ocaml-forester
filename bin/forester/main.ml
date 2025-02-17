@@ -37,14 +37,16 @@ let version =
 let build ~env _ config_filename dev no_theme =
   let config = Config_parser.parse_forest_config_file config_filename in
   Logs.debug (fun m -> m "Parsed config file %s" config_filename);
+  begin
+    if not no_theme then
+      let@ () = Reporter.trace "when copying theme directory" in
+      Forester.copy_contents_of_dir ~env @@ Eio_util.path_of_dir ~env config.theme
+  end;
   let forest = Forester.compile ~env ~dev ~config in
   forest
   |> State.diagnostics
   |> Diagnostic_store.iter (fun _ d -> List.iter Reporter.Tty.display d);
-  Forester.render_forest ~dev ~forest;
-  let dirs_to_copy = (if not no_theme then [config.theme] else []) in
-  let@ dir_to_copy = List.iter @~ dirs_to_copy in
-  Forester.copy_contents_of_dir ~env @@ Eio_util.path_of_dir ~env dir_to_copy
+  Forester.render_forest ~dev ~forest
 
 let export ~env _ config_filename dev =
   let config = Config_parser.parse_forest_config_file config_filename in

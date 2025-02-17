@@ -84,6 +84,7 @@ let () =
       (List.length @@ Forest.get_all_articles forest.resources)
   in
   let test_includes_paths () =
+    let@ () = Reporter.easy_run in
     let forest =
       State_machine.batch_run
         ~env
@@ -102,6 +103,7 @@ let () =
       (Option.is_some path)
   in
   let test_omits_paths () =
+    let@ () = Reporter.easy_run in
     let forest =
       State_machine.batch_run
         ~env

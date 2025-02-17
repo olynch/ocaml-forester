@@ -42,17 +42,15 @@ let load
     : Eio.Fs.dir_ty Eio.Path.t list -> transition
   = fun tree_dirs forest ->
     Logs.debug (fun m -> m "loading trees from file system");
-    let paths = tree_dirs |> Dir_scanner.scan_directories in
+    let paths = Dir_scanner.scan_directories tree_dirs in
     paths
     |> Seq.iter
       begin
         fun path ->
-          (* WARNING: using realpath. This is necessary because later on,
-             the lsp client will send notifications using the absolute path of
-             a file.*)
-          let source_path = Eio.Path.native_exn path |> Unix.realpath in
           let content = Eio.Path.load path in
-          let uri = source_path |> Lsp.Uri.of_path in
+          let path_str = (Eio.Path.native_exn path) in
+          assert (not @@ Filename.is_relative path_str);
+          let uri = Lsp.Uri.of_path path_str in
           let tree =
             Lsp.Text_document.make
               ~position_encoding: `UTF8
@@ -75,6 +73,7 @@ let load
 let load_configured_dirs
     : transition
   = fun forest ->
+    let@ () = Reporter.tracef "when loading trees from disk" in
     let tree_dirs = Eio_util.paths_of_dirs ~env: forest.env forest.config.trees in
     load tree_dirs forest
 
@@ -89,6 +88,7 @@ let parse
           let iri = Iri_util.uri_to_iri ~host uri in
           let source_path = Lsp.Uri.to_path uri in
           let parse_result =
+            let@ () = Reporter.tracef "when parsing %a (%s)" pp_iri iri source_path in
             let@ code = Result.map @~ Parse.parse_document doc in
             Code.{
               code;
@@ -111,8 +111,9 @@ let parse
       end;
     let parsed = forest.parsed |> Forest.length in
     if not quit_on_error then
-      (* If quit_on_error is true, we have already exited at this point. This
-         means there should be exactly as many parsed trees as loaded documents*)
+      (* If quit_on_error is true and we have encountered an error, we have
+         already exited at this point. This means there should be exactly as
+         many parsed trees as loaded documents*)
       assert (parsed = Hashtbl.length forest.documents);
     Logs.debug (fun m -> m "parsed %i trees" parsed);
     forest
@@ -139,13 +140,17 @@ let reparse
       Diagnostic_store.remove forest.diagnostics uri;
       forest
     | Error d ->
-      (* When we get a parsing diagnostic, we don't need to merge the value with the diagnostics from previous passes*)
+      (* When we get a parsing diagnostic, we don't need to merge the value
+         with the diagnostics from previous passes*)
       Diagnostic_store.replace forest.diagnostics uri [d];
       forest
 
 let build_import_graph
     : state -> state
   = fun forest ->
+    (* I chose not to mention the graph in the trace message since I feel like
+       it unnecessarily exposes implementation details.*)
+    let@ () = Reporter.trace "when resolving imports" in
     let module Graphs = (val forest.graphs) in
     let import_graph = Imports.build forest in
     Graphs.add_graph Builtin_relation.imports import_graph;
@@ -155,7 +160,7 @@ let build_import_graph_for
     : iri: iri -> state -> state
   = fun ~iri forest ->
     match Iri_resolver.(resolve (Iri iri) To_code forest) with
-    | None -> assert false
+    | None -> Reporter.fatalf Resource_not_found "Could not find tree %a in the configured directories." pp_iri iri
     | Some tree ->
       let module Graphs = (val forest.graphs) in
       let import_graph = Imports.dependencies tree forest in
@@ -187,7 +192,7 @@ let expand
           let source_path = tree.source_path in
           units, (diagnostics, source_path, syn) :: trees
     in
-    let _units, expanded_trees =
+    let units, expanded_trees =
       Forest_graph.topo_fold
         task
         (Graphs.get_rel Query.Edges Builtin_relation.imports)
@@ -197,11 +202,17 @@ let expand
     |> List.iter
       begin
         fun (diagnostics, source_path, (syn : Syn.tree)) ->
-          let@ iri = Option.iter @~ Option.map (Iri_util.path_to_iri ~host: forest.config.host) source_path in
+          let@ iri =
+            Option.iter @~
+              Option.map (Iri_util.path_to_iri ~host: forest.config.host) source_path
+          in
           Forest.replace forest.expanded iri syn;
           match source_path with
           | None ->
             Logs.warn (fun m -> m "tree at %a has no source path." pp_iri iri);
+            (* There is an implicit assumption here that diagnostics are only
+               emitted for trees that have a source path. I should think about
+               this.*)
             if forest.dev then assert false
           | Some path ->
             assert (not (Filename.is_relative path));
@@ -209,14 +220,21 @@ let expand
             | [] -> ()
             | diagnostics ->
               let uri = Lsp.Uri.of_path path in
-              Diagnostic_store.append forest.diagnostics uri diagnostics
+
+              (* If we obtained some diagnostics from expanding, we have
+              succesfully parsed the tree and can thus overwrite the parsing
+              diagnostics *)
+              Diagnostic_store.replace forest.diagnostics uri diagnostics
       end;
     let expanded = forest.expanded |> Forest.length in
     let diagnostics = forest.diagnostics |> Diagnostic_store.length in
     Logs.debug (fun m -> m "expanded %i trees" expanded);
     Logs.debug (fun m -> m "%i trees emitted diagnostics." diagnostics);
-    forest
+    State.with_units units forest
 
+(* There is some duplicated code here. The only significant difference is the
+   fact that we are using a different graph builder, one that only traverses
+   the dependencies of a specific tree*)
 let expand_only_aux
     : quit_on_error: bool ->
     addr: iri ->
@@ -268,6 +286,8 @@ let expand_only_aux
     in
     units, diagnostics, expanded_trees
 
+(* The purpose of this function is to update the exported units when a tree has
+   been changed when running with the lsp.*)
 let expand_only
     : iri -> transition
   = fun iri forest ->
@@ -299,6 +319,7 @@ let expand_only
           | diagnostics ->
             Diagnostic_store.append forest.diagnostics uri diagnostics
       end;
+    (*FIXME: Don't replace all units. Just update the ones that have changed!*)
     { forest with units }
 
 let export_publication ~env ~(forest : state) (publication : Job.publication) : unit =
@@ -331,6 +352,7 @@ let eval
     |> Forest.iter
       begin
         fun iri syn ->
+          let@ () = Reporter.tracef "when evaluating %a" pp_iri iri in
           let source_path = if forest.dev then Iri_resolver.(resolve (Iri iri) To_path forest) else None in
           let uri = Iri_resolver.(resolve (Iri iri) To_uri forest) in
           let diagnostics, Eval.{ articles; jobs } =
@@ -419,6 +441,7 @@ let implant_foreign
 let plant_assets
     : transition
   = fun state ->
+    let@ () = Reporter.tracef "when planting assets" in
     let paths =
       Dir_scanner.scan_asset_directories
         (Eio_util.paths_of_dirs ~env: state.env state.config.assets)

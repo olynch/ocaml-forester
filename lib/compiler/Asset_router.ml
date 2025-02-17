@@ -8,7 +8,12 @@ open Forester_core
 
 let router : (string, iri) Hashtbl.t = Hashtbl.create 100
 
-let normalize source_path = Unix.realpath source_path
+let normalize source_path =
+  try
+    Unix.realpath source_path
+  with
+    | Unix.Unix_error (e, _, m) ->
+      Reporter.fatalf Configuration_error "%s: %s" (Unix.error_message e) m
 
 let install ~host ~source_path ~content =
   let normalized = normalize source_path in

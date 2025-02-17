@@ -15,11 +15,6 @@
  (deps %{bin:server}))
 
 (cram
- (applies_to Export)
- (deps
-  (glob_files_rec ./forest/*)))
-
-(cram
  (applies_to :whole_subtree)
  (deps
   %{bin:forester}

@@ -29,6 +29,7 @@ let test_parse_error_explanation src expect =
 
 let () =
   let@ env = Eio_main.run in
+  let@ () = Reporter.easy_run in
   let config = { Config.default with trees = ["errors"] } in
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let mk_iri addr = Iri_scheme.user_iri ~host: config.host addr in

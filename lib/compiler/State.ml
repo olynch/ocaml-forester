@@ -36,3 +36,8 @@ let with_config
     : Config.t -> t -> t
   = fun config forest ->
     { forest with config }
+
+let with_units
+    : Expand.Env.t -> t -> t
+  = fun units forest ->
+    { forest with units }

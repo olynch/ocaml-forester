@@ -6,20 +6,23 @@
 
 open Eio
 open Forester_prelude
-
-(** FIXME: These functions can fail when things are misconfigured by the
-    user, but the error messages are confusing because they are not handled by
-    Asai. We should go over all usages and emit useful errors. *)
+open Forester_core
 
 let path_of_dir ~env dir =
-  let path = Path.(Eio.Stdenv.fs env / (Unix.realpath dir)) in
-  assert (Path.is_directory path);
-  path
+  try
+    let path = Path.(Eio.Stdenv.fs env / (Unix.realpath dir)) in
+    assert (Path.is_directory path);
+    path
+  with
+    | Unix.Unix_error (e, _, m) -> Reporter.fatalf Configuration_error "%s: %s" (Unix.error_message e) m
 
 let path_of_file ~env file =
-  let path = Path.(Eio.Stdenv.fs env / (Unix.realpath file)) in
-  assert (Path.is_file path);
-  path
+  try
+    let path = Path.(Eio.Stdenv.fs env / (Unix.realpath file)) in
+    assert (Path.is_file path);
+    path
+  with
+    | Unix.Unix_error (e, _, m) -> Reporter.fatalf Configuration_error "%s: %s" (Unix.error_message e) m
 
 let paths_of_dirs ~env =
   List.map (path_of_dir ~env)

@@ -19,6 +19,7 @@ let () =
   Logs.set_reporter (Logs_fmt.reporter ());
   let open Alcotest in
   let forest =
+    let@ () = Reporter.easy_run in
     State_machine.(
       Phases.init ~env ~config ~dev: false
       |> run_action Load_all_configured_dirs
