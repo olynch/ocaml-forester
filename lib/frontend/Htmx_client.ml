@@ -20,14 +20,14 @@ type query = {
 
 module Xmlns = Xmlns_effect.Make ()
 
-let get_sorted_articles (forest : State.t) addrs =
+let get_sorted_articles (forest : State.t) iris =
   let module C = Types.Comparators(struct
     let string_of_content =
       Plain_text_client.string_of_content
         ~forest: forest.resources
         ~router: Iri.to_uri (* TODO *)
   end) in
-  addrs
+  iris
   |> Vertex_set.to_seq
   |> Seq.filter_map Vertex.iri_of_vertex
   |> Seq.filter_map (fun iri -> Forest.get_article iri forest.resources)

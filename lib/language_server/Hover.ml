@@ -17,7 +17,7 @@ module T = Types
 let compute
     ({
       position;
-      textDocument;
+      textDocument = _;
       _
     }: L.HoverParams.t)
     : L.Hover.t option
@@ -27,11 +27,12 @@ let compute
   let config = State.config forest in
   let host = config.host in
   let content =
-    match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
+    (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
+    match assert false with
     | None -> "code of current tree is not stored. this is a bug"
     | Some tree ->
       (* TODO: use node_at and provide hover for things other than links.*)
-      match Analysis.addr_at ~position tree.code with
+      match Analysis.addr_at ~position Code.(tree.code) with
       | None -> Format.asprintf "character: %i, line: %i." position.character position.line;
       | Some addr_at_cursor ->
         let iri_under_cursor = Iri_scheme.user_iri ~host addr_at_cursor in

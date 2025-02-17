@@ -58,7 +58,7 @@ and t = node Range.located list
 
 type tree = {
   source_path: string option;
-  addr: string option;
+  iri: iri option;
   code: t
 }
 [@@deriving show, repr]

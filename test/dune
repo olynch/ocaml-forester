@@ -48,7 +48,6 @@
   Test_errors
   Test_expansion
   Test_graph_database
-  Test_iri_resolver
   Test_import_graph
   Test_implanting
   Test_iri_util

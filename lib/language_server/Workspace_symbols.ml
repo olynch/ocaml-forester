@@ -17,7 +17,7 @@ let compute
     ({ query = _; _ }: L.WorkspaceSymbolParams.t)
   =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
-  let config = State.config forest in
+  (* let config = State.config forest in *)
   let render = Render.render ~dev: true forest STRING in
   let trees =
     forest
@@ -67,7 +67,7 @@ let compute
     |> Unit_map.to_seq
     |> Seq.concat_map
       (
-        fun ((addr, exports): string * _) ->
+        fun ((iri, exports): iri * _) ->
           exports
           |> Trie.to_seq
           |> Seq.filter_map
@@ -78,7 +78,7 @@ let compute
                     snd data
                     |> Lsp_shims.Loc.lsp_range_of_range
                   in
-                  let iri = Iri_scheme.user_iri ~host: config.host addr in
+                  (* let iri = Iri_scheme.user_iri ~host: config.host addr in *)
                   let uri =
                     let (let*) = Option.bind in
                     let* tree = Forest.find_opt (State.parsed forest) iri in

@@ -6,7 +6,7 @@
 
 open Forester_core
 
-module Unit_map: Map.S with type key = string
+module Unit_map: Map.S with type key = iri
 
 type exports = (Resolver.P.data, Asai.Range.t option) Trie.t
 
@@ -33,6 +33,7 @@ val suggestions : string list -> ('a, 'b) Trie.t -> (Trie.path * 'a * int) list
 
 val expand_tree :
   ?quit_on_error: bool ->
+  host: string ->
   Env.t ->
   Code.tree ->
-  Reporter.diagnostic list * exports Unit_map.t * Syn.t
+  Reporter.diagnostic list * exports Unit_map.t * Syn.tree

@@ -6,6 +6,7 @@ Run build:
    ￫ info[Reporter.Message.Log]
    ꭍ ￮ when evaluating forest://lsp-test/figure
    ￮ Building ./build/resources/4f2455dfdf10f6ad466d28c223f6bc39.svg
+  
 
 
   $ cat output/forest.json
@@ -67,3 +68,21 @@ Run build:
       </fr:tree>
     </fr:backmatter>
   </fr:tree>
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)

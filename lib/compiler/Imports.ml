@@ -17,10 +17,32 @@ type analysis_env = {
 
 module Analysis_env = Algaeff.Reader.Make(struct type t = analysis_env end)
 
+let resolve_iri_to_code iri (forest : State.t) =
+  let dirs = Eio_util.paths_of_dirs ~env: forest.env forest.config.trees in
+  match Forest.find_opt forest.parsed iri with
+  | None ->
+    begin
+      match Dir_scanner.find_tree dirs iri with
+      | Some path ->
+        Hashtbl.add forest.resolver iri path;
+        begin
+          match Parse.parse_file path with
+          | Ok code ->
+            Some Code.{ code; iri = Some iri; source_path = Some path }
+          | Error _ -> None
+        end
+      | None ->
+        Reporter.fatalf
+          Resource_not_found
+          "Could not find tree `%a' when building import graph"
+          pp_iri
+          iri
+    end
+  | Some tree -> Some tree
+
 let rec analyse_tree roots (tree : Code.tree) =
   let env = Analysis_env.read () in
-  let host = env.forest.config.host in
-  let addr_opt = tree.addr in
+  let iri_opt = tree.iri in
   let code = tree.code in
   let roots =
     Option.fold
@@ -28,11 +50,10 @@ let rec analyse_tree roots (tree : Code.tree) =
       ~some: (
         fun x -> x :: roots
       )
-      addr_opt
+      iri_opt
   in
   analyse_code roots code;
-  let@ addr = Option.iter @~ addr_opt in
-  let iri = Iri_scheme.user_iri ~host addr in
+  let@ iri = Option.iter @~ iri_opt in
   Forest_graph.add_vertex env.graph (T.Iri_vertex iri)
 
 and analyse_code roots (code : Code.t) =
@@ -45,21 +66,25 @@ and analyse_node roots (node : Code.node Asai.Range.located) =
   | Import (_, dep) ->
     let dep_iri = Iri_scheme.user_iri ~host dep in
     let dependency = T.Iri_vertex dep_iri in
-    let@ addr = List.iter @~ roots in
-    let target = T.Iri_vertex (Iri_scheme.user_iri ~host addr) in
+    let@ iri = List.iter @~ roots in
+    (* let target = T.Iri_vertex (Iri_scheme.user_iri ~host addr) in *)
+    let target = T.Iri_vertex iri in
     Forest_graph.add_edge env.graph dependency target;
     begin
       if env.follow then
-        match Iri_resolver.(resolve (Iri dep_iri) To_code env.forest) with
+        (* assert false *)
+        (* match Iri_resolver.(resolve (Iri dep_iri) To_code env.forest) with *)
+        match resolve_iri_to_code dep_iri env.forest with
         | None -> assert false
         | Some tree -> analyse_tree [] tree
       else ()
     end
-  | Subtree (addr, code) ->
+  | Subtree (_addr, code) ->
+    let iri = assert false in
     analyse_tree
       roots
       (* Consider using the env to keep track of the current source path *)
-      { addr; code; source_path = None }
+      { iri; code; source_path = None }
   | Scope code | Namespace (_, code) | Group (_, code) | Math (_, code) | Let (_, _, code) | Fun (_, code) | Def (_, _, code) ->
     analyse_code roots code
   | Object { methods; _ } | Patch { methods; _ } ->
@@ -102,7 +127,8 @@ let run_builder ?root env =
     match root with
     | Some iri ->
       begin
-        match Iri_resolver.(resolve (Iri iri) To_code env.forest) with
+        match resolve_iri_to_code iri env.forest with
+        (* match Iri_resolver.(resolve (Iri iri) To_code env.forest) with *)
         | None ->
           Reporter.fatalf
             Resource_not_found

@@ -24,30 +24,6 @@ let guess_uri (d : Reporter.diagnostic) =
             Some (Lsp.Uri.of_path path)
           else None
 
-let last_segment str =
-  str
-  |> String.split_on_char '/'
-  |> List.rev
-  |> List.hd
-  |> Filename.chop_extension
-
-let path_to_iri ~host str =
-  str
-  |> last_segment
-  |> Iri_scheme.user_iri ~host
-
-let uri_to_addr uri =
-  uri
-  |> Lsp.Uri.to_path
-  |> last_segment
-
-let uri_to_iri
-    : host: string -> Lsp.Uri.t -> iri
-  = fun ~host uri ->
-    uri
-    |> uri_to_addr
-    |> Iri_scheme.user_iri ~host
-
 let start_of_file =
   let beginning = L.Position.create ~character: 0 ~line: 0 in
   L.Range.create ~start: beginning ~end_: beginning

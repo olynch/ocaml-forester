@@ -309,10 +309,11 @@ let semantic_tokens_delta
 let tokenize_document
     : L.TextDocumentIdentifier.t ->
     L.SemanticTokens.t option
-  = fun { uri } ->
-    let Lsp_state.{ forest; _ } = Lsp_state.get () in
-    match Iri_resolver.(resolve (Uri uri) To_code forest) with
-    | Some { code; _ } ->
+  = fun { uri = _ } ->
+    let Lsp_state.{ forest = _; _ } = Lsp_state.get () in
+    (* match Iri_resolver.(resolve (Uri uri) To_code forest) with *)
+    match assert false with
+    | Some Code.{ code; _ } ->
       let tokens = tokens code in
       Format.(
         Eio.traceln
@@ -333,13 +334,14 @@ let tokenize_document
 let tokenize_document_delta
     : L.TextDocumentIdentifier.t -> L.SemanticTokensDelta.t option
   = fun
-      textDocument
+      _textDocument
     ->
-    let Lsp_state.{ forest; _ } = Lsp_state.get () in
-    match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
+    let Lsp_state.{ forest = _; _ } = Lsp_state.get () in
+    (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
+    match assert false with
     | None -> None
     | Some tree ->
-      Some (semantic_tokens_delta tree.code)
+      Some (semantic_tokens_delta Code.(tree.code))
 
 let on_full_request
     : L.SemanticTokensParams.t ->

@@ -4,10 +4,24 @@
 
 (library
  (name Forester_core)
- (instrumentation (backend bisect_ppx))
+ (instrumentation
+  (backend bisect_ppx))
  (preprocess
   (pps ppx_deriving.show ppx_repr))
- (libraries forester.prelude forester.xml_names forester.human_datetime datalog yuujinchou asai ocamlgraph bwd unix iri logs)
+ (libraries
+  forester.prelude
+  forester.xml_names
+  forester.human_datetime
+  datalog
+  yuujinchou
+  asai
+  ocamlgraph
+  bwd
+  unix
+  iri
+  logs
+  str
+  lsp)
  (public_name forester.core))
 
 (env

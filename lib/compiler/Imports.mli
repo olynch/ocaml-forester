@@ -15,3 +15,4 @@ type analysis_env = {
 val build : State.t -> Forest_graph.t
 val run_builder : ?root: iri -> analysis_env -> Forest_graph.t
 val dependencies : Code.tree -> State.t -> Forest_graph.t
+val resolve_iri_to_code : iri -> State.t -> Code.tree option

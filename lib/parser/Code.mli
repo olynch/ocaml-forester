@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
+open Forester_core
+
 type node =
   | Text of string
   | Verbatim of string
@@ -59,7 +61,12 @@ and 'a patch = {
 val t : t Repr.t
 val pp : Format.formatter -> t -> unit
 
-type tree = {source_path: string option; addr: string option; code: t;} [@@deriving show]
+type tree = {
+  source_path: string option;
+  iri: iri option;
+  code: t;
+}
+[@@deriving show]
 
 val parens : t -> node
 val squares : t -> node

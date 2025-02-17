@@ -1,6 +1,5 @@
   $ cd forest
   $ forester render --addr=index --format=xml
-  +Expanding forest://lsp-test/index
   <fr:tree xmlns:fr="http://www.jonmsterling.com/jms-005P.xml" root="true">
     <fr:frontmatter>
       <fr:authors />
@@ -42,3 +41,21 @@
       </fr:tree>
     </fr:backmatter>
   </fr:tree>
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)
+<<<<<<< HEAD
+=======
+>>>>>>> 81943b1 (Delete Iri_resolver)

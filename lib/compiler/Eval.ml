@@ -727,7 +727,7 @@ and eval_tree_inner ~(iri : iri) (tree : Syn.tree) : T.content T.article =
   in
   let@ () = Anon_subtree_ix.run ~init: 0 in
   let@ () = Frontmatter.run ~init: frontmatter in
-  let mainmatter = { value = eval_tape tree; loc = None } |> V.extract_content in
+  let mainmatter = { value = eval_tape tree.syn; loc = None } |> V.extract_content in
   let frontmatter = Frontmatter.get () in
   let backmatter = default_backmatter ~iri in
   T.{ frontmatter; mainmatter; backmatter }
@@ -743,7 +743,7 @@ let eval_tree
     host: string ->
     iri: iri ->
     source_path: string option ->
-    Syn.t ->
+    Syn.tree ->
     Reporter.Message.t Asai.Diagnostic.t list * result
   = fun
       ?(quit_on_failure = true)

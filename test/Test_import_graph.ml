@@ -88,7 +88,20 @@ let () =
     Alcotest.(check bool)
       ""
       true
-      ( try let _ = (State_machine.render_tree ~env ~config ~dev: false HTML iri) in true with _ -> false)
+      (
+        try
+          let _ =
+            (
+              let@ () = Reporter.easy_run in
+              State_machine.render_tree ~env ~config ~dev: false HTML iri
+            )
+          in
+          true
+        with
+          | exn ->
+            Eio.traceln "%a" Eio.Exn.pp exn;
+            assert false
+      )
   in
   run
     "Import graph"

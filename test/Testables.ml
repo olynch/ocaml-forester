@@ -58,6 +58,5 @@ let document =
 let code = testable Code.pp ( = )
 let tree = testable Code.pp_tree ( = )
 
-let target = testable Iri_resolver.pp_target ( = )
 let result = testable Eval.pp_result ( = )
 let content = testable Types.pp_content ( = )

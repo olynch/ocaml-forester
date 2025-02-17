@@ -16,10 +16,11 @@ type t = {
   units: Expand.Env.t;
   documents: (Lsp.Uri.t, Lsp.Text_document.t) Hashtbl.t;
   parsed: Code.tree Forest.t;
-  expanded: Syn.t Forest.t;
+  expanded: Syn.tree Forest.t;
   diagnostics: Diagnostic_store.t;
   resources: resource Forest.t;
   graphs: (module Forest_graphs.S);
+  resolver: (iri, string) Hashtbl.t
 }
 
 let documents (t : t) = t.documents

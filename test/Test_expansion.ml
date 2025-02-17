@@ -4,21 +4,24 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
+open Forester_core
 open Forester_compiler
 open Forester_frontend
 open Testables
 
 let () =
   let open Alcotest in
+  let host = "test" in
   let _, env, result =
     (
       Expand.expand_tree
         ~quit_on_error: true
+        ~host
         Expand.Env.empty
         {
           source_path = None;
           (* If tree has no address, exports are not added *)
-          addr = Some "test-tree";
+          iri = Some (Iri_scheme.user_iri ~host "test-tree");
           code = let open DSL.Code in
           [
             def
@@ -35,7 +38,7 @@ let () =
     Alcotest.(check syn)
       "works"
       [fun_ [] [prim `P; braces []]]
-      result
+      result.syn
   in
   let test_exports () =
     Alcotest.(check int)
@@ -46,7 +49,7 @@ let () =
     |> Expand.Unit_map.to_seq
     |> Seq.iter
       (
-        fun (addr, export) ->
+        fun (this_iri, export) ->
           (
             export
             |> Yuujinchou.Trie.to_seq
@@ -59,10 +62,10 @@ let () =
                     path
               )
           );
-          Alcotest.(check string)
+          Alcotest.(check iri)
             "addr"
-            "test-tree"
-            addr
+            (Iri.of_string "forest://test/test-tree")
+            (this_iri)
       )
   in
   let test_suggestions () =

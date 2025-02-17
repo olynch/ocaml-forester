@@ -15,8 +15,8 @@ let eval_string ~iri ~host str =
   str
   |> Prelude.parse_string
   |> Result.get_ok
-  |> (fun code -> Code.{ code; source_path = None; addr = None; })
-  |> Expand.expand_tree ~quit_on_error: false Expand.Env.empty
+  |> (fun code -> Code.{ code; source_path = None; iri = None; })
+  |> Expand.expand_tree ~quit_on_error: false ~host Expand.Env.empty
   |> (
     fun (_, _, syn) ->
       Eval.eval_tree ~host ~iri ~source_path: None syn

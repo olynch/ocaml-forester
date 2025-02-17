@@ -10,6 +10,7 @@
    *)
 
 open Forester_compiler
+open Forester_core
 
 module L = Lsp.Types
 
@@ -17,7 +18,7 @@ let compute (document : Lsp.Text_document.t) =
   let Lsp_state.{ forest; _ } = Lsp_state.get () in
   let config = State.config forest in
   let uri = Lsp.Text_document.documentUri document in
-  let iri = Iri_util.uri_to_iri ~host: config.host uri in
+  let iri = Iri_scheme.uri_to_iri ~host: config.host uri in
   Phases.(
     forest
     |> reparse document

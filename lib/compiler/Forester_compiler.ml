@@ -59,9 +59,6 @@ module State = State
 module Phases = Phases
 module Asset_router = Asset_router
 
-module Iri_resolver = Iri_resolver
-(** Maps URIs and IRIs to paths, documents or code*)
-
 module Iri_util = Iri_util
 
 module Diagnostic_store = Diagnostic_store

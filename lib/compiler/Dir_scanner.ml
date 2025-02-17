@@ -5,6 +5,7 @@
  *)
 
 open Forester_prelude
+open Forester_core
 module EP = Eio.Path
 module S = Algaeff.Sequencer.Make(struct type t = Eio.Fs.dir_ty EP.t end)
 
@@ -53,11 +54,11 @@ let scan_asset_directories dirs =
 
 exception Is_relative of string
 
-let find_tree dirs name =
+let find_tree dirs iri =
   let matches =
     let@ () = S.run in
     let@ fp = List.iter @~ dirs in
-    process_dir (matching_basename name) fp
+    process_dir (matching_basename (Iri_scheme.name iri)) fp
   in
   try
     let first_match = List.hd @@ List.of_seq matches in

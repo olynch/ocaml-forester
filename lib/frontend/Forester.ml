@@ -25,15 +25,10 @@ let create_tree ~env ~dest_dir ~prefix ~template ~mode ~config ~(forest : State.
   let addrs =
     let@ article = List.filter_map @~ Forest.get_all_articles forest.resources in
     let@ iri = Option.bind article.frontmatter.iri in
-    let (Absolute path | Relative path) = Iri.path iri in
-    match List.rev path with
-    | name :: _ ->
-      let* path = article.frontmatter.source_path in
-      Some (name, path)
-    | _ ->
-      None
+    let* path = article.frontmatter.source_path in
+    Some (iri, path)
   in
-  let next, next_dir = Iri_util.next_addr addrs ~prefix ~mode ~config in
+  let next, next_dir = Iri_util.next_iri addrs ~prefix ~mode ~config in
   let fname = next ^ ".tree" in
   let now = Human_datetime.now () in
   let template_content =

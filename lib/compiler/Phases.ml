@@ -21,6 +21,7 @@ let init
     let graphs = (module Forest_graphs.Make (): Forest_graphs.S) in
     let parsed = Forest.create 1000 in
     let documents = Hashtbl.create 1000 in
+    let resolver = Hashtbl.create 1000 in
     let expanded = Forest.create 1000 in
     let resources = Forest.create 1000 in
     let diagnostics = Diagnostic_store.create 100 in
@@ -35,7 +36,8 @@ let init
       parsed;
       expanded;
       resources;
-      graphs
+      resolver;
+      graphs;
     }
 
 let load
@@ -48,9 +50,10 @@ let load
       begin
         fun path ->
           let content = Eio.Path.load path in
-          let path_str = (Eio.Path.native_exn path) in
+          let path_str = Eio.Path.native_exn path in
           assert (not @@ Filename.is_relative path_str);
           let uri = Lsp.Uri.of_path path_str in
+          let iri = Iri_scheme.uri_to_iri ~host: forest.config.host uri in
           let tree =
             Lsp.Text_document.make
               ~position_encoding: `UTF8
@@ -64,6 +67,7 @@ let load
                 }
               }
           in
+          Hashtbl.add forest.resolver iri path_str;
           Hashtbl.replace forest.documents uri tree
       end;
     let loaded = forest.documents |> Hashtbl.length in
@@ -85,14 +89,14 @@ let parse
     |> Hashtbl.iter
       begin
         fun uri doc ->
-          let iri = Iri_util.uri_to_iri ~host uri in
+          let iri = Iri_scheme.uri_to_iri ~host uri in
           let source_path = Lsp.Uri.to_path uri in
           let parse_result =
             let@ () = Reporter.tracef "when parsing %a (%s)" pp_iri iri source_path in
             let@ code = Result.map @~ Parse.parse_document doc in
             Code.{
               code;
-              addr = Option.some (uri |> Iri_util.uri_to_addr);
+              iri = Some iri;
               source_path = Option.some source_path;
             }
           in
@@ -131,11 +135,12 @@ let reparse
       let tree =
         Code.{
           code;
-          addr = Option.some (uri |> Iri_util.uri_to_addr);
+          iri = Option.some @@ Iri_scheme.uri_to_iri ~host uri;
+          (* iri = Option.some (uri |> Iri_util.uri_to_addr); *)
           source_path = Some path
         }
       in
-      Forest.add forest.parsed (Iri_util.uri_to_iri ~host uri) tree;
+      Forest.add forest.parsed (Iri_scheme.uri_to_iri ~host uri) tree;
       Eio.traceln "No parse errors. Clearing previous diagnostics";
       Diagnostic_store.remove forest.diagnostics uri;
       forest
@@ -159,13 +164,17 @@ let build_import_graph
 let build_import_graph_for
     : iri: iri -> state -> state
   = fun ~iri forest ->
-    match Iri_resolver.(resolve (Iri iri) To_code forest) with
+    match Dir_scanner.find_tree (Eio_util.paths_of_dirs ~env: forest.env forest.config.trees) iri with
     | None -> Reporter.fatalf Resource_not_found "Could not find tree %a in the configured directories." pp_iri iri
-    | Some tree ->
-      let module Graphs = (val forest.graphs) in
-      let import_graph = Imports.dependencies tree forest in
-      Graphs.add_graph Builtin_relation.imports import_graph;
-      forest
+    | Some source_path ->
+      match Parse.parse_file source_path with
+      | Ok code ->
+        let tree = Code.{ code; iri = Some iri; source_path = Some source_path } in
+        let module Graphs = (val forest.graphs) in
+        let import_graph = Imports.dependencies tree forest in
+        Graphs.add_graph Builtin_relation.imports import_graph;
+        forest
+      | Error _ -> Reporter.fatalf Parse_error ""
 
 let expand
     : quit_on_error: bool -> state -> state
@@ -186,6 +195,7 @@ let expand
           let diagnostics, units, syn =
             Expand.expand_tree
               ~quit_on_error
+              ~host: forest.config.host
               units
               tree
           in
@@ -202,10 +212,11 @@ let expand
     |> List.iter
       begin
         fun (diagnostics, source_path, (syn : Syn.tree)) ->
-          let@ iri =
-            Option.iter @~
-              Option.map (Iri_util.path_to_iri ~host: forest.config.host) source_path
-          in
+          (* let@ iri = *)
+          (*   Option.iter @~ *)
+          (*     Option.map (Iri_scheme.path_to_iri ~host: forest.config.host) source_path *)
+          (* in *)
+          let@ iri = Option.iter @~ syn.iri in
           Forest.replace forest.expanded iri syn;
           match source_path with
           | None ->
@@ -250,19 +261,20 @@ let expand_only_aux
           forest;
         }
     in
+    assert (Forest_graph.nb_vertex import_graph >= Forest.length forest.parsed);
     let task (addr : Vertex.t) (units, diagnostics, trees) =
       match addr with
       | T.Content_vertex _ ->
         (* when creating the import graph we are only adding iri vertices *)
         assert false
       | T.Iri_vertex iri ->
-        match Iri_resolver.(resolve (Iri iri) To_code forest) with
+        match Imports.resolve_iri_to_code iri forest with
         | None ->
           (* The import graph has vertices for subtrees, which do not correspond to a source file *)
           Logs.debug (fun m -> m "failed to resolve %a" pp_iri iri);
           units, diagnostics, trees
         | Some tree ->
-          let ds, units, syn = Expand.expand_tree ~quit_on_error units tree in
+          let ds, units, syn = Expand.expand_tree ~quit_on_error ~host: forest.config.host units tree in
           let source_path = tree.source_path in
           begin
             Forest.add trees iri syn;
@@ -284,6 +296,7 @@ let expand_only_aux
         import_graph
         (Expand.Env.empty, Diagnostic_store.create 100, Forest.create 1000)
     in
+    Logs.debug (fun m -> m "Got %i expanded trees" (Forest.length expanded_trees));
     units, diagnostics, expanded_trees
 
 (* The purpose of this function is to update the exported units when a tree has
@@ -291,23 +304,27 @@ let expand_only_aux
 let expand_only
     : iri -> transition
   = fun iri forest ->
-    Eio.traceln "Expanding %a" pp_iri iri;
     let units, new_diagnostics, trees =
       expand_only_aux
         ~quit_on_error: false
         ~addr: iri
         forest
     in
+    assert (Forest.length trees > 0);
     trees
     |> Forest.iter
       begin
         fun iri tree ->
           Forest.replace forest.expanded iri tree;
-          match Iri_resolver.resolve (Iri iri) To_uri forest with
-          | None -> assert false
-          | Some _uri -> ()
-        (* Eio.traceln "clearing diagnostics for %s" (Lsp.Uri.to_string uri); *)
-        (* Diagnostics.remove forest.diagnostics uri *)
+          (* assert false *)
+          match Hashtbl.find_opt forest.resolver iri with
+          (* match Iri_resolver.resolve (Iri iri) To_uri forest with *)
+          | None ->
+            Logs.debug (fun m -> m "resolver knows about %i paths" (Hashtbl.length forest.resolver));
+            assert false
+          | Some path ->
+            Logs.debug (fun m -> m "clearing diagnostics for %s" path);
+            Diagnostic_store.remove forest.diagnostics (Lsp.Uri.of_path path)
       end;
     new_diagnostics
     |> Diagnostic_store.iter
@@ -353,8 +370,8 @@ let eval
       begin
         fun iri syn ->
           let@ () = Reporter.tracef "when evaluating %a" pp_iri iri in
-          let source_path = if forest.dev then Iri_resolver.(resolve (Iri iri) To_path forest) else None in
-          let uri = Iri_resolver.(resolve (Iri iri) To_uri forest) in
+          let source_path = if forest.dev then Hashtbl.find_opt forest.resolver iri else None in
+          let uri = Option.map Lsp.Uri.of_path source_path in
           let diagnostics, Eval.{ articles; jobs } =
             Eval.eval_tree
               ~quit_on_failure: false
@@ -408,7 +425,11 @@ let eval_only : iri -> transition = fun iri forest ->
       in
       List.iter (fun article -> Forest.plant_resource (Article article) forest.graphs forest.resources) articles;
       begin
-        let@ uri = Option.iter @~ (Iri_resolver.resolve (Iri iri) To_uri forest) in
+        let@ uri =
+          Option.iter @~
+          Option.map Lsp.Uri.of_path @@
+          Hashtbl.find_opt forest.resolver iri
+        in
         Diagnostic_store.append
           forest.diagnostics
           uri

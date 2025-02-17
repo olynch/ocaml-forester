@@ -19,14 +19,15 @@ let compute (params : L.DocumentLinkParams.t) =
   let render = Render.render ~dev: true forest STRING in
   let config = State.config forest in
   match params with
-  | { textDocument; _ } ->
+  | { textDocument = _; _ } ->
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
     let links =
-      match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
+      (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
+      match assert false with
       | None -> []
       | Some tree ->
         begin
-          tree.code
+          Code.(tree.code)
           |> List.filter_map
             (
               fun node ->
@@ -37,7 +38,7 @@ let compute (params : L.DocumentLinkParams.t) =
                   (* TODO: Need to analyse syn *)
                   let range = (Lsp_shims.Loc.lsp_range_of_range node.loc) in
                   let iri = (Iri_scheme.user_iri ~host: config.host addr) in
-                  let* target = Iri_resolver.(resolve (Iri iri) To_uri forest) in
+                  let* target = Option.map Lsp.Uri.of_path @@ Hashtbl.find_opt forest.resolver iri in
                   let* { frontmatter; _ } = Forest.get_article iri forest.resources in
                   let* tooltip = Option.map (fun c -> render (Content c)) frontmatter.title in
                   let link =

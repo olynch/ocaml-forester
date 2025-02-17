@@ -7,7 +7,11 @@
 open Forester_prelude
 open Forester_core
 
-module Unit_map = Map.Make(String)
+module Unit_map = Map.Make(struct
+  include Iri
+  let compare = Iri.compare ~normalize: true
+end)
+
 module R = Resolver
 module Sc = R.Scope
 
@@ -19,6 +23,7 @@ module Env = struct
 end
 
 module U = Algaeff.State.Make(struct type t = Env.t end)
+module H = Algaeff.Reader.Make(struct type t = string end)
 
 let edit_distance ~cutoff x y =
   let len_x, len_y = String.length x, String.length y in
@@ -159,7 +164,8 @@ let rec expand : Code.t -> Syn.t = function
   | { value = Group (d, xs); loc } :: rest ->
     { value = Syn.Group (d, expand xs); loc } :: expand rest
   | { value = Subtree (addr, nodes); loc } :: rest ->
-    let subtree = expand_tree_inner @@ Code.{ source_path = None; addr = addr; code = nodes } in
+    let host = H.read () in
+    let subtree = expand_tree_inner @@ Code.{ source_path = None; iri = Option.map (Iri_scheme.user_iri ~host) addr; code = nodes } in
     { value = Syn.Subtree (addr, subtree); loc } :: expand rest
   | { value = Math (m, xs); loc } :: rest ->
     { value = Syn.Math (m, expand xs); loc } :: expand rest
@@ -229,7 +235,9 @@ let rec expand : Code.t -> Syn.t = function
     { value = Syn.Call (expand obj, method_name); loc } :: expand rest
   | { value = Import (vis, dep); loc } :: rest ->
     let units = U.get () in
-    let import = Unit_map.find_opt dep units in
+    let host = H.read () in
+    let dep_iri = Iri_scheme.user_iri ~host dep in
+    let import = Unit_map.find_opt dep_iri units in
     begin
       match import with
       | None ->
@@ -353,8 +361,8 @@ and expand_xml_ident loc (prefix, uname) =
 
 and expand_tree_inner (tree : Code.tree) : Syn.tree =
   let trace f =
-    match tree.addr with
-    | Some addr -> Reporter.tracef "when expanding tree at address `%s`" addr f
+    match tree.iri with
+    | Some iri -> Reporter.tracef "when expanding tree `%a`" pp_iri iri f
     | None -> f ()
   in
   let@ () = trace in
@@ -363,12 +371,12 @@ and expand_tree_inner (tree : Code.tree) : Syn.tree =
   let syn = expand tree.code in
   let exports = Sc.get_export () in
   let units =
-    match tree.addr with
+    match tree.iri with
     | None -> units
-    | Some addr -> Unit_map.add addr exports units
+    | Some iri -> Unit_map.add iri exports units
   in
   U.set units;
-  syn
+  Syn.{ syn; iri = tree.iri }
 
 let builtins =
   [
@@ -436,6 +444,7 @@ let builtins =
 
 let expand_tree
     : ?quit_on_error: bool ->
+    host: string ->
     Env.t ->
     Code.tree ->
     Reporter.diagnostic list
@@ -443,6 +452,7 @@ let expand_tree
     * Syn.tree
   = fun
       ?(quit_on_error = true)
+      ~host
       units
       tree
     ->
@@ -461,10 +471,11 @@ let expand_tree
               end
             else
               Unit_map.empty,
-              []
+              Syn.{ syn = []; iri = tree.iri }
         ) @@
         fun () ->
           let@ () = U.run ~init: units in
+          let@ () = H.run ~env: host in
           let@ () = Sc.easy_run in
           Builtins.register_builtins builtins;
           Builtins.Transclude.alloc_expanded ();

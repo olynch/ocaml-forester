@@ -62,4 +62,4 @@ type node =
 and t = node Range.located list
 [@@deriving show]
 
-and tree = t
+and tree = { syn: t; iri: iri option }

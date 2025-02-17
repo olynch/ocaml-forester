@@ -9,12 +9,6 @@ open Forester_core
 open Forester_prelude
 open Forester_compiler
 
-let test_iri_to_addr () =
-  Alcotest.(check string)
-    ""
-    (Iri_util.iri_to_addr (Iri.of_string "/foo/bar"))
-    "bar"
-
 let test_baseN () =
   Alcotest.(check @@ option int)
     ""
@@ -30,6 +24,5 @@ let () =
   run
     "Iri_util"
     [
-      "iri_to_addr", [test_case "" `Quick test_iri_to_addr];
       "BaseN", [test_case "" `Quick test_baseN];
     ]

@@ -41,7 +41,10 @@ let () =
         )
       |> Option.get
     in
-    let vtx = T.Iri_vertex (Iri_scheme.user_iri ~host: config.host (Iri_util.uri_to_addr uri)) in
+    let vtx =
+      T.Iri_vertex
+        (Iri_scheme.uri_to_iri ~host: config.host uri)
+    in
     let reparsed_forest =
       Phases.(
         before_forest

@@ -26,7 +26,7 @@ let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
     in
     match item with
     | { uri; _ } ->
-      let iri = Util.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
+      let iri = Iri_scheme.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
       let vertex = T.Iri_vertex iri in
       let transclusion_graph = G.get_rel Query.Edges Builtin_relation.transcludes in
       let link_graph = G.get_rel Query.Edges Builtin_relation.links_to in
@@ -50,7 +50,7 @@ let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
     in
     match item with
     | { uri; _ } ->
-      let iri = Util.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
+      let iri = Iri_scheme.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
       let vertex = T.Iri_vertex iri in
       let transclusion_graph = G.get_rel Query.Edges Builtin_relation.transcludes in
       let link_graph = G.get_rel Query.Edges Builtin_relation.links_to in
@@ -61,14 +61,15 @@ let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
       Some (link_items @ transclusion_items)
 
 let compute (params : L.CallHierarchyPrepareParams.t) =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{ forest = _; _ } = Lsp_state.get () in
   match params with
-  | { position; textDocument; _ } ->
-    match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
+  | { position; textDocument = _; _ } ->
+    (* match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with *)
+    match assert false with
     | None -> None
     | Some tree ->
       let item =
-        match Analysis.node_at ~position tree.code with
+        match Analysis.node_at ~position Code.(tree.code) with
         | None -> None
         | Some { loc = _; value } ->
           match value with

@@ -5,6 +5,7 @@
  *
  *)
 
+open Forester_core
 open Forester_compiler
 
 module L = Lsp.Types
@@ -17,7 +18,9 @@ let compute (params : L.DocumentSymbolParams.t) =
   match params with
   | { textDocument; _ } ->
     let Lsp_state.{ forest; _ } = Lsp_state.get () in
-    match Iri_resolver.(resolve (Uri textDocument.uri) To_code forest) with
+    match Forest.find_opt
+      forest.parsed
+      (Iri_scheme.uri_to_iri ~host: forest.config.host textDocument.uri) with
     | None -> None
     | Some { code; _ } ->
       let symbols =
