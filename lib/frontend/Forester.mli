@@ -37,6 +37,7 @@ val copy_contents_of_dir :
 
 val create_tree :
   env: env ->
+  dest_dir: string option ->
   prefix: string ->
   template: string option ->
   mode: [`Sequential | `Random] ->

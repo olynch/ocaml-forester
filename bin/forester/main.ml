@@ -57,12 +57,12 @@ let export ~env _ config_filename dev =
   |> Diagnostic_store.iter (fun _ d -> List.iter Reporter.Tty.display d);
   Forester.export ~forest
 
-let new_tree ~env config_filename prefix template random =
+let new_tree ~env config_filename dest_dir prefix template random =
   let@ () = Reporter.silence in
   let config = Config_parser.parse_forest_config_file config_filename in
   let forest = Forester.compile ~env ~dev: true ~config in
   let mode = if random then `Random else `Sequential in
-  let new_tree = Forester.create_tree ~env ~prefix ~template ~mode ~config ~forest in
+  let new_tree = Forester.create_tree ~env ~dest_dir ~prefix ~template ~mode ~config ~forest in
   Format.printf "%s" new_tree
 
 let complete ~env config_filename title =
@@ -240,6 +240,14 @@ let new_tree_cmd ~env =
     Arg.opt (Arg.some Arg.string) None @@
     Arg.info ["template"] ~docv: "XXX" ~doc
   in
+  let arg_dest_dir
+      : string option Term.t
+    =
+    let doc = "The directory in which to deposit created tree." in
+    Arg.value @@
+    Arg.opt (Arg.some Arg.dir) None @@
+    Arg.info ["dest"] ~docv: "DEST" ~doc
+  in
   let arg_random =
     let doc = "True if the new tree should have id assigned randomly rather than sequentially" in
     Arg.value @@ Arg.flag @@ Arg.info ["random"] ~doc
@@ -251,6 +259,7 @@ let new_tree_cmd ~env =
     Term.(
       const (new_tree ~env)
       $ arg_config
+      $ arg_dest_dir
       $ arg_prefix
       $ arg_template
       $ arg_random

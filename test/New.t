@@ -24,6 +24,9 @@
   person.tree
   $ forester new --prefix=foo no-export.toml
   ./trees/foo-0002.tree
+  $ mkdir dest
+  $ forester new --prefix=foo --dest=dest no-export.toml
+  ./dest/foo-0003.tree
   $ ls trees
   asset.tree
   figure.tree
@@ -34,3 +37,8 @@
   lorem.tree
   nested
   person.tree
+  $ forester new --prefix=foo --dest=nonexistent no-export.toml
+  forester: option '--dest': no 'nonexistent' directory
+  Usage: forester new [OPTION]… [FOREST]
+  Try 'forester new --help' or 'forester --help' for more information.
+  [124]

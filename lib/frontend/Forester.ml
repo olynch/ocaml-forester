@@ -21,7 +21,7 @@ let (let*) = Option.bind
 
 let output_dir_name = "output"
 
-let create_tree ~env ~prefix ~template ~mode ~config ~(forest : State.t) =
+let create_tree ~env ~dest_dir ~prefix ~template ~mode ~config ~(forest : State.t) =
   let addrs =
     let@ article = List.filter_map @~ Forest.get_all_articles forest.resources in
     let@ iri = Option.bind article.frontmatter.iri in
@@ -45,8 +45,10 @@ let create_tree ~env ~prefix ~template ~mode ~config ~(forest : State.t) =
   in
   let body = Format.asprintf "\\date{%a}\n" Human_datetime.pp now in
   let create = `Exclusive 0o644 in
+  (* If no dest_dir is passed, use the directory of the last previous tree *)
+  let dir = match dest_dir with Some dir -> dir | None -> next_dir in
   let path =
-    EP.(env#fs / next_dir / fname)
+    EP.(env#fs / dir / fname)
   in
   EP.save ~create path @@ body ^ template_content;
   EP.native_exn path

@@ -47,7 +47,7 @@ let execute (params : L.ExecuteCommandParams.t) =
       in
       let env = State.env forest in
       let template = None in
-      let res = Forester_frontend.Forester.create_tree ~env ~prefix ~template ~mode ~config ~forest in
+      let res = Forester_frontend.Forester.create_tree ~env ~prefix ~template ~mode ~config ~forest ~dest_dir: None in
       `String res
     | _ -> `Null
 
