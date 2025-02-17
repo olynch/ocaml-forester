@@ -39,8 +39,6 @@ depends: [
   "bisect_ppx" {>= "2.8.3"}
   "cohttp-eio" {>= "6.0.0"}
   "odoc" {>= "2.4.4"}
-  "brr" {>= "0.0.7"}
-  "note" {>= "0.0.3"}
   "alcotest" {with-test}
 ]
 build: [
