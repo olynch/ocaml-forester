@@ -146,7 +146,7 @@ let init ~env dir =
       let@ cmd =
         List.iter @~
           [
-            ["git"; "init"];
+            ["git"; "init"; "--quiet"];
             ["git"; "branch"; "-m"; "main"];
             ["git"; "submodule"; "add"; default_theme_url; "theme"];
             ["git"; "-C"; "theme"; "checkout"; theme_version];
