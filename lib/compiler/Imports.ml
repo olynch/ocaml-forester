@@ -76,8 +76,8 @@ and analyse_node roots (node : Code.node Asai.Range.located) =
         | Some tree -> analyse_tree [] tree
       else ()
     end
-  | Subtree (_addr, code) ->
-    let iri = assert false in
+  | Subtree (addr, code) ->
+    let iri = Option.map (Iri_scheme.user_iri ~host) addr in
     analyse_tree
       roots
       (* Consider using the env to keep track of the current source path *)
