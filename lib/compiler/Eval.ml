@@ -203,7 +203,12 @@ let anon_iri base =
   let ix' = ix + 1 in
   Anon_subtree_ix.set ix';
   let segment = Format.sprintf "%i" ix in
-  Iri.resolve ~base (Iri.of_string segment)
+  let path =
+    match Iri.path base with
+    | Absolute p -> Iri.Absolute (p @ [segment])
+    | Relative _ -> assert false
+  in
+  Iri.with_path base path
 
 let rec process_tape () =
   match Tape.pop_node_opt () with
@@ -377,7 +382,8 @@ and eval_node node : V.t =
         | None ->
           (* Currently the only source of trees without IRIs are the backmatter subtrees (backlinks, context, references, etc.). I believe that this case is therefore unreachable.*)
           assert false
-        | Some current_iri -> anon_iri current_iri
+        | Some current_iri ->
+          anon_iri current_iri
     in
     let subtree = eval_tree_inner ~iri nodes in
     let frontmatter = Frontmatter.get () in
