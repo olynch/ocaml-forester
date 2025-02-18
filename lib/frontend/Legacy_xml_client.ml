@@ -344,6 +344,7 @@ and render_link (forest : State.t) (link : T.content T.link) : P.node list =
   in
   [X.link attrs @@ render_content forest link.content]
 
+(* Note: this is not a big bottleneck. *)
 and render_attributions =
   let attributions_cache = Hashtbl.create 1000 in
   fun (forest : State.t) scope (attributions : _ T.attribution list) ->
@@ -356,28 +357,21 @@ and render_attributions =
         | Some scope ->
           let indirect_attributions =
             let open Datalog_expr.Notation in
-            let query =
+            let articles =
               let positives = [Builtin_relation.has_indirect_contributor @* [const (T.Iri_vertex scope); var "X"]] in
               let negatives = [] in
               Datalog_expr.{ var = "X"; positives; negatives }
+              |> Forest.run_datalog_query (State.graphs forest)
+              |> get_sorted_articles forest
             in
-            let@ biotree =
-              List.filter_map @~
-                get_sorted_articles
-                  forest
-                  (
-                    Forest.run_datalog_query
-                      (State.graphs forest)
-                      query
-                  )
-            in
+            let@ biotree = List.filter_map @~ articles in
             let@ iri = Option.map @~ biotree.frontmatter.iri in
             T.{ vertex = T.Iri_vertex iri; role = Contributor }
           in
           let all_attributions =
             List_util.nub @@
             attributions @
-            let@ (attribution : T.content T.attribution) = List.filter_map @~ indirect_attributions in
+            let@ attribution = List.filter_map @~ indirect_attributions in
             if List.exists (fun (existing : _ T.attribution) -> attribution.vertex = existing.vertex) attributions then None
             else
               Some attribution

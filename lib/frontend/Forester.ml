@@ -108,7 +108,7 @@ let render_forest ~dev ~(forest : State.t) : unit =
   let cwd = Eio.Stdenv.cwd (State.env forest) in
   let all_resources = forest.resources |> Forest.get_all_resources in
   List.iter (fun t -> Forest.plant_resource t forest.graphs forest.resources) all_resources;
-  Logs.debug (fun m -> m "rendering %i resources" (List.length all_resources));
+  Logs.debug (fun m -> m "Rendering %i resources" (List.length all_resources));
   begin
     let json_string = json_manifest ~dev ~forest in
     let json_path = EP.(cwd / output_dir_name / "forest.json") in
@@ -116,31 +116,28 @@ let render_forest ~dev ~(forest : State.t) : unit =
     EP.save ~create: (`Or_truncate 0o644) json_path json_string
   end;
   let module Graphs = (val State.graphs forest) in
-  begin
-    let@ resource = Eio.Fiber.List.iter ~max_fibers: 20 @~ all_resources in
-    let@ () = Reporter.easy_run in
+  let jobs =
+    (* TODO: this takes a long time, but it does not seem to be the case that parallising helps at all. *)
+    let@ resource = List.filter_map @~ all_resources in
     match resource with
     | T.Article article ->
-      let@ route =
-        Option.iter @~
-          Option.map
-            (fun iri -> Legacy_xml_client.route forest iri)
-            article.frontmatter.iri
-      in
-      let path = EP.(cwd / output_dir_name / route) in
-      Eio_util.ensure_context_of_path ~perm: 0o755 path;
-      let@ flow = EP.with_open_out ~create: (`Or_truncate 0o644) path in
-      let@ writer = Eio.Buf_write.with_flow flow in
-      Render.pp_xml ~dev ~stylesheet: "default.xsl" ~forest (Eio.Buf_write.make_formatter writer) article
+      let@ iri = Option.map @~ article.frontmatter.iri in
+      let route = Legacy_xml_client.route forest iri in
+      let content = Format.asprintf "%a" (Render.pp_xml ~dev ~stylesheet: "default.xsl" ~forest) article in
+      route, content
     | T.Asset asset ->
-      let route = Legacy_xml_client.route forest asset.iri in
-      let dest = EP.(cwd / output_dir_name / route) in
-      if Eio_util.file_exists dest then ()
-      else
-        begin
-          Eio_util.ensure_context_of_path ~perm: 0o755 dest;
-          EP.save ~create: (`Or_truncate 0o644) dest asset.content
-        end
+      Option.some @@
+        let route = Legacy_xml_client.route forest asset.iri in
+        route, asset.content
+  in
+  Logs.debug (fun m -> m "Writing %i files to output" (List.length jobs));
+  begin
+    (* Note: this part appears to be fast! *)
+    let@ (route, content) = Eio.Fiber.List.iter ~max_fibers: 20 @~ jobs in
+    let@ () = Reporter.easy_run in
+    let path = EP.(cwd / output_dir_name / route) in
+    Eio_util.ensure_context_of_path ~perm: 0o755 path;
+    EP.save ~create: (`Or_truncate 0o644) path content;
   end
 
 let export ~(forest : State.t) : unit =

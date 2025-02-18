@@ -207,31 +207,29 @@ let expand
         (Graphs.get_rel Query.Edges Builtin_relation.imports)
         (Expand.Env.empty, [])
     in
-    expanded_trees
-    |> List.iter
-      begin
-        fun (diagnostics, source_path, (syn : Syn.tree)) ->
-          let@ iri = Option.iter @~ syn.iri in
-          Forest.replace forest.expanded iri syn;
-          match source_path with
-          | None ->
-            Logs.warn (fun m -> m "tree at %a has no source path." pp_iri iri);
-            (* There is an implicit assumption here that diagnostics are only
-               emitted for trees that have a source path. I should think about
-               this.*)
-            if forest.dev then assert false
-          | Some path ->
-            assert (not (Filename.is_relative path));
-            match diagnostics with
-            | [] -> ()
-            | diagnostics ->
-              let uri = Lsp.Uri.of_path path in
+    begin
+      let@ (diagnostics, source_path, (syn : Syn.tree)) = List.iter @~ expanded_trees in
+      let@ iri = Option.iter @~ syn.iri in
+      Forest.replace forest.expanded iri syn;
+      match source_path with
+      | None ->
+        Logs.warn (fun m -> m "tree at %a has no source path." pp_iri iri);
+        (* There is an implicit assumption here that diagnostics are only
+            emitted for trees that have a source path. I should think about
+            this.*)
+        if forest.dev then assert false
+      | Some path ->
+        assert (not (Filename.is_relative path));
+        match diagnostics with
+        | [] -> ()
+        | diagnostics ->
+          let uri = Lsp.Uri.of_path path in
 
-              (* If we obtained some diagnostics from expanding, we have
-              succesfully parsed the tree and can thus overwrite the parsing
-              diagnostics *)
-              Diagnostic_store.replace forest.diagnostics uri diagnostics
-      end;
+          (* If we obtained some diagnostics from expanding, we have
+          succesfully parsed the tree and can thus overwrite the parsing
+          diagnostics *)
+          Diagnostic_store.replace forest.diagnostics uri diagnostics
+    end;
     let expanded = forest.expanded |> Forest.length in
     let diagnostics = forest.diagnostics |> Diagnostic_store.length in
     Logs.debug (fun m -> m "expanded %i trees" expanded);
@@ -352,58 +350,56 @@ let export_publication ~env ~(forest : state) (publication : Job.publication) : 
     Eio.Path.save ~create: (`Or_truncate 0o644) path blob;
     assert (Eio.Path.is_file path)
 
-let eval
-    : transition
-  = fun forest ->
-    let host = forest.config.host in
+let eval_tree (forest : state) iri syn =
+  let host = forest.config.host in
+  let env = forest.env in
+  let@ () = Reporter.tracef "when evaluating %a" pp_iri iri in
+  let source_path = if forest.dev then Hashtbl.find_opt forest.resolver iri else None in
+  let uri = Option.map Lsp.Uri.of_path source_path in
+  let diagnostics, Eval.{ articles; jobs } =
+    Eval.eval_tree
+      ~quit_on_failure: false
+      ~host
+      ~source_path
+      ~iri
+      syn
+  in
+  let append_diagnostics () =
+    let@ uri = Option.iter @~ uri in
+    Diagnostic_store.append forest.diagnostics uri diagnostics
+  in
+  let plant_articles () =
+    let@ article = List.iter @~ articles in
+    Forest.plant_resource (T.Article article) forest.graphs forest.resources
+  in
+  append_diagnostics ();
+  plant_articles ();
+  begin
+    let@ Range.{ value; loc } = Eio.Fiber.List.iter ~max_fibers: 20 @~ jobs in
+    let@ () = Reporter.easy_run in
+    match value with
+    | Job.LaTeX_to_svg { hash; source; content } ->
+      let svg = Build_latex.latex_to_svg ~env ?loc source in
+      let iri = Iri_scheme.hash_iri ~host hash in
+      let frontmatter = T.default_frontmatter ~iri () in
+      let mainmatter = content ~svg in
+      let backmatter = T.Content [] in
+      let article = T.{ frontmatter; mainmatter; backmatter } in
+      Forest.plant_resource (T.Article article) forest.graphs forest.resources
+    | Job.Publish publication ->
+      export_publication ~env ~forest publication
+  end
+
+let eval : transition = fun forest ->
     let expanded = forest.expanded in
-    let env = forest.env in
-    expanded
-    |> Forest.iter
-      begin
-        fun iri syn ->
-          let@ () = Reporter.tracef "when evaluating %a" pp_iri iri in
-          let source_path = if forest.dev then Hashtbl.find_opt forest.resolver iri else None in
-          let uri = Option.map Lsp.Uri.of_path source_path in
-          let diagnostics, Eval.{ articles; jobs } =
-            Eval.eval_tree
-              ~quit_on_failure: false
-              ~host: forest.config.host
-              ~source_path
-              ~iri
-              syn
-          in
-          begin
-            let@ uri = Option.iter @~ uri in
-            Diagnostic_store.append forest.diagnostics uri diagnostics
-          end;
-          articles
-          |> List.iter
-            begin
-              fun article ->
-                Forest.plant_resource (T.Article article) forest.graphs forest.resources
-            end;
-          jobs
-          |> List.iter
-            begin
-              fun Range.{ value; loc } ->
-                match value with
-                | Job.LaTeX_to_svg { hash; source; content } ->
-                  let svg = Build_latex.latex_to_svg ~env ?loc source in
-                  let iri = Iri_scheme.hash_iri ~host hash in
-                  let frontmatter = T.default_frontmatter ~iri () in
-                  let mainmatter = content ~svg in
-                  let backmatter = T.Content [] in
-                  let article = T.{ frontmatter; mainmatter; backmatter } in
-                  Forest.plant_resource (T.Article article) forest.graphs forest.resources
-                | Job.Publish publication ->
-                  export_publication ~env ~forest publication
-            end
-      end;
+    expanded |> Forest.iter (eval_tree forest);
     Logs.debug (fun m -> m "evaluated %i resources" (Forest.length forest.resources));
     forest
 
-let eval_only : iri -> transition = fun iri forest ->
+let eval_only
+    (iri : iri)
+    : transition
+  = fun forest ->
     match Forest.find_opt forest.expanded iri with
     | None -> assert false
     | Some syn ->
@@ -416,7 +412,10 @@ let eval_only : iri -> transition = fun iri forest ->
           ~iri
           syn
       in
-      List.iter (fun article -> Forest.plant_resource (Article article) forest.graphs forest.resources) articles;
+      begin
+        let@ article = List.iter @~ articles in
+        Forest.plant_resource (Article article) forest.graphs forest.resources
+      end;
       begin
         let@ uri =
           Option.iter @~
@@ -464,7 +463,7 @@ let plant_assets
     Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
     let module EP = Eio.Path in
     begin
-      let@ path = Seq.iter @~ paths in
+      let@ path = Eio.Fiber.List.iter @~ List.of_seq paths in
       let content = EP.load path in
       let source_path = EP.native_exn path in
       let iri = Asset_router.install ~host: state.config.host ~source_path ~content in
