@@ -43,6 +43,7 @@
         devPackagesQuery = {
           ocaml-lsp-server = "*";
           alcotest = "*";
+          odoc = "*";
         };
         query = devPackagesQuery // {
           ocaml-system = "*";

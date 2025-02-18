@@ -91,5 +91,5 @@
   (cohttp-eio
    (>= 6.0.0))
   (odoc
-   (>= 2.4.4))
+   (>= 2.4.4 :with-doc))
   (alcotest :with-test)))
