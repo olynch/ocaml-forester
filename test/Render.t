@@ -7,7 +7,26 @@
       <fr:route>index.xml</fr:route>
       <fr:title text="Hello">Hello</fr:title>
     </fr:frontmatter>
-    <fr:mainmatter />
+    <fr:mainmatter>
+      <fr:tree show-metadata="false">
+        <fr:frontmatter>
+          <fr:authors />
+          <fr:addr>sub</fr:addr>
+          <fr:route>sub.xml</fr:route>
+          <fr:title text="I am a subtree">I am a subtree</fr:title>
+        </fr:frontmatter>
+        <fr:mainmatter />
+      </fr:tree>
+      <fr:tree show-metadata="false">
+        <fr:frontmatter>
+          <fr:authors />
+          <fr:addr>0</fr:addr>
+          <fr:route>0.xml</fr:route>
+          <fr:title text="I am an anonymous subtree">I am an anonymous subtree</fr:title>
+        </fr:frontmatter>
+        <fr:mainmatter />
+      </fr:tree>
+    </fr:mainmatter>
     <fr:backmatter>
       <fr:tree show-metadata="false" hidden-when-empty="true">
         <fr:frontmatter>
@@ -41,21 +60,3 @@
       </fr:tree>
     </fr:backmatter>
   </fr:tree>
-<<<<<<< HEAD
-=======
->>>>>>> 81943b1 (Delete Iri_resolver)
-<<<<<<< HEAD
-=======
->>>>>>> 81943b1 (Delete Iri_resolver)
-<<<<<<< HEAD
-=======
->>>>>>> 81943b1 (Delete Iri_resolver)
-<<<<<<< HEAD
-=======
->>>>>>> 81943b1 (Delete Iri_resolver)
-<<<<<<< HEAD
-=======
->>>>>>> 81943b1 (Delete Iri_resolver)
-<<<<<<< HEAD
-=======
->>>>>>> 81943b1 (Delete Iri_resolver)

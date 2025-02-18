@@ -31,12 +31,7 @@ let resolve_iri_to_code iri (forest : State.t) =
             Some Code.{ code; iri = Some iri; source_path = Some path }
           | Error _ -> None
         end
-      | None ->
-        Reporter.fatalf
-          Resource_not_found
-          "Could not find tree `%a' when building import graph"
-          pp_iri
-          iri
+      | None -> None
     end
   | Some tree -> Some tree
 
@@ -126,9 +121,10 @@ let run_builder ?root env =
       begin
         match resolve_iri_to_code iri env.forest with
         | None ->
+          let@ () = Reporter.trace "when building import graph" in
           Reporter.fatalf
             Resource_not_found
-            "Could not find tree `%a' when building import graph"
+            "could not find tree `%a'"
             pp_iri
             iri
         | Some tree -> analyse_tree [] tree
