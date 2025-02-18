@@ -20,8 +20,8 @@
       <fr:tree show-metadata="false">
         <fr:frontmatter>
           <fr:authors />
-          <fr:addr>0</fr:addr>
-          <fr:route>0.xml</fr:route>
+          <fr:addr>index/0</fr:addr>
+          <fr:route>index-0.xml</fr:route>
           <fr:title text="I am an anonymous subtree">I am an anonymous subtree</fr:title>
         </fr:frontmatter>
         <fr:mainmatter />

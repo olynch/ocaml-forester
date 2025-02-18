@@ -4,16 +4,14 @@ Run build:
   $ forester export export.toml
   $ forester build forest.toml
    ￫ info[Reporter.Message.Log]
-   ꭍ ￮ when evaluating forest://lsp-test/figure
    ￮ Building ./build/resources/4f2455dfdf10f6ad466d28c223f6bc39.svg
   
 
 
   $ cat output/forest.json
-  {"0":{"title":"Hello › I am an anonymous subtree","taxon":null,"tags":[],"route":"0.xml","metas":{}},"hello":{"title":"Hello","taxon":null,"tags":[],"route":"hello.xml","metas":{}},"forest://foreign/index":{"title":"I am exported","taxon":null,"tags":[],"route":"foreign-foreign-index.xml","metas":{}},"index":{"title":"Hello","taxon":null,"tags":[],"route":"index.xml","metas":{}},"sub":{"title":"Hello › I am a subtree","taxon":null,"tags":[],"route":"sub.xml","metas":{}},"nested":{"title":"I am nested","taxon":null,"tags":[],"route":"nested.xml","metas":{}},"lorem":{"title":"Forest://lsp-test/lorem","taxon":null,"tags":[],"route":"lorem.xml","metas":{}},"asset":{"title":"Forest://lsp-test/asset","taxon":null,"tags":[],"route":"asset.xml","metas":{}},"hash/4f2455dfdf10f6ad466d28c223f6bc39":{"title":"Forest://lsp-test/hash/4f2455dfdf10f6ad466d28c223f6bc39","taxon":null,"tags":[],"route":"hash-4f2455dfdf10f6ad466d28c223f6bc39.xml","metas":{}},"person":{"title":"Author Testington","taxon":"Person","tags":[],"route":"person.xml","metas":{}},"figure":{"title":"Forest://lsp-test/figure","taxon":null,"tags":[],"route":"figure.xml","metas":{}}}
+  {"hello":{"title":"Hello","taxon":null,"tags":[],"route":"hello.xml","metas":{}},"forest://foreign/index":{"title":"I am exported","taxon":null,"tags":[],"route":"foreign-foreign-index.xml","metas":{}},"index/0":{"title":"Hello › I am an anonymous subtree","taxon":null,"tags":[],"route":"index-0.xml","metas":{}},"index":{"title":"Hello","taxon":null,"tags":[],"route":"index.xml","metas":{}},"sub":{"title":"Hello › I am a subtree","taxon":null,"tags":[],"route":"sub.xml","metas":{}},"nested":{"title":"I am nested","taxon":null,"tags":[],"route":"nested.xml","metas":{}},"lorem":{"title":"Forest://lsp-test/lorem","taxon":null,"tags":[],"route":"lorem.xml","metas":{}},"asset":{"title":"Forest://lsp-test/asset","taxon":null,"tags":[],"route":"asset.xml","metas":{}},"hash/4f2455dfdf10f6ad466d28c223f6bc39":{"title":"Forest://lsp-test/hash/4f2455dfdf10f6ad466d28c223f6bc39","taxon":null,"tags":[],"route":"hash-4f2455dfdf10f6ad466d28c223f6bc39.xml","metas":{}},"person":{"title":"Author Testington","taxon":"Person","tags":[],"route":"person.xml","metas":{}},"figure":{"title":"Forest://lsp-test/figure","taxon":null,"tags":[],"route":"figure.xml","metas":{}}}
 
   $ ls output
-  0.xml
   asset.xml
   figure.xml
   foreign-foreign-index.xml
@@ -21,6 +19,7 @@ Run build:
   hash-4f2455dfdf10f6ad466d28c223f6bc39.xml
   hash-bafkrmicdssbzi7prmhx4kqzm6cq5saqjawd5kxye7c4nep3a2ew7sx7aou.md
   hello.xml
+  index-0.xml
   index.xml
   lorem.xml
   nested.xml
@@ -49,8 +48,8 @@ Run build:
       <fr:tree show-metadata="false">
         <fr:frontmatter>
           <fr:authors />
-          <fr:addr>0</fr:addr>
-          <fr:route>0.xml</fr:route>
+          <fr:addr>index/0</fr:addr>
+          <fr:route>index-0.xml</fr:route>
           <fr:title text="I am an anonymous subtree">I am an anonymous subtree</fr:title>
         </fr:frontmatter>
         <fr:mainmatter />
