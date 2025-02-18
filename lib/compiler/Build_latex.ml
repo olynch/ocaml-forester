@@ -8,8 +8,7 @@ open Forester_core
 
 type env = Eio_unix.Stdenv.base
 
-let resources_dir cwd =
-  Eio.Path.(cwd / "build" / "resources")
+let resources_dir cwd = Eio.Path.(cwd / "build" / "resources")
 
 let latex_to_svg ~env ?loc source =
   let cwd = Eio.Stdenv.cwd env in

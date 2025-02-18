@@ -86,7 +86,7 @@ let render
     | STRING ->
       begin
         match renderable with
-        | Content content -> Plain_text_client.string_of_content ~forest: forest.resources ~router: Iri.to_uri  content
+        | Content content -> Plain_text_client.string_of_content ~forest: forest.resources ~router: Iri.to_uri content
         | Article _ -> raise (Todo "render article to string")
         | Frontmatter _ -> raise (Todo "render frontmatter to string")
       end

@@ -95,8 +95,7 @@ let path_to_iri ~host str =
   |> last_segment
   |> user_iri ~host
 
-let source_path_to_addr p =
-  Filename.(chop_extension @@ basename p)
+let source_path_to_addr p = Filename.(chop_extension @@ basename p)
 
 let () =
   let@ exn = Printexc.register_printer in

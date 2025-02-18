@@ -13,4 +13,3 @@ val parse_document :
 val parse_file :
   string ->
   (Forester_parser.Code.t, Forester_core.Reporter.diagnostic) result
-

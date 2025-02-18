@@ -32,7 +32,7 @@ val relativise_iri :
   iri
 
 val uri_to_iri :
-  host:string ->
+  host: string ->
   Lsp.Uri.t ->
   Iri.t
 
@@ -41,11 +41,11 @@ val split_addr :
   string * int option
 
 val path_to_iri :
-  host:string ->
+  host: string ->
   string ->
   Iri.t
 
-val last_segment : 
+val last_segment :
   string -> string
 
 val name : Iri.t -> string
