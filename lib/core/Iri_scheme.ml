@@ -27,7 +27,7 @@ let hash_iri ~host hash_str =
 
 let is_named_iri iri =
   match Iri.scheme iri, Iri.path iri with
-  | sch, Absolute (("unstable" | "hash") :: _) when sch = scheme -> false
+  | sch, Absolute ("hash" :: _) when sch = scheme -> false
   | _ -> true
 
 let relativise_iri ~host iri =
