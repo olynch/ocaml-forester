@@ -20,7 +20,7 @@ end
 module Iri_hash = struct
   include Iri_ord
   let equal = Iri.equal ~normalize: true
-  let hash = Hashtbl.hash
+  let hash iri = Iri.normalize iri |> Hashtbl.hash
 end
 
 module Iri_map = Map.Make(Iri_ord)

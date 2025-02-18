@@ -7,10 +7,7 @@
 open Forester_prelude
 open Forester_core
 
-module Unit_map = Map.Make(struct
-  include Iri
-  let compare = Iri.compare ~normalize: true
-end)
+module Unit_map = Map.Make(Iri_ord)
 
 module R = Resolver
 module Sc = R.Scope

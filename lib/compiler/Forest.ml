@@ -10,11 +10,7 @@ open Forester_core
 module T = Types
 module Q = Query
 
-module Tbl = Hashtbl.Make(struct
-  type t = iri
-  let equal = Iri.equal ~normalize: true
-  let hash iri = Iri.normalize iri |> Hashtbl.hash
-end)
+module Tbl = Hashtbl.Make(Iri_hash)
 
 include Tbl
 

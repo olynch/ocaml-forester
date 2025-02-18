@@ -18,7 +18,7 @@ sig
   type t = Iri.t
   val compare : Iri.t -> Iri.t -> int
   val equal : Iri.t -> Iri.t -> bool
-  val hash : 'a -> int
+  val hash : Iri.t -> int
 end
 
 module Iri_map: Map.S with type key = iri
