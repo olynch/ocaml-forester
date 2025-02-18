@@ -15,14 +15,20 @@
  (deps %{bin:server}))
 
 (cram
+ (applies_to Transclude)
+ (deps
+  %{bin:transclude}
+  (glob_files_rec ./transclude/*)))
+
+(cram
  (applies_to :whole_subtree)
  (deps
   %{bin:forester}
   (glob_files_rec ./forest/*)))
 
-(executable
- (name Test_http_server)
- (public_name server)
+(executables
+ (names Test_http_server Test_transclusion)
+ (public_names server transclude)
  (libraries
   logs
   logs.fmt
@@ -54,14 +60,10 @@
   Test_json_manifest_client
   Test_legacy_xml_client
   Test_parser
-  Test_eval
-  ; Test_e2e
-  ; Test_transclusion
-  )
+  Test_eval)
  (preprocess
   (pps ppx_deriving.show ppx_yojson_conv))
  (deps
-  ; (glob_files_rec ./forest*)
   (glob_files_rec ./errors/*)
   (glob_files_rec ./trees/*)
   (glob_files_rec ./imports/*))
