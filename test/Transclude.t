@@ -16,7 +16,9 @@
           <fr:route>transcludee.xml</fr:route>
           <fr:title text="I am being transcluded">I am being transcluded</fr:title>
         </fr:frontmatter>
-        <fr:mainmatter />
+        <fr:mainmatter>
+          <fr:info>Transclusion loop detected, rendering stopped.</fr:info>
+        </fr:mainmatter>
       </fr:tree>
     </fr:mainmatter>
     <fr:backmatter />
@@ -50,7 +52,9 @@
           <fr:route>transcludee.xml</fr:route>
           <fr:title text="I am being transcluded">I am being transcluded</fr:title>
         </fr:frontmatter>
-        <fr:mainmatter />
+        <fr:mainmatter>
+          <fr:info>Transclusion loop detected, rendering stopped.</fr:info>
+        </fr:mainmatter>
       </fr:tree>
     </fr:mainmatter>
     <fr:backmatter />
