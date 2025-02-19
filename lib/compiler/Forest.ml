@@ -10,7 +10,7 @@ open Forester_core
 module T = Types
 module Q = Query
 
-(* Ought to use Iri_hash, but I am optimising by avoiding noramlizing on equality comparison. *)
+(* Ought to use Iri_hash, but I am optimising by avoiding normalizing on equality comparison. *)
 module Tbl = Hashtbl.Make(struct
   type t = iri
   let equal = Iri.equal ~normalize: false
@@ -18,7 +18,6 @@ module Tbl = Hashtbl.Make(struct
   (* IRI has mutable state that seems to be interfering with Hashtbl.hash *)
   let clean iri = Iri.with_query iri (Iri.query iri)
 
-  (* If I remove the normalization here, everything fails. But I can't figure out why! *)
   let hash iri = clean iri |> Hashtbl.hash
 end)
 
