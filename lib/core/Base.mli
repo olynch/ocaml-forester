@@ -13,14 +13,6 @@ val iri_t : Iri.t Repr.t
 val pp_iri : Format.formatter -> Iri.t -> unit
 module Iri_ord: sig type t = Iri.t val compare : Iri.t -> Iri.t -> int end
 
-module Iri_hash:
-sig
-  type t = Iri.t
-  val compare : Iri.t -> Iri.t -> int
-  val equal : Iri.t -> Iri.t -> bool
-  val hash : Iri.t -> int
-end
-
 module Iri_map: Map.S with type key = iri
 
 (** {2 Delimiters} *)
