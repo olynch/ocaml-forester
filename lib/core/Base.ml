@@ -12,27 +12,45 @@ let pp_iri (fmt : Format.formatter) (iri : Iri.t) =
   Format.fprintf fmt "%s" @@
     Iri.to_string ~pctencode: false iri
 
-module Iri_ord = struct
+module String_map = Map.Make(String)
+
+module Iri_ord_unsafe = struct
   type t = Iri.t
   let compare = Iri.compare ~normalize: true
 end
 
-module Iri_set = Set.Make(Iri_ord)
-module Iri_map = Map.Make(Iri_ord)
-module String_map = Map.Make(String)
+module Iri_hash_unsafe = struct
+  type t = iri
+  let equal = Iri.equal ~normalize: false
+
+  (* IRI has mutable state that seems to be interfering with Hashtbl.hash *)
+  let clean_iri iri = Iri.with_query iri (Iri.query iri)
+  let hash iri = clean_iri iri |> Hashtbl.hash
+end
+
+module Iri_set = struct
+  module M = Set.Make(Iri_ord_unsafe)
+  type t = M.t
+  type elt = M.elt
+  let empty = M.empty
+  let add iri = M.add (Iri.normalize iri)
+  let mem iri = M.mem (Iri.normalize iri)
+end
+
+module Iri_map = struct
+  module M = Map.Make(Iri_ord_unsafe)
+  type 'a t = 'a M.t
+  type key = M.key
+  let empty = M.empty
+  let add iri = M.add (Iri.normalize iri)
+  let find_opt iri = M.find_opt (Iri.normalize iri)
+  let to_seq = M.to_seq
+  let cardinal = M.cardinal
+  let to_list = M.to_list
+end
 
 module Iri_tbl = struct
-
-  (* Ought to use Iri_hash, but I am optimising by avoiding normalizing on equality comparison. *)
-  module Tbl = Hashtbl.Make(struct
-    type t = iri
-    let equal = Iri.equal ~normalize: false
-
-    (* IRI has mutable state that seems to be interfering with Hashtbl.hash *)
-    let clean iri = Iri.with_query iri (Iri.query iri)
-
-    let hash iri = clean iri |> Hashtbl.hash
-  end)
+  module Tbl = Hashtbl.Make(Iri_hash_unsafe)
 
   type 'a t = 'a Tbl.t
   type key = iri
