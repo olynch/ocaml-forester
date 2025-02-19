@@ -27,6 +27,8 @@ module Xmlns = struct
 end
 
 module Scope = Algaeff.Reader.Make(struct type t = iri option end)
+module Iri_set = Set.Make(Iri_ord)
+module Loop_detection = Algaeff.Reader.Make(struct type t = Iri_set.t end)
 
 (* It's fine to have a global transclusion cache since iris fully qualify a tree*)
 let transclusion_cache = Hashtbl.create 1000
@@ -148,6 +150,23 @@ let render_section_flags (dict : T.section_flags) =
     X.optional_ X.numbered dict.numbered
   ]
 
+let add_seen_iri iri kont =
+  let@ () = Loop_detection.scope @@ Iri_set.add iri in
+  kont ()
+
+let add_seen_iri_opt iri_opt kont =
+  match iri_opt with
+  | None -> kont ()
+  | Some iri -> add_seen_iri iri kont
+
+let have_seen_iri iri =
+  Iri_set.mem iri @@ Loop_detection.read ()
+
+let have_seen_iri_opt iri_opt =
+  match iri_opt with
+  | None -> false
+  | Some iri -> have_seen_iri iri
+
 let rec render_section forest (section : T.content T.section) : P.node =
   let@ () = Xmlns.run in
   X.tree
@@ -155,7 +174,12 @@ let rec render_section forest (section : T.content T.section) : P.node =
     [
       render_frontmatter forest section.frontmatter;
       let@ () = Scope.run ~env: section.frontmatter.iri in
-      X.mainmatter [] @@ render_content forest section.mainmatter
+      X.mainmatter [] @@
+        if have_seen_iri_opt section.frontmatter.iri then
+          [X.info [] [P.txt "Transclusion loop detected, rendering stopped."]]
+        else
+          let@ () = add_seen_iri_opt section.frontmatter.iri in
+          render_content forest section.mainmatter
     ]
 
 and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
@@ -422,6 +446,8 @@ let render_article forest (article : T.content T.article) : P.node =
   let@ () = Reporter.tracef "when rendering article %a" Format.(pp_print_option Iri.pp) article.frontmatter.iri in
   let config = State.config forest in
   let xmlns_prefix = Xmlns.{ prefix = X.reserved_prefix; xmlns = X.forester_xmlns } in
+  let@ () = Loop_detection.run ~env: Iri_set.empty in
+  let@ () = add_seen_iri_opt article.frontmatter.iri in
   let@ () = Scope.run ~env: article.frontmatter.iri in
   let@ () = Xmlns.run in
   X.tree
