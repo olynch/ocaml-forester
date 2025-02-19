@@ -20,7 +20,7 @@ type t = {
   diagnostics: Diagnostic_store.t;
   resources: resource Forest.t;
   graphs: (module Forest_graphs.S);
-  resolver: (iri, string) Hashtbl.t
+  resolver: string Iri_tbl.t
 }
 
 let documents (t : t) = t.documents

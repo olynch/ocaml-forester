@@ -21,7 +21,7 @@ let init
     let graphs = (module Forest_graphs.Make (): Forest_graphs.S) in
     let parsed = Forest.create 1000 in
     let documents = Hashtbl.create 1000 in
-    let resolver = Hashtbl.create 1000 in
+    let resolver = Iri_tbl.create 1000 in
     let expanded = Forest.create 1000 in
     let resources = Forest.create 1000 in
     let diagnostics = Diagnostic_store.create 100 in
@@ -67,7 +67,7 @@ let load
                 }
               }
           in
-          Hashtbl.add forest.resolver iri path_str;
+          Iri_tbl.add forest.resolver iri path_str;
           Hashtbl.replace forest.documents uri tree
       end;
     let loaded = forest.documents |> Hashtbl.length in
@@ -97,7 +97,7 @@ let parse
             Code.{
               code;
               iri = Some iri;
-              source_path = Option.some source_path;
+              source_path = Some source_path;
             }
           in
           begin
@@ -309,9 +309,9 @@ let expand_only
       begin
         fun iri tree ->
           Forest.replace forest.expanded iri tree;
-          match Hashtbl.find_opt forest.resolver iri with
+          match Iri_tbl.find_opt forest.resolver iri with
           | None ->
-            Logs.debug (fun m -> m "resolver knows about %i paths" (Hashtbl.length forest.resolver));
+            Logs.debug (fun m -> m "resolver knows about %i paths" (Iri_tbl.length forest.resolver));
             assert false
           | Some path ->
             Logs.debug (fun m -> m "clearing diagnostics for %s" path);
@@ -354,7 +354,7 @@ let eval_tree (forest : state) iri syn =
   let host = forest.config.host in
   let env = forest.env in
   let@ () = Reporter.tracef "when evaluating %a" pp_iri iri in
-  let source_path = if forest.dev then Hashtbl.find_opt forest.resolver iri else None in
+  let source_path = if forest.dev then Iri_tbl.find_opt forest.resolver iri else None in
   let uri = Option.map Lsp.Uri.of_path source_path in
   let diagnostics, Eval.{ articles; jobs } =
     Eval.eval_tree
@@ -420,7 +420,7 @@ let eval_only
         let@ uri =
           Option.iter @~
           Option.map Lsp.Uri.of_path @@
-          Hashtbl.find_opt forest.resolver iri
+          Iri_tbl.find_opt forest.resolver iri
         in
         Diagnostic_store.append
           forest.diagnostics

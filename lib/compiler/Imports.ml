@@ -24,7 +24,7 @@ let resolve_iri_to_code iri (forest : State.t) =
     begin
       match Dir_scanner.find_tree dirs iri with
       | Some path ->
-        Hashtbl.add forest.resolver iri path;
+        Iri_tbl.add forest.resolver iri path;
         begin
           match Parse.parse_file path with
           | Ok code ->

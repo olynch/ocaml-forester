@@ -9,6 +9,8 @@
 include Base
 (**@closed*)
 
+module Iri_tbl = Iri_tbl
+
 module Iri_scheme = Iri_scheme
 
 (** {1 Vertices}

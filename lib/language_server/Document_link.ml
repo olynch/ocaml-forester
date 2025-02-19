@@ -38,7 +38,7 @@ let compute (params : L.DocumentLinkParams.t) =
                   (* TODO: Need to analyse syn *)
                   let range = (Lsp_shims.Loc.lsp_range_of_range node.loc) in
                   let iri = (Iri_scheme.user_iri ~host: config.host addr) in
-                  let* target = Option.map Lsp.Uri.of_path @@ Hashtbl.find_opt forest.resolver iri in
+                  let* target = Option.map Lsp.Uri.of_path @@ Iri_tbl.find_opt forest.resolver iri in
                   let* { frontmatter; _ } = Forest.get_article iri forest.resources in
                   let* tooltip = Option.map (fun c -> render (Content c)) frontmatter.title in
                   let link =
