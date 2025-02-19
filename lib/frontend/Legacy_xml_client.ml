@@ -446,7 +446,6 @@ let render_article forest (article : T.content T.article) : P.node =
   let config = State.config forest in
   let xmlns_prefix = Xmlns.{ prefix = X.reserved_prefix; xmlns = X.forester_xmlns } in
   let@ () = Loop_detection.run ~env: Iri_set.empty in
-  let@ () = add_seen_iri_opt article.frontmatter.iri in
   let@ () = Scope.run ~env: article.frontmatter.iri in
   let@ () = Xmlns.run in
   X.tree
@@ -456,7 +455,11 @@ let render_article forest (article : T.content T.article) : P.node =
     ]
     [
       render_frontmatter forest article.frontmatter;
-      X.mainmatter [] @@ render_content forest article.mainmatter;
+      X.mainmatter [] @@
+        begin
+          let@ () = add_seen_iri_opt article.frontmatter.iri in
+          render_content forest article.mainmatter
+        end;
       X.backmatter [] @@ render_content forest article.backmatter
     ]
 
