@@ -7,7 +7,7 @@
 open Forester_prelude
 open Forester_core
 
-module Unit_map = Map.Make(Iri_ord)
+module Unit_map = Iri_map
 
 module R = Resolver
 module Sc = R.Scope

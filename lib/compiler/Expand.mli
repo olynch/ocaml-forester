@@ -6,7 +6,7 @@
 
 open Forester_core
 
-module Unit_map: Map.S with type key = iri
+module Unit_map = Iri_map
 
 type exports = (Resolver.P.data, Asai.Range.t option) Trie.t
 

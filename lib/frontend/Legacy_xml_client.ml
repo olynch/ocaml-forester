@@ -27,7 +27,6 @@ module Xmlns = struct
 end
 
 module Scope = Algaeff.Reader.Make(struct type t = iri option end)
-module Iri_set = Set.Make(Iri_ord)
 module Loop_detection = Algaeff.Reader.Make(struct type t = Iri_set.t end)
 
 (* It's fine to have a global transclusion cache since iris fully qualify a tree*)

@@ -17,6 +17,7 @@ module Iri_ord = struct
   let compare = Iri.compare ~normalize: true
 end
 
+module Iri_set = Set.Make(Iri_ord)
 module Iri_map = Map.Make(Iri_ord)
 module String_map = Map.Make(String)
 
