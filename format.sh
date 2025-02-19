@@ -10,3 +10,4 @@ topiary format bin/**/*.ml
 topiary format lib/**/*.ml
 topiary format lib/**/*.mli
 topiary format lib/**/*.mll
+topiary format test/*.ml
