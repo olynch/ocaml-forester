@@ -4,10 +4,17 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-type t = Types.content Types.vertex
+open Types
+
+type t = content vertex
 [@@deriving show]
 
-let hash = Hashtbl.hash
+let clean = function
+  | Content_vertex x -> Content_vertex x
+  | Iri_vertex iri -> Iri_vertex (Iri.with_query iri (Iri.query iri))
+
+let hash x = Hashtbl.hash (clean x)
+
 let compare = compare
 let equal = ( = )
 
