@@ -20,6 +20,7 @@ type t = {
   diagnostics: Diagnostic_store.t;
   resources: resource Forest.t;
   graphs: (module Forest_graphs.S);
+  import_graph: Forest_graph.t;
   resolver: string Iri_tbl.t
 }
 
@@ -28,6 +29,7 @@ let parsed (t : t) = t.parsed
 let resources (t : t) = t.resources
 let expanded (t : t) = t.expanded
 let graphs (t : t) = t.graphs
+let import_graph (t : t) = t.import_graph
 let config (t : t) = t.config
 let env (t : t) = t.env
 let diagnostics (t : t) = t.diagnostics

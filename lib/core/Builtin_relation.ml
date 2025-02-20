@@ -15,7 +15,6 @@ let is_node = make_builtin "is-node"
 let in_bundle_closure = make_builtin "in-bundle-closure"
 let in_bundle_step = make_builtin "in-bundle-step"
 let in_host = make_builtin "in-host"
-let imports = make_builtin "imports"
 
 let transcludes_rtc = make_builtin "transcludes.reflexive-transitive-closure"
 let transcludes_tc = make_builtin "transcludes.transitive-closure"

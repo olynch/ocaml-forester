@@ -422,7 +422,6 @@ let builtins = [
   ["rel"; "has-taxon"], Syn.Text Builtin_relation.has_taxon;
   ["rel"; "has-author"], Syn.Text Builtin_relation.has_author;
   ["rel"; "has-direct-contributor"], Syn.Text Builtin_relation.has_direct_contributor;
-  ["rel"; "imports"], Syn.Text Builtin_relation.imports;
   ["rel"; "transcludes"], Syn.Text Builtin_relation.transcludes;
   ["rel"; "transcludes"; "transitive-closure"], Syn.Text Builtin_relation.transcludes_tc;
   ["rel"; "transcludes"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transcludes_rtc;

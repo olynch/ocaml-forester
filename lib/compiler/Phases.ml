@@ -17,6 +17,7 @@ type transition = state -> state
 let init ~(env : Eio_unix.Stdenv.base) ~(config : Config.t) ~(dev : bool) : state =
   Logs.debug (fun m -> m "Initializing with config %a" Config.pp config);
   let graphs = (module Forest_graphs.Make (): Forest_graphs.S) in
+  let import_graph = Forest_graph.create ~size: 1000 () in
   let parsed = Forest.create 1000 in
   let documents = Hashtbl.create 1000 in
   let resolver = Iri_tbl.create 1000 in
@@ -35,6 +36,7 @@ let init ~(env : Eio_unix.Stdenv.base) ~(config : Config.t) ~(dev : bool) : stat
     expanded;
     resources;
     resolver;
+    import_graph;
     graphs;
   }
 
@@ -147,10 +149,7 @@ let build_import_graph (forest : state) : state =
   (* I chose not to mention the graph in the trace message since I feel like
      it unnecessarily exposes implementation details.*)
   let@ () = Reporter.trace "when resolving imports" in
-  let module Graphs = (val forest.graphs) in
-  let import_graph = Imports.build forest in
-  Graphs.add_graph Builtin_relation.imports import_graph;
-  forest
+  {forest with import_graph = Imports.build forest}
 
 let build_import_graph_for ~(iri : iri) (forest : state) : state =
   match Dir_scanner.find_tree (Eio_util.paths_of_dirs ~env: forest.env forest.config.trees) iri with
@@ -161,8 +160,7 @@ let build_import_graph_for ~(iri : iri) (forest : state) : state =
       let tree = Code.{code; iri = Some iri; source_path = Some source_path} in
       let module Graphs = (val forest.graphs) in
       let import_graph = Imports.dependencies tree forest in
-      Graphs.add_graph Builtin_relation.imports import_graph;
-      forest
+      {forest with import_graph}
     | Error _ -> Reporter.fatalf Parse_error ""
 
 let expand ~(quit_on_error : bool) (forest : state) : state =
@@ -192,7 +190,7 @@ let expand ~(quit_on_error : bool) (forest : state) : state =
   let units, expanded_trees =
     Forest_graph.topo_fold
       task
-      (Graphs.get_rel Query.Edges Builtin_relation.imports)
+      forest.import_graph
       (Expand.Env.empty, [])
   in
   begin
