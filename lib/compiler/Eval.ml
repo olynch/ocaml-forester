@@ -61,8 +61,7 @@ module V = struct
   let coalesce_text =
     let rec loop acc = function
       | [] -> Option.some @@ String.concat "" @@ Bwd.prepend acc []
-      | T.Text txt :: content -> loop (Bwd.snoc acc txt) content
-      | T.CDATA txt :: content -> loop (Bwd.snoc acc txt) content
+      | (T.Text txt | T.CDATA txt) :: content -> loop (Bwd.snoc acc txt) content
       | _ -> None
     in
     loop Emp
