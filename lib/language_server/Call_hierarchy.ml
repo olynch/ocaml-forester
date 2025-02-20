@@ -28,11 +28,13 @@ let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
     | {uri; _} ->
       let iri = Iri_scheme.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
       let vertex = T.Iri_vertex iri in
-      let transclusion_graph = G.get_rel Query.Edges Builtin_relation.transcludes in
-      let link_graph = G.get_rel Query.Edges Builtin_relation.links_to in
-      let link_items = Forest_graph.safe_succ link_graph vertex |> List.map vertex_to_item in
-      let transclusion_items = Forest_graph.safe_succ transclusion_graph vertex |> List.map vertex_to_item in
-      Some (link_items @ transclusion_items)
+      let run_query = Forest.run_datalog_query (State.graphs forest) in
+      let fwdlinks = run_query @@ Builtin_queries.fwdlinks_datalog vertex in
+      Eio.traceln "got %i link items" (Vertex_set.cardinal fwdlinks);
+      let children = run_query @@ Builtin_queries.children_datalog vertex in
+      Eio.traceln "got %i transclusion items" (Vertex_set.cardinal children);
+      let items = Vertex_set.union fwdlinks children |> Vertex_set.to_list |> List.map vertex_to_item in
+      Some items
 
 let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
   let Lsp_state.{forest; _} = Lsp_state.get () in
@@ -52,13 +54,13 @@ let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
     | {uri; _} ->
       let iri = Iri_scheme.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
       let vertex = T.Iri_vertex iri in
-      let transclusion_graph = G.get_rel Query.Edges Builtin_relation.transcludes in
-      let link_graph = G.get_rel Query.Edges Builtin_relation.links_to in
-      let link_items = Forest_graph.safe_pred link_graph vertex |> List.map vertex_to_item in
-      Eio.traceln "got %i link items" (List.length link_items);
-      let transclusion_items = Forest_graph.safe_pred transclusion_graph vertex |> List.map vertex_to_item in
-      Eio.traceln "got %i transclusion items" (List.length transclusion_items);
-      Some (link_items @ transclusion_items)
+      let run_query = Forest.run_datalog_query (State.graphs forest) in
+      let backlinks = run_query @@ Builtin_queries.backlinks_datalog vertex in
+      Eio.traceln "got %i link items" (Vertex_set.cardinal backlinks);
+      let parents = run_query @@ Builtin_queries.context_datalog vertex in
+      Eio.traceln "got %i transclusion items" (Vertex_set.cardinal parents);
+      let items = Vertex_set.union backlinks parents |> Vertex_set.to_list |> List.map vertex_to_item in
+      Some items
 
 let compute (params : L.CallHierarchyPrepareParams.t) =
   let Lsp_state.{forest; _} = Lsp_state.get () in

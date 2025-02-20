@@ -12,3 +12,5 @@ val union : t -> t -> t
 val filter : (Vertex.t -> bool) -> t -> t
 
 val elements : t -> Vertex.t list
+
+val cardinal : t -> int

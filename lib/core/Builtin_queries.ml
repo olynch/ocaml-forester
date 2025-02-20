@@ -19,12 +19,30 @@ let context_datalog vtx : _ Dx.query =
     negatives = []
   }
 
+let children_datalog vtx : _ Dx.query =
+  let open Dx.Notation in
+  let x = "X" in
+  Dx.{
+    var = x;
+    positives = [Builtin_relation.transcludes @* [const vtx; var x]];
+    negatives = []
+  }
+
 let backlinks_datalog vtx : _ Dx.query =
   let open Dx.Notation in
   let x = "X" in
   Dx.{
     var = x;
     positives = [Builtin_relation.links_to @* [var x; const vtx]];
+    negatives = []
+  }
+
+let fwdlinks_datalog vtx : _ Dx.query =
+  let open Dx.Notation in
+  let x = "X" in
+  Dx.{
+    var = x;
+    positives = [Builtin_relation.links_to @* [const vtx; var x]];
     negatives = []
   }
 
