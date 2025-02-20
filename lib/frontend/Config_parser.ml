@@ -19,7 +19,7 @@ let parse lexbuf filename =
     let forest = key "forest" |-- table in
     let host =
       match get tbl (forest |-- key "host" |-- string) with
-      | Some host -> host
+      | Some host -> String.lowercase_ascii host
       | None -> Reporter.fatalf Configuration_error "You need to set the `host' key in your configuration file; this is a global identifier that will be used to distinguish your forest from other forests (you can use your name, e.g. `johnqpublic')"
     in
     let home = get tbl (forest |-- key "home" |-- string) in
