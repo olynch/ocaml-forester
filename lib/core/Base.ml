@@ -23,9 +23,10 @@ module Iri_hash_unsafe = struct
   type t = iri
   let equal = Iri.equal ~normalize: false
 
+  let distill iri = Iri.scheme iri, Iri.host iri, Iri.port iri, Iri.user iri, Iri.path iri
+
   (* IRI has mutable state that seems to be interfering with Hashtbl.hash *)
-  let clean_iri iri = Iri.with_query iri (Iri.query iri)
-  let hash iri = clean_iri iri |> Hashtbl.hash
+  let hash iri = Hashtbl.hash (distill iri)
 end
 
 module Iri_set = struct

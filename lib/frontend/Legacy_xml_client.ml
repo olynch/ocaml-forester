@@ -93,7 +93,7 @@ let route forest iri =
     in
     route_resource_iri ~suffix forest iri
   | None when Iri.scheme iri = Iri_scheme.scheme ->
-    Reporter.emitf Broken_link "Could not find route link to resource %a" pp_iri iri;
+    Reporter.emitf Broken_link "Could not route link to resource %a" pp_iri iri;
     Iri.to_uri iri
   | None ->
     Iri.to_uri iri
