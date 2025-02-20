@@ -21,55 +21,37 @@ let () =
   let test_reparsing () =
     let@ () = Reporter.test_run in
     (*First, perform a regular batch compilation run.*)
-    let before_forest =
-      State_machine.batch_run
-        ~env
-        ~config
-        ~dev: false
-    in
+    let before_forest = State_machine.batch_run ~env ~config ~dev: false in
     (* Get the URI of "reparse.tree". In order to make the test reproducible,
        we can't use hardcoded paths, as those may be different in CI and on
        different hosts.*)
     let uri =
-      before_forest.documents |> Hashtbl.to_seq_keys
-      |> Seq.find_map
-          (fun uri ->
-            if String.ends_with ~suffix: "reparse.tree" (Lsp.Uri.to_string uri) then
-              Some uri
-            else None
-          )
-      |> Option.get
+      Option.get @@
+        let@ uri = Seq.find_map @~ Hashtbl.to_seq_keys before_forest.documents in
+        if String.ends_with ~suffix: "reparse.tree" (Lsp.Uri.to_string uri) then
+          Some uri
+        else None
     in
-    let vtx =
-      T.Iri_vertex
-        (Iri_scheme.uri_to_iri ~host: config.host uri)
-    in
+    let vtx = T.Iri_vertex (Iri_scheme.uri_to_iri ~host: config.host uri) in
     let reparsed_forest =
-      Phases.(
-        before_forest
-        |> reparse
-            (
-              (* Create a Text_document.t with new content.*)
-              Lsp.Text_document.make
-                ~position_encoding: `UTF16 @@
-                Lsp.Types.DidOpenTextDocumentParams.create
-                  ~textDocument: (
-                    Lsp.Types.TextDocumentItem.create
-                      ~languageId: "forester"
-                      ~uri
-                      ~version: 2
-                      ~text: {| \title{I am now importing something and the import graphs should be updated accordingly} \import{a}|}
-                  )
-            )
-      )
+      let open Phases in
+      let document =
+        (* Create a Text_document.t with new content.*)
+        let textDocument =
+          Lsp.Types.TextDocumentItem.create
+            ~languageId: "forester"
+            ~uri
+            ~version: 2
+            ~text: {| \title{I am now importing something and the import graphs should be updated accordingly} \import{a}|}
+        in
+        Lsp.Text_document.make ~position_encoding: `UTF16 @@ Lsp.Types.DidOpenTextDocumentParams.create ~textDocument
+      in
+      reparse document before_forest
     in
     let module Graphs = (val reparsed_forest.graphs) in
     let import_graph = Graphs.get_rel Query.Edges "imports" in
     (* FIXME: *)
-    Alcotest.(check string)
-      ""
-      ""
-      ""
+    Alcotest.(check string) "" "" ""
   (* Alcotest.(check bool) *)
   (*   "" *)
   (*   true *)
@@ -80,10 +62,7 @@ let () =
       let@ () = Reporter.easy_run in
       State_machine.batch_run ~env ~config ~dev: false
     in
-    Alcotest.(check int)
-      ""
-      8
-      (List.length @@ Forest.get_all_articles forest.resources)
+    Alcotest.(check int) "" 8 @@ List.length @@ Forest.get_all_articles forest.resources
   in
   let test_includes_paths () =
     let@ () = Reporter.easy_run in
@@ -99,29 +78,18 @@ let () =
       in
       source_path
     in
-    Alcotest.(check bool)
-      ""
-      true
-      (Option.is_some path)
+    Alcotest.(check bool) "" true @@ Option.is_some path
   in
   let test_omits_paths () =
     let@ () = Reporter.easy_run in
-    let forest =
-      State_machine.batch_run
-        ~env
-        ~config
-        ~dev: false
-    in
+    let forest = State_machine.batch_run ~env ~config ~dev: false in
     let path =
       let@ {frontmatter = {source_path; _}; _} =
         Option.bind @@ Forest.get_article (Iri.of_string "forest://my-forest/index") forest.resources
       in
       source_path
     in
-    Alcotest.(check bool)
-      ""
-      true
-      (Option.is_none path)
+    Alcotest.(check bool) "" true @@ Option.is_none path
   in
   let open Alcotest in
   run
