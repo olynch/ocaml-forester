@@ -65,4 +65,6 @@ let parse_forest_config_file filename =
   let ch = open_in filename in
   let@ () = Fun.protect ~finally: (fun _ -> close_in ch) in
   let lexbuf = Lexing.from_channel ch in
-  parse lexbuf filename
+  let result = parse lexbuf filename in
+  Sys.chdir @@ Filename.dirname filename;
+  result
