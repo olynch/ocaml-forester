@@ -35,23 +35,22 @@ let reference_taxon : Vertex.t Dx.term =
 let person_taxon : Vertex.t Dx.term =
   Const (Content_vertex (Content [Text "person_taxon"]))
 
-let axioms : _ Dx.script =
-  [
-    is_reference @* [var "X"] << [has_taxon @* [var "X"; reference_taxon]];
-    is_person @* [var "X"] << [has_taxon @* [var "X"; person_taxon]];
-    transcludes_tc @* [var "X"; var "Y"] << [transcludes @* [var "X"; var "Y"]];
-    transcludes_tc @* [var "X"; var "Z"] << [transcludes_tc @* [var "X"; var "Y"]; transcludes @* [var "Y"; var "Z"]];
-    transcludes_rtc @* [var "X"; var "X"] << [is_node @* [var "X"]];
-    transcludes_rtc @* [var "X"; var "Y"] << [transcludes_tc @* [var "X"; var "Y"]];
-    references @* [var "X"; var "Z"]
-    << [
+let axioms : _ Dx.script = [
+  is_reference @* [var "X"] << [has_taxon @* [var "X"; reference_taxon]];
+  is_person @* [var "X"] << [has_taxon @* [var "X"; person_taxon]];
+  transcludes_tc @* [var "X"; var "Y"] << [transcludes @* [var "X"; var "Y"]];
+  transcludes_tc @* [var "X"; var "Z"] << [transcludes_tc @* [var "X"; var "Y"]; transcludes @* [var "Y"; var "Z"]];
+  transcludes_rtc @* [var "X"; var "X"] << [is_node @* [var "X"]];
+  transcludes_rtc @* [var "X"; var "Y"] << [transcludes_tc @* [var "X"; var "Y"]];
+  references @* [var "X"; var "Z"]
+  << [
       transcludes_rtc @* [var "X"; var "Y"];
       links_to @* [var "Y"; var "Z"];
       is_reference @* [var "Z"]
     ];
-    has_direct_contributor @* [var "X"; var "Y"] << [has_author @* [var "X"; var "Y"]];
-    has_indirect_contributor @* [var "X"; var "Z"] << [transcludes_rtc @* [var "X"; var "Y"]; has_direct_contributor @* [var "Y"; var "Z"]];
-    in_bundle_closure @* [var "X"; var "X"] << [is_node @* [var "X"]];
-    in_bundle_closure @* [var "X"; var "Z"] << [in_bundle_closure @* [var "X"; var "Y"]; in_bundle_step @* [var "Y"; var "Z"]];
-    in_bundle_step @* [var "X"; var "Y"] << [transcludes @* [var "X"; var "Y"]];
-  ]
+  has_direct_contributor @* [var "X"; var "Y"] << [has_author @* [var "X"; var "Y"]];
+  has_indirect_contributor @* [var "X"; var "Z"] << [transcludes_rtc @* [var "X"; var "Y"]; has_direct_contributor @* [var "Y"; var "Z"]];
+  in_bundle_closure @* [var "X"; var "X"] << [is_node @* [var "X"]];
+  in_bundle_closure @* [var "X"; var "Z"] << [in_bundle_closure @* [var "X"; var "Y"]; in_bundle_step @* [var "Y"; var "Z"]];
+  in_bundle_step @* [var "X"; var "Y"] << [transcludes @* [var "X"; var "Y"]];
+]

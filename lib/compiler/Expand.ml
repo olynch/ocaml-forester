@@ -54,15 +54,14 @@ let suggestions
   in
   Trie.filter_map
     ?prefix
-    (
-      fun q (data, _) ->
-        match compare p q with
-        | Some i ->
-          if i > cutoff then
-            None
-          else
-            (Some (data, i))
-        | None -> None
+    (fun q (data, _) ->
+      match compare p q with
+      | Some i ->
+        if i > cutoff then
+          None
+        else
+          (Some (data, i))
+      | None -> None
     )
 
 let suggestions path visible =
@@ -80,11 +79,11 @@ let create_suggestions path =
       let (path, data, _) = List.hd suggestions in
       let location_hint =
         match data with
-        | R.P.Term ({ loc = Some loc; _ } :: _) ->
+        | R.P.Term ({loc = Some loc; _} :: _) ->
           begin
             match Range.view loc with
-            | `End_of_file { source; _ }
-            | `Range ({ source; _ }, _) ->
+            | `End_of_file {source; _}
+            | `Range ({source; _}, _) ->
               match Range.title source with
               | Some string ->
                 [Asai.Diagnostic.loctextf "defined in %s" string]
@@ -122,26 +121,26 @@ module Builtins = struct
 end
 
 let rec expand_method_calls (base : Syn.t) : Code.t -> Syn.t * Code.t = function
-  | { value = Hash_ident x; loc } :: rest ->
-    let base = [Range.{ value = Syn.Call (base, x); loc }] in
+  | {value = Hash_ident x; loc} :: rest ->
+    let base = [Range.{value = Syn.Call (base, x); loc}] in
     expand_method_calls base rest
   | rest -> base, rest
 
 let rec expand : Code.t -> Syn.t = function
   | [] -> []
-  | { value = Hash_ident x; loc } :: rest ->
-    { value = Syn.Text x; loc } :: expand rest
-  | { value = Text x; loc } :: rest ->
-    { value = Syn.Text x; loc } :: expand rest
-  | { value = Verbatim x; loc } :: rest ->
-    { value = Syn.Verbatim x; loc } :: expand rest
-  | { value = Namespace (path, body); _ } :: rest ->
+  | {value = Hash_ident x; loc} :: rest ->
+    {value = Syn.Text x; loc} :: expand rest
+  | {value = Text x; loc} :: rest ->
+    {value = Syn.Text x; loc} :: expand rest
+  | {value = Verbatim x; loc} :: rest ->
+    {value = Syn.Verbatim x; loc} :: expand rest
+  | {value = Namespace (path, body); _} :: rest ->
     let result =
       let@ () = Sc.section path in
       expand body
     in
     result @ expand rest
-  | { value = Open path; _ } :: rest ->
+  | {value = Open path; _} :: rest ->
     let@ () = Sc.section path in
     Sc.modify_visible @@
       R.Lang.union
@@ -150,69 +149,69 @@ let rec expand : Code.t -> Syn.t = function
           R.Lang.renaming path []
         ];
     expand rest
-  | { value = Group (Squares, title); loc = loc1 } :: { value = Group (Parens, dest); _ } :: rest ->
+  | {value = Group (Squares, title); loc = loc1} :: {value = Group (Parens, dest); _} :: rest ->
     let dest = expand dest in
     let title = Option.some @@ expand title in
-    let link = Syn.Link { dest; title } in
-    { value = link; loc = loc1 } :: expand rest
-  | { value = Group (Squares, [{ value = Group (Squares, dest); _ }]); loc } :: rest ->
+    let link = Syn.Link {dest; title} in
+    {value = link; loc = loc1} :: expand rest
+  | {value = Group (Squares, [{value = Group (Squares, dest); _}]); loc} :: rest ->
     let dest = expand dest in
-    { value = Syn.Link { dest; title = None }; loc } :: expand rest
-  | { value = Group (d, xs); loc } :: rest ->
-    { value = Syn.Group (d, expand xs); loc } :: expand rest
-  | { value = Subtree (addr, nodes); loc } :: rest ->
+    {value = Syn.Link {dest; title = None}; loc} :: expand rest
+  | {value = Group (d, xs); loc} :: rest ->
+    {value = Syn.Group (d, expand xs); loc} :: expand rest
+  | {value = Subtree (addr, nodes); loc} :: rest ->
     let host = H.read () in
-    let subtree = expand_tree_inner @@ Code.{ source_path = None; iri = Option.map (Iri_scheme.user_iri ~host) addr; code = nodes } in
-    { value = Syn.Subtree (addr, subtree); loc } :: expand rest
-  | { value = Math (m, xs); loc } :: rest ->
-    { value = Syn.Math (m, expand xs); loc } :: expand rest
-  | { value = Ident path; loc } :: rest ->
+    let subtree = expand_tree_inner @@ Code.{source_path = None; iri = Option.map (Iri_scheme.user_iri ~host) addr; code = nodes} in
+    {value = Syn.Subtree (addr, subtree); loc} :: expand rest
+  | {value = Math (m, xs); loc} :: rest ->
+    {value = Syn.Math (m, expand xs); loc} :: expand rest
+  | {value = Ident path; loc} :: rest ->
     let out, rest = expand_method_calls (expand_ident loc path) rest in
     out @ expand rest
-  | { value = Xml_ident (prefix, uname); loc } :: rest ->
+  | {value = Xml_ident (prefix, uname); loc} :: rest ->
     let qname = expand_xml_ident loc (prefix, uname) in
     let attrs, rest = get_xml_attrs [] rest in
     let arg_opt, rest = get_arg_opt rest in
     let tag = Syn.Xml_tag (qname, attrs, Option.value ~default: [] arg_opt) in
-    { value = tag; loc } :: expand rest
-  | { value = Scope body; _ } :: rest ->
+    {value = tag; loc} :: expand rest
+  | {value = Scope body; _} :: rest ->
     let body =
       let@ () = Sc.section [] in
       expand body
     in
     body @ expand rest
-  | { value = Put (k, v); loc } :: rest ->
+  | {value = Put (k, v); loc} :: rest ->
     let k = expand_ident loc k in
     let v = expand v in
-    [{ value = Syn.Put (k, v, expand rest); loc }]
-  | { value = Default (k, v); loc } :: rest ->
+    [{value = Syn.Put (k, v, expand rest); loc}]
+  | {value = Default (k, v); loc} :: rest ->
     let k = expand_ident loc k in
     let v = expand v in
-    [{ value = Syn.Default (k, v, expand rest); loc }]
-  | { value = Get k; loc } :: rest ->
+    [{value = Syn.Default (k, v, expand rest); loc}]
+  | {value = Get k; loc} :: rest ->
     let k = expand_ident loc k in
-    { value = Syn.Get k; loc } :: expand rest
-  | { value = Dx_prop (rel, args); loc } :: rest ->
-    { value = Syn.Dx_prop (expand rel, List.map expand args); loc } :: expand rest
-  | { value = Dx_sequent (concl, premises); loc } :: rest ->
-    { value = Syn.Dx_sequent (expand concl, List.map expand premises); loc } :: expand rest
-  | { value = Dx_query (var, positives, negatives); loc } :: rest ->
-    { value = Syn.Dx_query (var, List.map expand positives, List.map expand negatives); loc } :: expand rest
-  | { value = Fun (xs, body); loc } :: rest ->
+    {value = Syn.Get k; loc} :: expand rest
+  | {value = Dx_prop (rel, args); loc} :: rest ->
+    {value = Syn.Dx_prop (expand rel, List.map expand args); loc} :: expand rest
+  | {value = Dx_sequent (concl, premises); loc} :: rest ->
+    {value = Syn.Dx_sequent (expand concl, List.map expand premises); loc} :: expand rest
+  | {value = Dx_query (var, positives, negatives); loc} :: rest ->
+    {value = Syn.Dx_query (var, List.map expand positives, List.map expand negatives); loc} :: expand rest
+  | {value = Fun (xs, body); loc} :: rest ->
     expand_lambda loc (xs, body) :: expand rest
-  | { value = Object { self; methods }; loc } :: rest ->
+  | {value = Object {self; methods}; loc} :: rest ->
     let self, methods =
       let@ () = Sc.section [] in
       let sym = Symbol.fresh () in
-      let var = Range.{ value = Syn.Var sym; loc } in
+      let var = Range.{value = Syn.Var sym; loc} in
       begin
         let@ self = Option.iter @~ self in
         Sc.import_singleton self @@ (R.P.Term [var], loc)
       end;
       sym, List.map expand_method methods
     in
-    { value = Syn.Object { self; methods }; loc } :: expand rest
-  | { value = Patch { obj; self; methods }; loc } :: rest ->
+    {value = Syn.Object {self; methods}; loc} :: expand rest
+  | {value = Patch {obj; self; methods}; loc} :: rest ->
     let self, super, methods =
       let@ () = Sc.section [] in
       let self_sym = Symbol.fresh () in
@@ -226,11 +225,11 @@ let rec expand : Code.t -> Syn.t = function
       end;
       self_sym, super_sym, List.map expand_method methods
     in
-    let patched = Syn.Patch { obj = expand obj; self; super; methods } in
-    { value = patched; loc } :: expand rest
-  | { value = Call (obj, method_name); loc } :: rest ->
-    { value = Syn.Call (expand obj, method_name); loc } :: expand rest
-  | { value = Import (vis, dep); loc } :: rest ->
+    let patched = Syn.Patch {obj = expand obj; self; super; methods} in
+    {value = patched; loc} :: expand rest
+  | {value = Call (obj, method_name); loc} :: rest ->
+    {value = Syn.Call (expand obj, method_name); loc} :: expand rest
+  | {value = Import (vis, dep); loc} :: rest ->
     let units = U.get () in
     let host = H.read () in
     let dep_iri = Iri_scheme.user_iri ~host dep in
@@ -247,32 +246,32 @@ let rec expand : Code.t -> Syn.t = function
         end
     end;
     expand rest
-  | { value = Dx_var name; loc } :: rest ->
-    { value = Syn.Dx_var name; loc } :: expand rest
-  | { value = Dx_const_content arg; loc } :: rest ->
-    { value = Syn.Dx_const (`Content, expand arg); loc } :: expand rest
-  | { value = Dx_const_iri arg; loc } :: rest ->
-    { value = Syn.Dx_const (`Iri, expand arg); loc } :: expand rest
-  | { value = Let (a, bs, def); loc } :: rest ->
+  | {value = Dx_var name; loc} :: rest ->
+    {value = Syn.Dx_var name; loc} :: expand rest
+  | {value = Dx_const_content arg; loc} :: rest ->
+    {value = Syn.Dx_const (`Content, expand arg); loc} :: expand rest
+  | {value = Dx_const_iri arg; loc} :: rest ->
+    {value = Syn.Dx_const (`Iri, expand arg); loc} :: expand rest
+  | {value = Let (a, bs, def); loc} :: rest ->
     let lam = expand_lambda loc (bs, def) in
     let@ () = Sc.section [] in
     Sc.import_singleton a @@ (Term [lam], loc);
     expand rest
-  | { value = Def (path, xs, body); loc } :: rest ->
+  | {value = Def (path, xs, body); loc} :: rest ->
     let lam = expand_lambda loc (xs, body) in
     Sc.include_singleton path @@ (Term [lam], loc);
     expand rest
-  | { value = Decl_xmlns (prefix, xmlns); loc } :: rest ->
+  | {value = Decl_xmlns (prefix, xmlns); loc} :: rest ->
     let path = ["xmlns"; prefix] in
-    Sc.include_singleton path @@ (Xmlns { prefix; xmlns }, loc);
+    Sc.include_singleton path @@ (Xmlns {prefix; xmlns}, loc);
     expand rest
-  | { value = Alloc path; loc } :: rest ->
+  | {value = Alloc path; loc} :: rest ->
     let symbol = Symbol.named path in
     Sc.include_singleton path @@ (Term [Range.locate_opt loc (Syn.Sym symbol)], loc);
     expand rest
-  | { value = Comment _; _ } :: rest ->
+  | {value = Comment _; _} :: rest ->
     expand rest
-  | { value = Error _; loc } :: rest ->
+  | {value = Error _; loc} :: rest ->
     Reporter.emitf ?loc Parse_error "";
     expand rest
 
@@ -288,17 +287,17 @@ and expand_lambda loc (xs, body) =
     Sc.import_singleton x @@ (Term [var], loc);
     strategy, sym
   in
-  Range.{ value = Syn.Fun (syms, expand body); loc }
+  Range.{value = Syn.Fun (syms, expand body); loc}
 
 and get_xml_attrs acc = function
-  | { value = Group (Squares, [{ value = Text key; loc = loc1 }]); _ } :: { value = Group (Braces, value); _ } :: rest ->
+  | {value = Group (Squares, [{value = Text key; loc = loc1}]); _} :: {value = Group (Braces, value); _} :: rest ->
     let qname = expand_xml_ident loc1 @@ Forester_xml_names.split_xml_qname key in
     let value = expand value in
     get_xml_attrs (acc @ [qname, value]) rest
   | rest -> acc, rest
 
 and get_arg_opt : Code.t -> _ = function
-  | { value = Group (Braces, arg); _ } :: rest ->
+  | {value = Group (Braces, arg); _} :: rest ->
     Some (expand arg), rest
   | rest -> None, rest
 
@@ -317,8 +316,8 @@ and expand_ident loc path =
           Sc.pp_path
           path
       | Some (cs, rest) ->
-        let rest = match rest with "" -> [] | _ -> [Range.{ value = Syn.Text rest; loc }] in
-        Range.{ value = Syn.TeX_cs cs; loc } :: rest
+        let rest = match rest with "" -> [] | _ -> [Range.{value = Syn.Text rest; loc}] in
+        Range.{value = Syn.TeX_cs cs; loc} :: rest
     end
   | None, _ ->
     let extra_remarks = create_suggestions path in
@@ -330,9 +329,9 @@ and expand_ident loc path =
       Sc.pp_path
       path
   | Some (Term x, _), _ ->
-    let relocate Range.{ value; _ } = Range.{ value; loc } in
+    let relocate Range.{value; _} = Range.{value; loc} in
     List.map relocate x
-  | Some (Xmlns { xmlns; prefix }, _), _ ->
+  | Some (Xmlns {xmlns; prefix}, _), _ ->
     Reporter.fatalf
       ?loc
       Resolution_error
@@ -344,11 +343,11 @@ and expand_ident loc path =
 
 and expand_xml_ident loc (prefix, uname) =
   match prefix with
-  | None -> { xmlns = None; prefix = ""; uname }
+  | None -> {xmlns = None; prefix = ""; uname}
   | Some prefix ->
     match Sc.resolve ["xmlns"; prefix] with
-    | Some (Xmlns { xmlns; prefix }, _) ->
-      { xmlns = Some xmlns; prefix = prefix; uname }
+    | Some (Xmlns {xmlns; prefix}, _) ->
+      {xmlns = Some xmlns; prefix = prefix; uname}
     | _ ->
       Reporter.fatalf
         ?loc
@@ -373,115 +372,113 @@ and expand_tree_inner (tree : Code.tree) : Syn.tree =
     | Some iri -> Unit_map.add iri exports units
   in
   U.set units;
-  Syn.{ syn; iri = tree.iri }
+  Syn.{syn; iri = tree.iri}
 
-let builtins =
-  [
-    ["p"], Syn.Prim `P;
-    ["em"], Syn.Prim `Em;
-    ["strong"], Syn.Prim `Strong;
-    ["li"], Syn.Prim `Li;
-    ["ol"], Syn.Prim `Ol;
-    ["ul"], Syn.Prim `Ul;
-    ["code"], Syn.Prim `Code;
-    ["blockquote"], Syn.Prim `Blockquote;
-    ["pre"], Syn.Prim `Pre;
-    ["figure"], Syn.Prim `Figure;
-    ["figcaption"], Syn.Prim `Figcaption;
-    ["transclude"], Syn.Transclude;
-    ["tex"], Syn.Embed_tex;
-    ["ref"], Syn.Ref;
-    ["title"], Syn.Title;
-    ["taxon"], Syn.Taxon;
-    ["date"], Syn.Date;
-    ["meta"], Syn.Meta;
-    ["author"], Syn.Attribution (Author, `Iri);
-    ["author"; "literal"], Syn.Attribution (Author, `Content);
-    ["contributor"], Syn.Attribution (Contributor, `Iri);
-    ["contributor"; "literal"], Syn.Attribution (Contributor, `Content);
-    ["parent"], Syn.Parent;
-    ["number"], Syn.Number;
-    ["tag"], Syn.Tag `Content;
-    ["query"], Syn.Results_of_query;
-    ["query"; "rel"], Syn.Query_rel `Iri;
-    ["query"; "rel"; "literal"], Syn.Query_rel `Content;
-    ["query"; "union"], Syn.Query_union;
-    ["query"; "isect"], Syn.Query_isect;
-    ["query"; "isect-fam"], Syn.Query_isect_fam;
-    ["query"; "union-fam"], Syn.Query_union_fam;
-    ["query"; "isect-fam-rel"], Syn.Query_isect_fam_rel;
-    ["query"; "union-fam-rel"], Syn.Query_union_fam_rel;
-    ["query"; "compl"], Syn.Query_compl;
-    ["query"; "tag"], Syn.Query_builtin (`Tag, `Content);
-    ["query"; "taxon"], Syn.Query_builtin (`Taxon, `Content);
-    ["query"; "author"], Syn.Query_builtin (`Author, `Iri);
-    ["query"; "author"; "literal"], Syn.Query_builtin (`Author, `Content);
-    ["query"; "incoming"], Syn.Query_polarity Incoming;
-    ["query"; "outgoing"], Syn.Query_polarity Outgoing;
-    ["query"; "edges"], Syn.Query_mode Edges;
-    ["query"; "paths"], Syn.Query_mode Paths;
-    ["rel"; "has-tag"], Syn.Text Builtin_relation.has_tag;
-    ["rel"; "has-taxon"], Syn.Text Builtin_relation.has_taxon;
-    ["rel"; "has-author"], Syn.Text Builtin_relation.has_author;
-    ["rel"; "has-direct-contributor"], Syn.Text Builtin_relation.has_direct_contributor;
-    ["rel"; "imports"], Syn.Text Builtin_relation.imports;
-    ["rel"; "transcludes"], Syn.Text Builtin_relation.transcludes;
-    ["rel"; "transcludes"; "transitive-closure"], Syn.Text Builtin_relation.transcludes_tc;
-    ["rel"; "transcludes"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transcludes_rtc;
-    ["rel"; "links-to"], Syn.Text Builtin_relation.links_to;
-    ["rel"; "is-reference"], Syn.Text Builtin_relation.is_reference;
-    ["rel"; "is-person"], Syn.Text Builtin_relation.is_person;
-    ["rel"; "is-node"], Syn.Text Builtin_relation.is_node;
-    ["rel"; "in-bundle-closure"], Syn.Text Builtin_relation.in_bundle_closure;
-    ["rel"; "in-host"], Syn.Text Builtin_relation.in_host;
-    ["execute"], Syn.Dx_execute;
-    ["route-asset"], Syn.Route_asset;
-    ["publish-query"], Syn.Publish_results_of_query
-  ]
+let builtins = [
+  ["p"], Syn.Prim `P;
+  ["em"], Syn.Prim `Em;
+  ["strong"], Syn.Prim `Strong;
+  ["li"], Syn.Prim `Li;
+  ["ol"], Syn.Prim `Ol;
+  ["ul"], Syn.Prim `Ul;
+  ["code"], Syn.Prim `Code;
+  ["blockquote"], Syn.Prim `Blockquote;
+  ["pre"], Syn.Prim `Pre;
+  ["figure"], Syn.Prim `Figure;
+  ["figcaption"], Syn.Prim `Figcaption;
+  ["transclude"], Syn.Transclude;
+  ["tex"], Syn.Embed_tex;
+  ["ref"], Syn.Ref;
+  ["title"], Syn.Title;
+  ["taxon"], Syn.Taxon;
+  ["date"], Syn.Date;
+  ["meta"], Syn.Meta;
+  ["author"], Syn.Attribution (Author, `Iri);
+  ["author"; "literal"], Syn.Attribution (Author, `Content);
+  ["contributor"], Syn.Attribution (Contributor, `Iri);
+  ["contributor"; "literal"], Syn.Attribution (Contributor, `Content);
+  ["parent"], Syn.Parent;
+  ["number"], Syn.Number;
+  ["tag"], Syn.Tag `Content;
+  ["query"], Syn.Results_of_query;
+  ["query"; "rel"], Syn.Query_rel `Iri;
+  ["query"; "rel"; "literal"], Syn.Query_rel `Content;
+  ["query"; "union"], Syn.Query_union;
+  ["query"; "isect"], Syn.Query_isect;
+  ["query"; "isect-fam"], Syn.Query_isect_fam;
+  ["query"; "union-fam"], Syn.Query_union_fam;
+  ["query"; "isect-fam-rel"], Syn.Query_isect_fam_rel;
+  ["query"; "union-fam-rel"], Syn.Query_union_fam_rel;
+  ["query"; "compl"], Syn.Query_compl;
+  ["query"; "tag"], Syn.Query_builtin (`Tag, `Content);
+  ["query"; "taxon"], Syn.Query_builtin (`Taxon, `Content);
+  ["query"; "author"], Syn.Query_builtin (`Author, `Iri);
+  ["query"; "author"; "literal"], Syn.Query_builtin (`Author, `Content);
+  ["query"; "incoming"], Syn.Query_polarity Incoming;
+  ["query"; "outgoing"], Syn.Query_polarity Outgoing;
+  ["query"; "edges"], Syn.Query_mode Edges;
+  ["query"; "paths"], Syn.Query_mode Paths;
+  ["rel"; "has-tag"], Syn.Text Builtin_relation.has_tag;
+  ["rel"; "has-taxon"], Syn.Text Builtin_relation.has_taxon;
+  ["rel"; "has-author"], Syn.Text Builtin_relation.has_author;
+  ["rel"; "has-direct-contributor"], Syn.Text Builtin_relation.has_direct_contributor;
+  ["rel"; "imports"], Syn.Text Builtin_relation.imports;
+  ["rel"; "transcludes"], Syn.Text Builtin_relation.transcludes;
+  ["rel"; "transcludes"; "transitive-closure"], Syn.Text Builtin_relation.transcludes_tc;
+  ["rel"; "transcludes"; "reflexive-transitive-closure"], Syn.Text Builtin_relation.transcludes_rtc;
+  ["rel"; "links-to"], Syn.Text Builtin_relation.links_to;
+  ["rel"; "is-reference"], Syn.Text Builtin_relation.is_reference;
+  ["rel"; "is-person"], Syn.Text Builtin_relation.is_person;
+  ["rel"; "is-node"], Syn.Text Builtin_relation.is_node;
+  ["rel"; "in-bundle-closure"], Syn.Text Builtin_relation.in_bundle_closure;
+  ["rel"; "in-host"], Syn.Text Builtin_relation.in_host;
+  ["execute"], Syn.Dx_execute;
+  ["route-asset"], Syn.Route_asset;
+  ["publish-query"], Syn.Publish_results_of_query
+]
 
 let expand_tree
-    : ?quit_on_error: bool ->
-    host: string ->
-    Env.t ->
-    Code.tree ->
-    Reporter.diagnostic list
-    * exports Unit_map.t
-    * Syn.tree
-  = fun
-      ?(quit_on_error = true)
-      ~host
-      units
-      tree
-    ->
-    let diagnostics = ref [] in
-    let push d = diagnostics := d :: !diagnostics in
-    let units, syn =
-      Reporter.run
-        ~emit: push
-        ~fatal: (
-          fun d ->
-            push d;
-            if quit_on_error then
-              begin
-                Reporter.Tty.display d;
-                exit 1
-              end
-            else
-              Unit_map.empty,
-              Syn.{ syn = []; iri = tree.iri }
-        ) @@
-        fun () ->
-          let@ () = U.run ~init: units in
-          let@ () = H.run ~env: host in
-          let@ () = Sc.easy_run in
-          Builtins.register_builtins builtins;
-          Builtins.Transclude.alloc_expanded ();
-          Builtins.Transclude.alloc_show_heading ();
-          Builtins.Transclude.alloc_toc ();
-          Builtins.Transclude.alloc_numbered ();
-          Builtins.Transclude.alloc_show_metadata ();
-          let tree = expand_tree_inner tree in
-          let units = U.get () in
-          units, tree
-    in
-    !diagnostics, units, syn
+  : ?quit_on_error: bool ->
+  host: string ->
+  Env.t ->
+  Code.tree ->
+  Reporter.diagnostic list
+  * exports Unit_map.t
+  * Syn.tree
+= fun
+    ?(quit_on_error = true)
+    ~host
+    units
+    tree
+  ->
+  let diagnostics = ref [] in
+  let push d = diagnostics := d :: !diagnostics in
+  let units, syn =
+    Reporter.run
+      ~emit: push
+      ~fatal: (fun d ->
+        push d;
+        if quit_on_error then
+          begin
+            Reporter.Tty.display d;
+            exit 1
+          end
+        else
+          Unit_map.empty,
+          Syn.{syn = []; iri = tree.iri}
+      )
+      @@ fun () ->
+      let@ () = U.run ~init: units in
+      let@ () = H.run ~env: host in
+      let@ () = Sc.easy_run in
+      Builtins.register_builtins builtins;
+      Builtins.Transclude.alloc_expanded ();
+      Builtins.Transclude.alloc_show_heading ();
+      Builtins.Transclude.alloc_toc ();
+      Builtins.Transclude.alloc_numbered ();
+      Builtins.Transclude.alloc_show_metadata ();
+      let tree = expand_tree_inner tree in
+      let units = U.get () in
+      units, tree
+  in
+  !diagnostics, units, syn

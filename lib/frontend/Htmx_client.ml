@@ -42,13 +42,13 @@ let route forest addr =
     Format.asprintf "%s" (Iri.path_string addr)
 
 let render_xml_qname = function
-  | { prefix = ""; uname; _ } -> uname
-  | { prefix; uname; _ } -> Format.sprintf "%s:%s" prefix uname
+  | {prefix = ""; uname; _} -> uname
+  | {prefix; uname; _} -> Format.sprintf "%s:%s" prefix uname
 
 let render_xml_attr
-    : T.content T.xml_attr -> _
-  = fun T.{ key; value = _ } ->
-    P.string_attr (render_xml_qname key) "todo"
+  : T.content T.xml_attr -> _
+= fun T.{key; value = _} ->
+  P.string_attr (render_xml_qname key) "todo"
 (* "%a" render_content value *)
 
 let tag_of_prim_node : Prim.t -> P.attr list -> P.node list -> P.node = function
@@ -68,12 +68,12 @@ let render_prim_node p =
   tag_of_prim_node p []
 
 let render_img = function
-  | T.Inline { format; base64 } ->
+  | T.Inline {format; base64} ->
     H.img [H.src "data:image/%s;base64,%s" format base64]
   | T.Remote url ->
     H.img [H.src "%s" url]
 
-let render_xmlns_prefix Xmlns.{ prefix; xmlns } =
+let render_xmlns_prefix Xmlns.{prefix; xmlns} =
   P.string_attr ("xmlns:" ^ prefix) "%s" xmlns
 
 let rec render_article (forest : State.t) (article : T.content T.article) : P.node =
@@ -159,94 +159,94 @@ and render_content (forest : State.t) (Content content: T.content) : P.node list
   List.concat_map (render_content_node forest) content
 
 and render_content_node
-    : State.t -> 'a T.content_node -> P.node list
-  = fun forest node ->
-    let open P in
-    (* let open H in *)
-    match node with
-    | Text str ->
-      [P.txt "%s" str]
-    | CDATA str ->
-      [P.txt ~raw: true "<![CDATA[%s]]>" str]
-    | Xml_elt elt ->
-      let prefixes_to_add, (name, attrs, content) =
-        let@ () = Xmlns.within_scope in
-        render_xml_qname elt.name,
-        List.map render_xml_attr elt.attrs,
-        render_content forest elt.content
-      in
-      let attrs =
-        let xmlns_attrs = List.map render_xmlns_prefix prefixes_to_add in
-        attrs @ xmlns_attrs
-      in
-      [P.std_tag name attrs content]
-    | Prim (p, content) ->
-      [render_prim_node p @@ render_content forest content]
-    | Transclude transclusion ->
-      render_transclusion forest transclusion
-    | Contextual_number addr ->
-      let custom_number =
-        let@ article = Option.bind @@ Forest.get_article addr forest.resources in
-        article.frontmatter.number
-      in
-      let num =
-        match custom_number with
-        | None -> Format.asprintf "[%a]" Iri.pp addr
-        | Some num -> num
-      in
-      [P.txt "%s" num]
-    | Link link ->
-      render_link forest link
-    | Results_of_query q ->
-      let module Graphs = (val forest.graphs) in
-      let module Engine = Legacy_query_engine.Make(Graphs) in
-      Engine.run_query q
-      |> get_sorted_articles forest
-      |> List.map (Fun.compose (render_section forest) T.article_to_section)
-    | Section section ->
-      [render_section forest section]
-    | KaTeX (mode, content) ->
-      let l, r =
-        match mode with
-        | Display -> {|\[|}, {|\]|}
-        | Inline -> {|\(|}, {|\)|}
-      in
-      let body = Plain_text_client.string_of_content ~forest: forest.resources ~router: Iri.to_uri content in
-      [P.txt ~raw: true "%s%s%s" l body r]
-    | TeX_cs cs ->
-      [P.txt ~raw: true "\\%s" (TeX_cs.show cs)]
-    | Img img ->
-      [render_img img]
-    | T.Results_of_datalog_query q ->
-      (* We could just evaluate the query immediately. This is just experimental*)
-      [
-        H.div
-          []
-          [
-            H.div
-              [
-                Hx.get "/query";
-                Hx.trigger "load";
-                (* Hx.headers {|{"Content-Type": "application/json"}|}; *)
-                (* Hx.ext "json-enc"; *)
-                Hx.vals
-                  "%s"
-                  Repr.(
-                    to_json_string
-                      ~minify: true
-                      (* Datalog_expr.(query_t Repr.string (T.vertex_t T.content_t)) *)
-                      query_t
-                      { query = q }
-                  )
-              ]
-              []
-          ]
-      ]
-    | T.Datalog_script _ -> []
-    | T.Artefact _
-    | T.Iri _
-    | T.Route_of_iri _ ->
-      [P.txt "todo"]
+  : State.t -> 'a T.content_node -> P.node list
+= fun forest node ->
+  let open P in
+  (* let open H in *)
+  match node with
+  | Text str ->
+    [P.txt "%s" str]
+  | CDATA str ->
+    [P.txt ~raw: true "<![CDATA[%s]]>" str]
+  | Xml_elt elt ->
+    let prefixes_to_add, (name, attrs, content) =
+      let@ () = Xmlns.within_scope in
+      render_xml_qname elt.name,
+      List.map render_xml_attr elt.attrs,
+      render_content forest elt.content
+    in
+    let attrs =
+      let xmlns_attrs = List.map render_xmlns_prefix prefixes_to_add in
+      attrs @ xmlns_attrs
+    in
+    [P.std_tag name attrs content]
+  | Prim (p, content) ->
+    [render_prim_node p @@ render_content forest content]
+  | Transclude transclusion ->
+    render_transclusion forest transclusion
+  | Contextual_number addr ->
+    let custom_number =
+      let@ article = Option.bind @@ Forest.get_article addr forest.resources in
+      article.frontmatter.number
+    in
+    let num =
+      match custom_number with
+      | None -> Format.asprintf "[%a]" Iri.pp addr
+      | Some num -> num
+    in
+    [P.txt "%s" num]
+  | Link link ->
+    render_link forest link
+  | Results_of_query q ->
+    let module Graphs = (val forest.graphs) in
+    let module Engine = Legacy_query_engine.Make(Graphs) in
+    Engine.run_query q
+    |> get_sorted_articles forest
+    |> List.map (Fun.compose (render_section forest) T.article_to_section)
+  | Section section ->
+    [render_section forest section]
+  | KaTeX (mode, content) ->
+    let l, r =
+      match mode with
+      | Display -> {|\[|}, {|\]|}
+      | Inline -> {|\(|}, {|\)|}
+    in
+    let body = Plain_text_client.string_of_content ~forest: forest.resources ~router: Iri.to_uri content in
+    [P.txt ~raw: true "%s%s%s" l body r]
+  | TeX_cs cs ->
+    [P.txt ~raw: true "\\%s" (TeX_cs.show cs)]
+  | Img img ->
+    [render_img img]
+  | T.Results_of_datalog_query q ->
+    (* We could just evaluate the query immediately. This is just experimental*)
+    [
+      H.div
+        []
+        [
+          H.div
+            [
+              Hx.get "/query";
+              Hx.trigger "load";
+              (* Hx.headers {|{"Content-Type": "application/json"}|}; *)
+              (* Hx.ext "json-enc"; *)
+              Hx.vals
+                "%s"
+                Repr.(
+                  to_json_string
+                    ~minify: true
+                    (* Datalog_expr.(query_t Repr.string (T.vertex_t T.content_t)) *)
+                    query_t
+                    {query = q}
+                )
+            ]
+            []
+        ]
+    ]
+  | T.Datalog_script _ -> []
+  | T.Artefact _
+  | T.Iri _
+  | T.Route_of_iri _ ->
+    [P.txt "todo"]
 
 and _render_resource resource =
   render_content resource.contents

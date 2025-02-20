@@ -7,7 +7,7 @@
 module P = struct
   type data =
     | Term of Syn.t
-    | Xmlns of { xmlns: string; prefix: string }
+    | Xmlns of {xmlns: string; prefix: string}
   [@@deriving show]
 
   type tag = Asai.Range.t option

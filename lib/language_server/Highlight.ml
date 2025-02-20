@@ -13,8 +13,8 @@ module T = Types
 
 let compute (params : L.DocumentHighlightParams.t) =
   match params with
-  | { textDocument; _ } ->
-    let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  | {textDocument; _} ->
+    let Lsp_state.{forest; _} = Lsp_state.get () in
     match Forest.find_opt
       forest.parsed
       (Iri_scheme.uri_to_iri ~host: forest.config.host textDocument.uri) with
@@ -23,9 +23,8 @@ let compute (params : L.DocumentHighlightParams.t) =
       let highlights =
         tree.code
         |> List.filter_map
-          (
-            fun
-                Range.{ loc; value }
+            (fun
+                Range.{loc; value}
               ->
               let range = Lsp_shims.Loc.lsp_range_of_range loc in
               let kind =
@@ -64,6 +63,6 @@ let compute (params : L.DocumentHighlightParams.t) =
                   None
               in
               Some (L.DocumentHighlight.create ~range ?kind ())
-          )
+            )
       in
       Some highlights

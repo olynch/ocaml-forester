@@ -100,7 +100,7 @@ let index_tree_str =
 |}
 
 let try_create_dir ~cwd dname =
-  let ( / ) = EP.( / ) in
+  let (/) = EP.(/) in
   if Eio.Path.is_directory (cwd / dname) then
     Reporter.emitf
       Initialization_warning
@@ -114,7 +114,7 @@ let try_create_dir ~cwd dname =
         Forester_core.Reporter.emitf Initialization_warning "Failed to create directory `%s`: %a" dname Eio.Exn.pp exn
 
 let try_create_file ~cwd ?(content = "") fname =
-  let ( / ) = EP.( / ) in
+  let (/) = EP.(/) in
   if Eio.Path.is_file (cwd / fname) then
     Forester_core.Reporter.emitf Initialization_warning "`%s` already exists" fname
   else
@@ -190,11 +190,10 @@ let build_cmd ~env =
     Arg.value @@ Arg.flag @@ Arg.info ["no-theme"] ~doc
   in
   let doc = "Build the forest" in
-  let man =
-    [
-      `S Manpage.s_description;
-      `P "The $(tname) command builds a hypertext $(b,forest) from trees stored in each $(i,INPUT_DIR) or any of its subdirectories; tree files are expected to be of the form $(i,addr.tree) where $(i,addr) is the address of the tree. Note that the physical location of a tree is not taken into account, and two trees with the same address are not permitted.";
-    ]
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command builds a hypertext $(b,forest) from trees stored in each $(i,INPUT_DIR) or any of its subdirectories; tree files are expected to be of the form $(i,addr.tree) where $(i,addr) is the address of the tree. Note that the physical location of a tree is not taken into account, and two trees with the same address are not permitted.";
+  ]
   in
   let info = Cmd.info "build" ~version ~doc ~man in
   Cmd.v
@@ -213,9 +212,8 @@ let export_cmd ~env =
     Arg.value @@ Arg.flag @@ Arg.info ["dev"] ~doc
   in
   let doc = "Export the forest" in
-  let man =
-    [
-    ]
+  let man = [
+  ]
   in
   let info = Cmd.info "export" ~version ~doc ~man in
   Cmd.v
@@ -292,11 +290,10 @@ let init_cmd ~env =
     Arg.value @@ Arg.opt (Arg.some Arg.string) None @@ Arg.info ["dir"] ~docv: "DIR" ~doc
   in
   let doc = "Initialize a new forest" in
-  let man =
-    [
-      `S Manpage.s_description;
-      `P "The $(tname) command initializes a $(b,forest) in the current directory. This involves initialising a git repository, setting up a git submodule for the theme, creating an assets and trees directory, as well as a config file."
-    ]
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command initializes a $(b,forest) in the current directory. This involves initialising a git repository, setting up a git submodule for the theme, creating an assets and trees directory, as well as a config file."
+  ]
   in
   let info = Cmd.info "init" ~version ~doc ~man in
   Cmd.v info Term.(const (init ~env) $ arg_dir)
@@ -308,11 +305,10 @@ let lsp ~env _ config =
     ~config
 
 let lsp_cmd ~env =
-  let man =
-    [
-      `S Manpage.s_description;
-      `P "The $(tname) command starts the forester language server.";
-    ]
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command starts the forester language server.";
+  ]
   in
   let doc = "Start the LSP" in
   let info = Cmd.info "lsp" ~version ~doc ~man in
@@ -330,11 +326,10 @@ let render ~env _ target addr config =
 
 let render_cmd ~env =
   let open Cmdliner in
-  let man =
-    [
-      `S Manpage.s_description;
-      `P "The $(tname) renders a tree in the specified format.";
-    ]
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) renders a tree in the specified format.";
+  ]
   in
   let arg_addr =
     let doc = "the tree to render" in
@@ -379,13 +374,12 @@ let render_cmd ~env =
 
 let cmd ~env =
   let doc = "a tool for tending mathematical forests" in
-  let man =
-    [
-      `S Manpage.s_bugs;
-      `P "Email bug reports to <~jonsterling/forester-discuss@lists.sr.ht>.";
-      `S Manpage.s_authors;
-      `P "Jonathan Sterling"
-    ]
+  let man = [
+    `S Manpage.s_bugs;
+    `P "Email bug reports to <~jonsterling/forester-discuss@lists.sr.ht>.";
+    `S Manpage.s_authors;
+    `P "Jonathan Sterling"
+  ]
   in
   let info = Cmd.info "forester" ~version ~doc ~man in
   Cmd.group

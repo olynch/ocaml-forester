@@ -10,7 +10,7 @@ open Forester_compiler
 
 let parse lexbuf filename =
   match Toml.Parser.parse lexbuf filename with
-  | `Error (desc, { source; _ }) ->
+  | `Error (desc, {source; _}) ->
     let@ () = Reporter.tracef "when parsing configuration file" in
     let loc = Asai.Range.of_lexbuf ~source: (`File source) lexbuf in
     Reporter.fatalf ~loc Configuration_error "%s" desc
@@ -55,7 +55,7 @@ let parse lexbuf filename =
       Option.value ~default: Config.default.prefixes @@
         get tbl (forest |-- key "prefixes" |-- array |-- strings)
     in
-    Config.{ host; assets; trees; foreign; theme; home; prefixes }
+    Config.{host; assets; trees; foreign; theme; home; prefixes}
 
 let parse_forest_config_string str =
   let lexbuf = Lexing.from_string str in

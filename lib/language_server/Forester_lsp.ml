@@ -65,8 +65,8 @@ let server_capabilities =
   let definitionProvider = `DefinitionOptions (L.DefinitionOptions.create ()) in
   let completionProvider =
     L.CompletionOptions.create
-      ~triggerCharacters: ["\\"; "{"; "("; ]
-      ~allCommitCharacters: ["}"; ")"; ]
+      ~triggerCharacters: ["\\"; "{"; "(";]
+      ~allCommitCharacters: ["}"; ")";]
       ()
   in
   let documentLinkProvider =
@@ -107,8 +107,8 @@ let server_capabilities =
 let supports_utf8_encoding (init_params : L.InitializeParams.t) =
   let position_encodings =
     Option.value ~default: [] @@
-    Option.bind init_params.capabilities.general @@
-    fun gcap -> gcap.positionEncodings
+    Option.bind init_params.capabilities.general @@ fun gcap ->
+    gcap.positionEncodings
   in
   List.mem L.PositionEncodingKind.UTF8 position_encodings
 
@@ -183,9 +183,9 @@ let start ~env ~(config : Config.t) =
   let lsp_io = LspEio.init env in
   let forest = State_machine.batch_run ~env ~config ~dev: true in
   Server.run
-    ~init: { forest; lsp_io; should_shutdown = false; } @@
-    fun () ->
-      begin
-        initialize ();
-        event_loop ()
-      end
+    ~init: {forest; lsp_io; should_shutdown = false;}
+    @@ fun () ->
+    begin
+      initialize ();
+      event_loop ()
+    end

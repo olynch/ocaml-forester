@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *)
 
-type xml_qname = { prefix: string; uname: string; xmlns: string option }
+type xml_qname = {prefix: string; uname: string; xmlns: string option}
 [@@deriving show, repr]
 
 let split_xml_qname str =

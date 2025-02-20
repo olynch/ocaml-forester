@@ -34,11 +34,11 @@ let diagnostics (t : t) = t.diagnostics
 let units (t : t) = t.units
 
 let with_config
-    : Config.t -> t -> t
-  = fun config forest ->
-    { forest with config }
+  : Config.t -> t -> t
+= fun config forest ->
+  {forest with config}
 
 let with_units
-    : Expand.Env.t -> t -> t
-  = fun units forest ->
-    { forest with units }
+  : Expand.Env.t -> t -> t
+= fun units forest ->
+  {forest with units}

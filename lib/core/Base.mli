@@ -12,9 +12,9 @@ type iri = Iri.t
 val iri_t : Iri.t Repr.t
 val pp_iri : Format.formatter -> Iri.t -> unit
 
-module Iri_set: Set.S with type elt = iri
-module Iri_map: Map.S with type key = iri
-module Iri_tbl: sig
+module Iri_set : Set.S with type elt = iri
+module Iri_map : Map.S with type key = iri
+module Iri_tbl : sig
   type 'a t
   type key = iri
 

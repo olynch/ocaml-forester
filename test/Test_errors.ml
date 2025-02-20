@@ -14,7 +14,7 @@ open Prelude
 
 let parse_string str =
   let lexbuf = Lexing.from_string str in
-  let res = Parse.parse ~source: (`String { title = None; content = str }) lexbuf in
+  let res = Parse.parse ~source: (`String {title = None; content = str}) lexbuf in
   Result.map strip_loc res
 
 let test_parse_error_explanation src expect =
@@ -23,14 +23,14 @@ let test_parse_error_explanation src expect =
     (
       parse_string {||}
       |> Result.map_error
-        (fun d -> Asai.Diagnostic.string_of_text d.explanation.value)
+          (fun d -> Asai.Diagnostic.string_of_text d.explanation.value)
     )
     (Result.Error "")
 
 let () =
   let@ env = Eio_main.run in
   let@ () = Reporter.easy_run in
-  let config = { Config.default with trees = ["errors"] } in
+  let config = {Config.default with trees = ["errors"]} in
   let tree_dirs = Eio_util.paths_of_dirs ~env config.trees in
   let mk_iri addr = Iri_scheme.user_iri ~host: config.host addr in
   let _, forest, _ =
@@ -42,13 +42,12 @@ let () =
     documents
     |> Hashtbl.to_seq_keys
     |> Seq.find_map
-      (
-        fun uri ->
+        (fun uri ->
           if String.ends_with
             ~suffix: "parse_error.tree"
             (Lsp.Uri.to_string uri) then Some uri
           else None
-      )
+        )
     |> Option.get
   in
   let test () =
@@ -58,9 +57,8 @@ let () =
       (
         Hashtbl.find documents parse_error_uri
         |> Parse.parse_document
-        |> Result.get_error
-        |> fun d ->
-          Asai.Diagnostic.string_of_text d.explanation.value
+        |> Result.get_error |> fun d ->
+        Asai.Diagnostic.string_of_text d.explanation.value
       )
   in
   let open Alcotest in

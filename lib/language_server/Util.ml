@@ -10,13 +10,13 @@ module L = Lsp.Types
 (* Reporting diagnostics requires a document URI to publish *)
 let guess_uri (d : Reporter.diagnostic) =
   match d with
-  | { explanation; _ } ->
+  | {explanation; _} ->
     match explanation.loc with
     | None -> None
     | Some loc ->
       match Range.view loc with
-      | `End_of_file { source; _ }
-      | `Range ({ source; _ }, _) ->
+      | `End_of_file {source; _}
+      | `Range ({source; _}, _) ->
         match source with
         | `String _ -> None
         | `File path ->

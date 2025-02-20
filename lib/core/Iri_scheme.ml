@@ -45,32 +45,32 @@ let last_segment str =
 (* |> Filename.chop_extension *)
 
 let name
-    : Iri.t -> string
-  = fun iri ->
-    iri
-    |> Iri.path_string
-    |> last_segment
+  : Iri.t -> string
+= fun iri ->
+  iri
+  |> Iri.path_string
+  |> last_segment
 
 let split_addr
-    : Iri.t -> string * int option
-  = fun iri ->
-    let name = last_segment @@ Iri.path_string iri in
-    (* primitively check for address of form YYYY-MM-DD *)
-    let date_regex = Str.regexp {|^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$|} in
-    if Str.string_match date_regex name 0 then
-      (name, None)
-    else
-      match String.rindex_opt name '-' with
-      | Some i ->
-        let prefix = String.sub name 0 i
-        and suffix = String.sub name (i + 1) (String.length name - i - 1)
-        in
-        begin
-          match BaseN.Base36.int_of_string suffix with
-          | Some key -> prefix, Some key
-          | None -> name, None
-        end
-      | _ -> name, None
+  : Iri.t -> string * int option
+= fun iri ->
+  let name = last_segment @@ Iri.path_string iri in
+  (* primitively check for address of form YYYY-MM-DD *)
+  let date_regex = Str.regexp {|^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$|} in
+  if Str.string_match date_regex name 0 then
+    (name, None)
+  else
+    match String.rindex_opt name '-' with
+    | Some i ->
+      let prefix = String.sub name 0 i
+      and suffix = String.sub name (i + 1) (String.length name - i - 1)
+      in
+      begin
+        match BaseN.Base36.int_of_string suffix with
+        | Some key -> prefix, Some key
+        | None -> name, None
+      end
+    | _ -> name, None
 
 let path_to_iri ~host str =
   str
@@ -78,17 +78,17 @@ let path_to_iri ~host str =
   |> user_iri ~host
 
 let uri_to_iri
-    : host: string -> Lsp.Uri.t -> Iri.t
-  = fun ~host uri ->
-    let iri =
-      uri
-      |> Lsp.Uri.to_path
-      |> Filename.chop_extension
-      |> last_segment
-      |> user_iri ~host
-    in
-    assert ((Filename.extension @@ Iri.path_string iri) = "");
-    iri
+  : host: string -> Lsp.Uri.t -> Iri.t
+= fun ~host uri ->
+  let iri =
+    uri
+    |> Lsp.Uri.to_path
+    |> Filename.chop_extension
+    |> last_segment
+    |> user_iri ~host
+  in
+  assert ((Filename.extension @@ Iri.path_string iri) = "");
+  iri
 
 let path_to_iri ~host str =
   str

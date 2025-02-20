@@ -38,25 +38,21 @@ let map_term f = function
   | Const c -> Const (f c)
   | Var x -> Var x
 
-let map_prop f g prop =
-  { rel = f prop.rel; args = List.map (map_term g) prop.args }
+let map_prop f g prop = {rel = f prop.rel; args = List.map (map_term g) prop.args}
 
 let map_premises f g = List.map (map_prop f g)
 
-let map_sequent f g sequent =
-  {
-    conclusion = map_prop f g sequent.conclusion;
-    premises = map_premises f g sequent.premises
-  }
+let map_sequent f g sequent = {
+  conclusion = map_prop f g sequent.conclusion;
+  premises = map_premises f g sequent.premises
+}
 
 let map_script f g = List.map (map_sequent f g)
 
-let map_query f g query =
-  {
-    query with
-    positives = map_premises f g query.positives;
-    negatives = map_premises f g query.negatives
-  }
+let map_query f g query = {query with
+  positives = map_premises f g query.positives;
+  negatives = map_premises f g query.negatives
+}
 
 let iter_script f script =
   ignore @@ map_script Fun.id f script
@@ -74,6 +70,6 @@ include Constructors
 module Notation = struct
   include Constructors
 
-  let ( << ) conclusion premises = { conclusion; premises }
-  let ( @* ) rel args = { rel; args }
+  let (<<) conclusion premises = {conclusion; premises}
+  let (@*) rel args = {rel; args}
 end

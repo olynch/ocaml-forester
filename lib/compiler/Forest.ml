@@ -25,10 +25,10 @@ module Dx = Datalog_expr
 type env = (module Forest_graphs.S)
 
 let legacy_query_engine
-    : env -> (module Legacy_query_engine.S)
-  = fun env ->
-    let module Graphs = (val env) in
-    (module Legacy_query_engine.Make(Graphs))
+  : env -> (module Legacy_query_engine.S)
+= fun env ->
+  let module Graphs = (val env) in
+  (module Legacy_query_engine.Make(Graphs))
 
 let execute_datalog_script graphs script =
   let module Graphs = (val graphs : Forest_graphs.S) in
@@ -38,20 +38,20 @@ let execute_datalog_script graphs script =
 (* let () = execute_datalog_script Builtin_relation.axioms *)
 
 let run_datalog_query
-    : env -> (string, Vertex.t) Dx.query -> Vertex_set.t
-  = fun graphs q ->
-    let () = execute_datalog_script graphs Builtin_relation.axioms in
-    let module Graphs = (val graphs) in
-    Datalog_eval.run_query Graphs.dl_db q
+  : env -> (string, Vertex.t) Dx.query -> Vertex_set.t
+= fun graphs q ->
+  let () = execute_datalog_script graphs Builtin_relation.axioms in
+  let module Graphs = (val graphs) in
+  Datalog_eval.run_query Graphs.dl_db q
 
 let add_edge graphs rel ~source ~target =
   let module Graphs = (val graphs : Forest_graphs.S) in
   let premises = [] in
   let conclusion =
     let args = [Dx.Const source; Dx.Const target] in
-    Dx.{ rel; args }
+    Dx.{rel; args}
   in
-  execute_datalog_script graphs [{ conclusion; premises }];
+  execute_datalog_script graphs [{conclusion; premises}];
   Graphs.add_edge rel ~source ~target
 
 let rec analyse_content_node graphs (scope : Iri.t) (node : 'a T.content_node) : unit =
@@ -153,31 +153,31 @@ let analyse_resource graphs = function
   | T.Asset _ -> ()
 
 let get_article
-    : iri -> _ t -> T.content T.article option
-  = fun iri forest ->
-    match find_opt forest iri with
-    | None -> None
-    | Some (T.Asset _) ->
-      Logs.debug (fun m -> m "%a is an asset, not an article" pp_iri iri);
-      None
-    | Some (T.Article article) -> Some article
+  : iri -> _ t -> T.content T.article option
+= fun iri forest ->
+  match find_opt forest iri with
+  | None -> None
+  | Some (T.Asset _) ->
+    Logs.debug (fun m -> m "%a is an asset, not an article" pp_iri iri);
+    None
+  | Some (T.Article article) -> Some article
 
 let plant_resource
-    : resource -> (module Forest_graphs.S) -> resource t -> unit
-  = fun resource graphs resources ->
-    let module Graphs = (val graphs) in
-    analyse_resource graphs resource;
-    let@ iri = Option.iter @~ iri_for_resource resource in
-    let iri = Iri.normalize iri in
-    Graphs.register_iri iri;
-    match Iri_tbl.mem resources iri with
-    | false ->
-      (* Graphs.register_iri iri; *)
-      add resources iri resource
-    | true ->
-      ()
+  : resource -> (module Forest_graphs.S) -> resource t -> unit
+= fun resource graphs resources ->
+  let module Graphs = (val graphs) in
+  analyse_resource graphs resource;
+  let@ iri = Option.iter @~ iri_for_resource resource in
+  let iri = Iri.normalize iri in
+  Graphs.register_iri iri;
+  match Iri_tbl.mem resources iri with
+  | false ->
+    (* Graphs.register_iri iri; *)
+    add resources iri resource
+  | true ->
+    ()
 
-let rec get_expanded_title ?scope ?(flags = T.{ empty_when_untitled = false }) (frontmatter : _ T.frontmatter) forest =
+let rec get_expanded_title ?scope ?(flags = T.{empty_when_untitled = false}) (frontmatter : _ T.frontmatter) forest =
   let short_title =
     match frontmatter.title with
     | Some content -> content
@@ -194,7 +194,7 @@ let rec get_expanded_title ?scope ?(flags = T.{ empty_when_untitled = false }) (
     | Some parent_iri when not (scope = frontmatter.designated_parent) ->
       let@ parent = Option.map @~ get_article parent_iri forest in
       let parent_title = get_expanded_title parent.frontmatter forest in
-      let parent_link = T.Link { href = parent_iri; content = parent_title } in
+      let parent_link = T.Link {href = parent_iri; content = parent_title} in
       let chevron = T.Text " › " in
       T.map_content (fun xs -> parent_link :: chevron :: xs) short_title
     | _ -> None

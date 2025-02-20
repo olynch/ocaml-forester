@@ -30,7 +30,7 @@ let paths_of_dirs ~env =
 let paths_of_files ~env =
   List.map (path_of_file ~env)
 
-module NullSink: Flow.Pi.SINK with type t = unit = struct
+module NullSink : Flow.Pi.SINK with type t = unit = struct
   type t = unit
   let single_write _ _ = 0
   let copy _ ~src: _ = ()
@@ -51,7 +51,7 @@ let ensure_remove_file path =
     | Eio.Exn.Io (Eio.Fs.E (Eio.Fs.Not_found _), _) -> ()
 
 let with_open_tmp_dir ~env kont =
-  let dir_name = string_of_int @@ Oo.id ( object end) in
+  let dir_name = string_of_int @@ Oo.id (object end) in
   let cwd = Eio.Stdenv.cwd env in
   let tmp = "_tmp" in
   let tmp_path = Eio.Path.(cwd / tmp / dir_name) in

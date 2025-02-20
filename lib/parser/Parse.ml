@@ -44,12 +44,12 @@ let _get_parse_error env =
       | Not_found -> Diagnostic.loctext ~loc "invalid syntax (no specific message for this eror)"
 
 let _get_range
-    : I.element option -> (position * position) option
-  = fun el ->
-    match el with
-    | Some (I.Element (_, _, start_pos, end_pos)) ->
-      Some (start_pos, end_pos)
-    | None -> None
+  : I.element option -> (position * position) option
+= fun el ->
+  match el with
+  | Some (I.Element (_, _, start_pos, end_pos)) ->
+    Some (start_pos, end_pos)
+  | None -> None
 
 let closed_by c o =
   match (o, c) with
@@ -78,101 +78,100 @@ let is_closing_delim = function
   | _ -> false
 
 let parse
-    : ?stop_on_err: bool ->
-    source: [`File of string | `String of Range.string_source] ->
-    lexbuf ->
+  : ?stop_on_err: bool ->
+  source: [`File of string | `String of Range.string_source] ->
+  lexbuf ->
+  (Code.t, Reporter.diagnostic) Result.t
+= fun ?(stop_on_err = true) ~source lexbuf ->
+  let initial_checkpoint = (Grammar.Incremental.main lexbuf.lex_curr_p) in
+  let delim_stack = Stack.create () in
+  let rec run
+    : _ I.checkpoint ->
+    _ ->
     (Code.t, Reporter.diagnostic) Result.t
-  = fun ?(stop_on_err = true) ~source lexbuf ->
-    let initial_checkpoint = (Grammar.Incremental.main lexbuf.lex_curr_p) in
-    let delim_stack = Stack.create () in
-    let rec run
-        : _ I.checkpoint ->
-        _ ->
-        (Code.t, Reporter.diagnostic) Result.t
-      = fun checkpoint supplier ->
-        match checkpoint with
-        | I.InputNeeded _env ->
-          (* If the current token is an opening delimiter, save the
-             token and its position on the stack.*)
-          let token, _, _ = supplier () in
-          let start_position = lexbuf.lex_start_p in
-          let end_position = lexbuf.lex_curr_p in
-          if is_opening_delim token then
-            let range = Range.of_lex_range (start_position, end_position) in
-            Stack.push (token, range) delim_stack;
-          ;
-          if is_closing_delim token then
-            begin
-              match Stack.top_opt delim_stack with
-              | Some (open_delim, _) ->
-                if (open_delim |> closed_by token) then
-                  Stack.drop delim_stack
-              | None -> ()
-            end;
-          let checkpoint = I.offer checkpoint (token, start_position, end_position) in
-          run checkpoint supplier
-        | I.Shifting((_, _, _): Code.t I.env * Code.t I.env * bool) ->
-          let checkpoint = I.resume checkpoint ~strategy: `Simplified in
-          run checkpoint supplier
-        | I.AboutToReduce (_, _) ->
-          let checkpoint = I.resume checkpoint ~strategy: `Simplified in
-          run checkpoint supplier
-        | I.HandlingError _ ->
-          if not stop_on_err then
-            (* TODO: Don't error out here *)
-            Error
-              (
-                Asai.Diagnostic.of_text
-                  ~loc: (Range.of_lexbuf ~source lexbuf)
-                  Error
-                  Reporter.Message.Parse_error
-                  (Asai.Diagnostic.text "")
-              )
-          else
-            let range_of_last_unclosed =
-              Option.map snd @@ Stack.top_opt delim_stack
-            in
-            let loc = Range.of_lexbuf ~source lexbuf in
-            let extra_remarks =
-              if Option.is_some range_of_last_unclosed then
-                [
-                  Asai.Diagnostic.loctext
-                    ?loc: range_of_last_unclosed
-                    "This delimiter is never closed";
-                ]
-              else []
-            in
-            Error
-              (
-                Asai.Diagnostic.(
-                  of_loctext
-                    ~extra_remarks
-                    Error
-                    Forester_core.Reporter.Message.Parse_error
-                    (loctext ~loc Format.(sprintf "syntax error, unexpected %S" (Lexing.lexeme lexbuf)))
-                )
-              )
-        | I.Accepted code -> Ok code
-        | I.Rejected ->
-          assert false
-    in
-    let supplier = I.lexer_lexbuf_to_supplier lexer lexbuf in
-    try
-      run initial_checkpoint supplier
-    with
-      (* NOTE: This should be the only exception we ever need to catch here:
-         The parser is driven manually, so we are responsible for creating the
-         diagnostics. This means we should not use `fatalf`! This also means
-         that we can safely use the returned diagnostic without worrying that
-         there might be an unhandled Asai effect. *)
-      | Lexer.SyntaxError lexeme ->
+  = fun checkpoint supplier ->
+    match checkpoint with
+    | I.InputNeeded _env ->
+      (* If the current token is an opening delimiter, save the
+         token and its position on the stack.*)
+      let token, _, _ = supplier () in
+      let start_position = lexbuf.lex_start_p in
+      let end_position = lexbuf.lex_curr_p in
+      if is_opening_delim token then
+        let range = Range.of_lex_range (start_position, end_position) in
+        Stack.push (token, range) delim_stack; ;
+      if is_closing_delim token then
+        begin
+          match Stack.top_opt delim_stack with
+          | Some (open_delim, _) ->
+            if (open_delim |> closed_by token) then
+              Stack.drop delim_stack
+          | None -> ()
+        end;
+      let checkpoint = I.offer checkpoint (token, start_position, end_position) in
+      run checkpoint supplier
+    | I.Shifting((_, _, _): Code.t I.env * Code.t I.env * bool) ->
+      let checkpoint = I.resume checkpoint ~strategy: `Simplified in
+      run checkpoint supplier
+    | I.AboutToReduce (_, _) ->
+      let checkpoint = I.resume checkpoint ~strategy: `Simplified in
+      run checkpoint supplier
+    | I.HandlingError _ ->
+      if not stop_on_err then
+        (* TODO: Don't error out here *)
+        Error
+          (
+            Asai.Diagnostic.of_text
+              ~loc: (Range.of_lexbuf ~source lexbuf)
+              Error
+              Reporter.Message.Parse_error
+              (Asai.Diagnostic.text "")
+          )
+      else
+        let range_of_last_unclosed =
+          Option.map snd @@ Stack.top_opt delim_stack
+        in
         let loc = Range.of_lexbuf ~source lexbuf in
+        let extra_remarks =
+          if Option.is_some range_of_last_unclosed then
+            [
+              Asai.Diagnostic.loctext
+                ?loc: range_of_last_unclosed
+                "This delimiter is never closed";
+            ]
+          else []
+        in
         Error
           (
             Asai.Diagnostic.(
               of_loctext
+                ~extra_remarks
                 Error
-                Reporter.Message.Parse_error
-                (loctext ~loc Format.(sprintf "syntax error, unexpected %S" lexeme))
+                Forester_core.Reporter.Message.Parse_error
+                (loctext ~loc Format.(sprintf "syntax error, unexpected %S" (Lexing.lexeme lexbuf)))
             )
           )
+    | I.Accepted code -> Ok code
+    | I.Rejected ->
+      assert false
+  in
+  let supplier = I.lexer_lexbuf_to_supplier lexer lexbuf in
+  try
+    run initial_checkpoint supplier
+  with
+    (* NOTE: This should be the only exception we ever need to catch here:
+       The parser is driven manually, so we are responsible for creating the
+       diagnostics. This means we should not use `fatalf`! This also means
+       that we can safely use the returned diagnostic without worrying that
+       there might be an unhandled Asai effect. *)
+    | Lexer.SyntaxError lexeme ->
+      let loc = Range.of_lexbuf ~source lexbuf in
+      Error
+        (
+          Asai.Diagnostic.(
+            of_loctext
+              Error
+              Reporter.Message.Parse_error
+              (loctext ~loc Format.(sprintf "syntax error, unexpected %S" lexeme))
+          )
+        )

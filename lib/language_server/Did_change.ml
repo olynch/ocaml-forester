@@ -11,9 +11,9 @@ module L = Lsp.Types
 let compute
     (params : L.DidChangeTextDocumentParams.t)
   =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   match params with
-  | { textDocument = { uri; _ }; contentChanges } ->
+  | {textDocument = {uri; _}; contentChanges} ->
     let docs = State.documents forest in
     match Hashtbl.find_opt docs uri with
     | None -> assert false

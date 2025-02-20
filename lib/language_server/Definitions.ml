@@ -17,8 +17,7 @@ let compute
     : L.Locations.t option
   =
   match params with
-  | {
-    textDocument;
+  | {textDocument;
     _;
   } ->
     (* let server = State.get () in *)
@@ -29,6 +28,6 @@ let compute
     (* let* addr = Analysis.addr_at ~position code in *)
     (* let iri = Iri_scheme.user_iri ~host: server.config.host addr in *)
     (* let* uri = Hashtbl.find_opt resolver iri in *)
-    let range = L.Range.create ~start: { character = 1; line = 0 } ~end_: { character = 1; line = 0 } in
+    let range = L.Range.create ~start: {character = 1; line = 0} ~end_: {character = 1; line = 0} in
     Some
-      (`Location [L.Location.{ uri = textDocument.uri; range }])
+      (`Location [L.Location.{uri = textDocument.uri; range}])

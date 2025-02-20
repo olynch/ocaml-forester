@@ -27,18 +27,15 @@ type ptime_date_time_state = {
   mutable tz_offset_s: int
 }
 
-let init_ptime_time_state () =
-  { hour = 0; minute = 0; second = 0 }
+let init_ptime_time_state () = {hour = 0; minute = 0; second = 0}
 
-let init_ptime_date_state () =
-  { year = 0; month = 1; day = 1 }
+let init_ptime_date_state () = {year = 0; month = 1; day = 1}
 
-let init_ptime_date_time_state () =
-  {
-    date = init_ptime_date_state ();
-    time = init_ptime_time_state ();
-    tz_offset_s = 0
-  }
+let init_ptime_date_time_state () = {
+  date = init_ptime_date_state ();
+  time = init_ptime_time_state ();
+  tz_offset_s = 0
+}
 
 let to_ptime datetime =
   let go_void (x : void) = match x with _ -> . in

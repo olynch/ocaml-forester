@@ -12,9 +12,9 @@ module L = Lsp.Types
 
 let extract_addr (node : Code.node Range.located) : string option =
   match node.value with
-  | Group (Braces, [{ value = Text addr; _ }])
-  | Group (Parens, [{ value = Text addr; _ }])
-  | Group (Squares, [{ value = Group (Squares, [{ value = Text addr; _ }]); _ }])
+  | Group (Braces, [{value = Text addr; _}])
+  | Group (Parens, [{value = Text addr; _}])
+  | Group (Squares, [{value = Group (Squares, [{value = Text addr; _}]); _}])
   | Text addr
   | Import (_, addr) ->
     Some addr
@@ -24,38 +24,37 @@ let extract_addr (node : Code.node Range.located) : string option =
 (* TODO: Think about this some more. *)
 let rec flatten (tree : Code.t) : Code.t =
   tree
-  |> List.concat_map @@
-    fun (node : 'a Range.located) ->
-      match node.value with
-      | Code.Subtree (_, nodes)
-      | Code.Scope nodes ->
-        flatten nodes
-      | _ -> [node]
+  |> List.concat_map @@ fun (node : 'a Range.located) ->
+    match node.value with
+    | Code.Subtree (_, nodes)
+    | Code.Scope nodes ->
+      flatten nodes
+    | _ -> [node]
 
 let contains = fun
-      ~(position : Lsp.Types.Position.t)
-      (located : _ Range.located)
-    ->
-    let L.Position.{ line = cursor_line; character = cursor_character } = position in
-    match located.loc with
-    | Some loc ->
-      begin
-        match Range.view loc with
-        | `Range (start, end_) ->
-          let start_pos = Lsp_shims.Loc.lsp_pos_of_pos start in
-          let end_pos = Lsp_shims.Loc.lsp_pos_of_pos end_ in
-          let at_or_after_start =
-            cursor_line < end_pos.line
-            || (cursor_line = start_pos.line && start_pos.character <= cursor_character)
-          in
-          let before_or_at_end =
-            end_pos.line > cursor_line
-            || (cursor_line = end_pos.line && cursor_character <= end_pos.character)
-          in
-          at_or_after_start && before_or_at_end
-        | _ -> false
-      end
-    | None -> false
+    ~(position : Lsp.Types.Position.t)
+    (located : _ Range.located)
+  ->
+  let L.Position.{line = cursor_line; character = cursor_character} = position in
+  match located.loc with
+  | Some loc ->
+    begin
+      match Range.view loc with
+      | `Range (start, end_) ->
+        let start_pos = Lsp_shims.Loc.lsp_pos_of_pos start in
+        let end_pos = Lsp_shims.Loc.lsp_pos_of_pos end_ in
+        let at_or_after_start =
+          cursor_line < end_pos.line
+          || (cursor_line = start_pos.line && start_pos.character <= cursor_character)
+        in
+        let before_or_at_end =
+          end_pos.line > cursor_line
+          || (cursor_line = end_pos.line && cursor_character <= end_pos.character)
+        in
+        at_or_after_start && before_or_at_end
+      | _ -> false
+    end
+  | None -> false
 
 let nodes_within (node : Code.node Range.located) =
   match node.value with
@@ -77,9 +76,9 @@ let nodes_within (node : Code.node Range.located) =
   | Code.Dx_query (_, _, t)
   | Code.Dx_sequent (_, t) ->
     Some (List.concat t)
-  | Code.Object { methods; _ } ->
+  | Code.Object {methods; _} ->
     Some (methods |> List.map snd |> List.concat)
-  | Code.Patch { obj; methods; _ } ->
+  | Code.Patch {obj; methods; _} ->
     let methods = (methods |> List.map snd |> List.concat) in
     Some (List.append obj methods)
   | Code.Text _

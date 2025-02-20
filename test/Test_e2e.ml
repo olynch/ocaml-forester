@@ -9,7 +9,7 @@
 
 open Forester_prelude
 
-let ( / ) = Eio.Path.( / )
+let (/) = Eio.Path.(/)
 
 let parse_paths fs s =
   String.split_on_char (if Sys.win32 then ';' else ':') s
@@ -17,19 +17,17 @@ let parse_paths fs s =
 
 let exists filename =
   try
-    Eio.Path.stat filename ~follow: true
-    |> function
-    | { kind = `Regular_file; _ } -> true
-    | _ ->
-      false
+    Eio.Path.stat filename ~follow: true |> function
+      | {kind = `Regular_file; _} -> true
+      | _ ->
+        false
   with
     | _ -> false
 
 let which prog =
   List.find_map
-    (
-      fun dir ->
-        if exists Eio.Path.(dir / prog) then Some prog else None
+    (fun dir ->
+      if exists Eio.Path.(dir / prog) then Some prog else None
     )
 
 let pipe_into ~env stdin cmd =
@@ -64,15 +62,14 @@ let () =
       )
     in
     let content
-      =
-      (
-        Format.asprintf
-          "%s"
-          (
-            Yojson.Safe.to_string
-              request
-          )
-      )
+    = (
+      Format.asprintf
+        "%s"
+        (
+          Yojson.Safe.to_string
+            request
+        )
+    )
     in
     let header = Lsp.Header.create ~content_length: (String.length content) () in
     let initialize_request =

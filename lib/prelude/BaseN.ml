@@ -14,7 +14,7 @@ module type S = sig
   val string_of_int : int -> string
 end
 
-module Make (I: I) : S = struct
+module Make (I : I) : S = struct
   let base = String.length I.alphabet
 
   let int_of_string digits =

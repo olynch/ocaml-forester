@@ -33,12 +33,11 @@ let () =
     let uri =
       before_forest.documents |> Hashtbl.to_seq_keys
       |> Seq.find_map
-        (
-          fun uri ->
+          (fun uri ->
             if String.ends_with ~suffix: "reparse.tree" (Lsp.Uri.to_string uri) then
               Some uri
             else None
-        )
+          )
       |> Option.get
     in
     let vtx =
@@ -49,19 +48,19 @@ let () =
       Phases.(
         before_forest
         |> reparse
-          (
-            (* Create a Text_document.t with new content.*)
-            Lsp.Text_document.make
-              ~position_encoding: `UTF16 @@
-              Lsp.Types.DidOpenTextDocumentParams.create
-                ~textDocument: (
-                  Lsp.Types.TextDocumentItem.create
-                    ~languageId: "forester"
-                    ~uri
-                    ~version: 2
-                    ~text: {| \title{I am now importing something and the import graphs should be updated accordingly} \import{a}|}
-                )
-          )
+            (
+              (* Create a Text_document.t with new content.*)
+              Lsp.Text_document.make
+                ~position_encoding: `UTF16 @@
+                Lsp.Types.DidOpenTextDocumentParams.create
+                  ~textDocument: (
+                    Lsp.Types.TextDocumentItem.create
+                      ~languageId: "forester"
+                      ~uri
+                      ~version: 2
+                      ~text: {| \title{I am now importing something and the import graphs should be updated accordingly} \import{a}|}
+                  )
+            )
       )
     in
     let module Graphs = (val reparsed_forest.graphs) in
@@ -95,7 +94,7 @@ let () =
         ~dev: true
     in
     let path =
-      let@ { frontmatter = { source_path; _ }; _ } =
+      let@ {frontmatter = {source_path; _}; _} =
         Option.bind @@ Forest.get_article (Iri.of_string "forest://my-forest/index") forest.resources
       in
       source_path
@@ -114,7 +113,7 @@ let () =
         ~dev: false
     in
     let path =
-      let@ { frontmatter = { source_path; _ }; _ } =
+      let@ {frontmatter = {source_path; _}; _} =
         Option.bind @@ Forest.get_article (Iri.of_string "forest://my-forest/index") forest.resources
       in
       source_path

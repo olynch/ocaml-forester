@@ -14,8 +14,8 @@ module Reachability = Graph.Fixpoint.Make(G)(struct
   type g = G.t
   type data = bool
   let direction = Graph.Fixpoint.Forward
-  let equal = ( = )
-  let join = ( || )
+  let equal = (=)
+  let join = (||)
   let analyze _ = (fun x -> x)
 end)
 

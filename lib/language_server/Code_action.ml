@@ -12,10 +12,10 @@ module L = Lsp.Types
 
 (* This function is mainly decodes the arguments to the command*)
 let execute (params : L.ExecuteCommandParams.t) =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   let config = State.config forest in
   match params with
-  | { arguments; command; _ } ->
+  | {arguments; command; _} ->
     match command with
     | "new tree" ->
       let open Yojson.Safe.Util in
@@ -24,15 +24,14 @@ let execute (params : L.ExecuteCommandParams.t) =
         | Some [json_stuff] ->
           let prefix = json_stuff |> member "prefix" |> to_string in
           let mode =
-            json_stuff |> member "mode" |> to_string
-            |> function
-            | "random" -> `Random
-            | "sequential" -> `Sequential
-            | _ ->
-              raise @@
-              decode_error @@
-              Format.asprintf
-                "got invalid arguments when executing \"new tree\" command"
+            json_stuff |> member "mode" |> to_string |> function
+              | "random" -> `Random
+              | "sequential" -> `Sequential
+              | _ ->
+                raise @@
+                decode_error @@
+                Format.asprintf
+                  "got invalid arguments when executing \"new tree\" command"
           in
           prefix, mode
         | x ->
@@ -68,15 +67,14 @@ let create_new_tree_cmd ~prefix ~mode =
     ()
 
 let compute (_params : L.CodeActionParams.t) : L.CodeActionResult.t =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   let config = State.config forest in
   let prefixes = config.prefixes in
   Eio.traceln "got %i prefixes" (List.length prefixes);
   let actions =
     prefixes
     |> List.concat_map
-      (
-        fun prefix ->
+        (fun prefix ->
           let sequential =
             L.CodeAction.create
               ~title: (Format.asprintf "create tree with prefix %s" prefix)
@@ -92,6 +90,6 @@ let compute (_params : L.CodeActionParams.t) : L.CodeActionResult.t =
               ()
           in
           [`CodeAction sequential; `CodeAction random]
-      )
+        )
   in
   Some actions

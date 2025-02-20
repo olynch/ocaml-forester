@@ -11,7 +11,7 @@ open Forester_frontend
 
 module T = Types
 
-let config = { Config.default with trees = ["imports"] }
+let config = {Config.default with trees = ["imports"]}
 
 let () =
   let@ env = Eio_main.run in
@@ -90,11 +90,10 @@ let () =
       true
       (
         try
-          let _ =
-            (
-              let@ () = Reporter.easy_run in
-              State_machine.render_tree ~env ~config ~dev: false HTML iri
-            )
+          let _ = (
+            let@ () = Reporter.easy_run in
+            State_machine.render_tree ~env ~config ~dev: false HTML iri
+          )
           in
           true
         with

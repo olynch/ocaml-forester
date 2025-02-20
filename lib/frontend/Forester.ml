@@ -74,17 +74,17 @@ let copy_contents_of_dir ~env dir =
     Eio_util.copy_to_dir ~env ~cwd ~source ~dest_dir: output_dir_name
 
 let render_tree
-    : env: env ->
-    config: Config.t ->
-    target: target ->
-    string ->
-    unit
-  = fun ~env ~config ~target addr ->
-    let dev = true in
-    let iri = Iri_scheme.user_iri ~host: config.host addr in
-    let Target tgt = target in
-    let result = State_machine.render_tree ~env ~config ~dev tgt iri in
-    Format.printf "%s" result
+  : env: env ->
+  config: Config.t ->
+  target: target ->
+  string ->
+  unit
+= fun ~env ~config ~target addr ->
+  let dev = true in
+  let iri = Iri_scheme.user_iri ~host: config.host addr in
+  let Target tgt = target in
+  let result = State_machine.render_tree ~env ~config ~dev tgt iri in
+  Format.printf "%s" result
 
 (* FIXME: deprecate this*)
 let compile ~env ~dev ~(config : Config.t) : State.t =
@@ -96,11 +96,10 @@ let json_manifest ~dev ~(forest : State.t) : string =
   |> Forest.get_all_articles
   |> List.map (fun tree -> render (Article tree))
   |> List.map
-    (
-      function
-      | `Assoc [r, t] -> r, t
-      | _ -> assert false
-    )
+      (function
+        | `Assoc [r, t] -> r, t
+        | _ -> assert false
+      )
   |> (fun t -> `Assoc t)
   |> Yojson.Safe.to_string
 
@@ -145,7 +144,7 @@ let export ~(forest : State.t) : unit =
   let local_resources =
     let@ resource = List.filter @~ Forest.get_all_resources forest.resources in
     match resource with
-    | T.Article { frontmatter = { iri = Some iri; _ }; _ } ->
+    | T.Article {frontmatter = {iri = Some iri; _}; _} ->
       Iri.host iri = Some forest.config.host
     | T.Asset asset -> asset.host = forest.config.host
     | _ -> false

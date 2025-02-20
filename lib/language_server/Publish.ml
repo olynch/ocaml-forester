@@ -33,7 +33,7 @@ let render_lsp_diagnostic (uri : L.DocumentUri.t) (diag : diagnostic) : Lsp_Diag
   let severity = Lsp_shims.Diagnostic.lsp_severity_of_severity @@ diag.severity in
   let code = `String (Reporter.Message.short_code diag.message) in
   let source =
-    let Lsp_state.{ forest; _ } = Lsp_state.get () in
+    let Lsp_state.{forest; _} = Lsp_state.get () in
     match Hashtbl.find_opt (State.documents forest) uri with
     | None -> None
     | Some doc ->

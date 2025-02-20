@@ -15,13 +15,12 @@ type t = {
 }
 [@@deriving show, repr]
 
-let default : t =
-  {
-    host = "my-forest";
-    trees = ["trees"];
-    assets = [];
-    foreign = [];
-    theme = "theme";
-    home = None;
-    prefixes = [];
-  }
+let default : t = {
+  host = "my-forest";
+  trees = ["trees"];
+  assets = [];
+  foreign = [];
+  theme = "theme";
+  home = None;
+  prefixes = [];
+}

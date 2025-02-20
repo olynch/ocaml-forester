@@ -34,8 +34,7 @@ end
 module Semantic_tokens = Semantic_tokens
 
 let () =
-  Printexc.register_printer @@
-    function
+  Printexc.register_printer @@ function
     | Lsp_error (Decode_error err) ->
       Some (Format.asprintf "Lsp Error: Couldn't decode %s" err)
     | Lsp_error (Handshake_error err) ->
@@ -61,7 +60,7 @@ let should_shutdown () =
   server.should_shutdown
 
 let initiate_shutdown () =
-  Lsp_state.modify @@ fun st -> { st with should_shutdown = true }
+  Lsp_state.modify @@ fun st -> {st with should_shutdown = true}
 
 (* I don't understand this request...*)
 let document_link_resolve (params : L.DocumentLink.t) =
@@ -74,8 +73,8 @@ module Request = struct
   type packed = Lsp_Request.packed
 
   let dispatch : type resp. string -> resp Lsp.Client_request.t -> resp = fun mthd ->
-      let open Handlers in
-      function
+    let open Handlers in
+    function
       | Initialize _ ->
         let err = "Server can only recieve a single initialization request." in
         raise @@ Lsp_error (Handshake_error err)
@@ -111,8 +110,7 @@ module Request = struct
       raise (Lsp_error (Decode_error err))
 
   let recv () =
-    Option.bind (recv ()) @@
-      function
+    Option.bind (recv ()) @@ function
       | RPC.Packet.Request req ->
         begin
           match Lsp_Request.of_jsonrpc req with
@@ -130,7 +128,7 @@ module Notification = struct
   type t = Lsp.Client_notification.t
 
   let dispatch : string -> t -> unit = fun mthd ->
-      function
+    function
       | TextDocumentDidOpen params -> Did_open.compute params
       | TextDocumentDidChange params -> Did_change.compute params
       | ChangeConfiguration params -> Change_configuration.compute params
@@ -148,8 +146,7 @@ module Notification = struct
       raise @@ Lsp_error (Decode_error err)
 
   let recv () =
-    Option.bind (recv ()) @@
-      function
+    Option.bind (recv ()) @@ function
       | RPC.Packet.Notification msg ->
         begin
           match Lsp_Notification.of_jsonrpc msg with

@@ -151,8 +151,8 @@ let () =
   run
     "Parser"
     [
-      "nodes", [test_case "open" `Quick test_open; ];
-      "scope", [test_case "scope" `Quick test_scope; ];
+      "nodes", [test_case "open" `Quick test_open;];
+      "scope", [test_case "scope" `Quick test_scope;];
       "text", [test_case "text" `Quick test_prim];
       "verbatim", [test_case "verbatim" `Quick test_verbatim];
       "math", [test_case "math" `Quick test_math];

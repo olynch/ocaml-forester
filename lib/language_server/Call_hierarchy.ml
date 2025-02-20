@@ -12,11 +12,11 @@ module T = Types
 module L = Lsp.Types
 
 let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   let config = State.config forest in
   let module G = (val State.graphs forest) in
   match params with
-  | { item; _ } ->
+  | {item; _} ->
     let vertex_to_item (v : _ T.vertex) =
       let from = item in
       let fromRanges = [] in
@@ -25,7 +25,7 @@ let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
       | T.Content_vertex _ -> L.CallHierarchyIncomingCall.create ~from ~fromRanges
     in
     match item with
-    | { uri; _ } ->
+    | {uri; _} ->
       let iri = Iri_scheme.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
       let vertex = T.Iri_vertex iri in
       let transclusion_graph = G.get_rel Query.Edges Builtin_relation.transcludes in
@@ -35,12 +35,12 @@ let incoming (params : L.CallHierarchyIncomingCallsParams.t) =
       Some (link_items @ transclusion_items)
 
 let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   let config = State.config forest in
   let module G = (val State.graphs forest) in
   Eio.traceln "computing outgoing calls";
   match params with
-  | { item; _ } ->
+  | {item; _} ->
     let vertex_to_item (v : _ T.vertex) =
       let to_ = item in
       let fromRanges = [] in
@@ -49,7 +49,7 @@ let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
       | T.Content_vertex _ -> L.CallHierarchyOutgoingCall.create ~to_ ~fromRanges
     in
     match item with
-    | { uri; _ } ->
+    | {uri; _} ->
       let iri = Iri_scheme.path_to_iri ~host: config.host (Lsp.Uri.to_path uri) in
       let vertex = T.Iri_vertex iri in
       let transclusion_graph = G.get_rel Query.Edges Builtin_relation.transcludes in
@@ -61,9 +61,9 @@ let outgoing (params : L.CallHierarchyOutgoingCallsParams.t) =
       Some (link_items @ transclusion_items)
 
 let compute (params : L.CallHierarchyPrepareParams.t) =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   match params with
-  | { position; textDocument; _ } ->
+  | {position; textDocument; _} ->
     let iri = Iri_scheme.uri_to_iri ~host: forest.config.host textDocument.uri in
     match Imports.resolve_iri_to_code iri forest with
     | None -> None
@@ -71,7 +71,7 @@ let compute (params : L.CallHierarchyPrepareParams.t) =
       let item =
         match Analysis.node_at ~position Code.(tree.code) with
         | None -> None
-        | Some { loc = _; value } ->
+        | Some {loc = _; value} ->
           match value with
           | Code.Def (_, _, _)
           | Code.Fun (_, _) ->

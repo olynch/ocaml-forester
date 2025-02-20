@@ -33,8 +33,8 @@ let route_of_iri iri = T.Route_of_iri iri
 
 module Datalog = struct
   open Datalog_expr
-  let premises ~rel ~args = { rel; args }
-  let prop premises conclusion = { premises; conclusion }
+  let premises ~rel ~args = {rel; args}
+  let prop premises conclusion = {premises; conclusion}
   let const v = Const v
 end
 
@@ -55,7 +55,7 @@ let section
 
 let xml_elt (prefix, uname) content =
   let prefix = Option.value ~default: "" prefix in
-  let qname = T.{ prefix; uname; xmlns = None } in
+  let qname = T.{prefix; uname; xmlns = None} in
   T.Xml_elt
     {
       name = qname;

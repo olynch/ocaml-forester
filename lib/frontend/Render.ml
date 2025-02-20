@@ -30,78 +30,78 @@ type _ target =
 [@@deriving show]
 
 let render
-    : type a b. dev: bool -> State.t -> a target -> b renderable -> a
-  = fun
-      ~dev
-      forest
-      tgt
-      renderable
-    ->
-    let renderable =
+  : type a b. dev: bool -> State.t -> a target -> b renderable -> a
+= fun
+    ~dev
+    forest
+    tgt
+    renderable
+  ->
+  let renderable =
+    match renderable with
+    | Content _ -> renderable
+    | Article a ->
+      if dev then
+        renderable
+      else
+        Article {a with frontmatter = {a.frontmatter with source_path = None}}
+    | Frontmatter fm ->
+      if dev then
+        renderable
+      else
+        Frontmatter {fm with source_path = None}
+  in
+  match tgt with
+  | JSON ->
+    begin
       match renderable with
-      | Content _ -> renderable
-      | Article a ->
-        if dev then
-          renderable
-        else
-          Article { a with frontmatter = { a.frontmatter with source_path = None } }
-      | Frontmatter fm ->
-        if dev then
-          renderable
-        else
-          Frontmatter { fm with source_path = None }
-    in
-    match tgt with
-    | JSON ->
-      begin
-        match renderable with
-        | Content content ->
-          `String
-            (Plain_text_client.string_of_content ~forest: forest.resources ~router: Iri.to_uri content)
-        | Article article ->
-          begin
-            match (Json_manifest_client.render_tree ~dev ~forest article) with
-            | Some (r, t) -> `Assoc [r, t]
-            | None -> `Null
-          end
-        | Frontmatter _ -> raise (Todo "")
-      end
-    | HTML ->
-      begin
-        match renderable with
-        | Content content -> P.HTML.div [] @@ Htmx_client.render_content forest content
-        | Article article -> Htmx_client.render_article forest article
-        | Frontmatter _ -> P.HTML.null []
-      end
-    | XML ->
-      begin
-        match renderable with
-        | Content content ->
-          P.HTML.null @@ Legacy_xml_client.render_content forest content
-        | Article article ->
-          Legacy_xml_client.render_article forest article
-        | Frontmatter _ ->
-          raise (Todo "render frontmatter to xml")
-      end
-    | STRING ->
-      begin
-        match renderable with
-        | Content content -> Plain_text_client.string_of_content ~forest: forest.resources ~router: Iri.to_uri content
-        | Article _ -> raise (Todo "render article to string")
-        | Frontmatter _ -> raise (Todo "render frontmatter to string")
-      end
+      | Content content ->
+        `String
+          (Plain_text_client.string_of_content ~forest: forest.resources ~router: Iri.to_uri content)
+      | Article article ->
+        begin
+          match (Json_manifest_client.render_tree ~dev ~forest article) with
+          | Some (r, t) -> `Assoc [r, t]
+          | None -> `Null
+        end
+      | Frontmatter _ -> raise (Todo "")
+    end
+  | HTML ->
+    begin
+      match renderable with
+      | Content content -> P.HTML.div [] @@ Htmx_client.render_content forest content
+      | Article article -> Htmx_client.render_article forest article
+      | Frontmatter _ -> P.HTML.null []
+    end
+  | XML ->
+    begin
+      match renderable with
+      | Content content ->
+        P.HTML.null @@ Legacy_xml_client.render_content forest content
+      | Article article ->
+        Legacy_xml_client.render_article forest article
+      | Frontmatter _ ->
+        raise (Todo "render frontmatter to xml")
+    end
+  | STRING ->
+    begin
+      match renderable with
+      | Content content -> Plain_text_client.string_of_content ~forest: forest.resources ~router: Iri.to_uri content
+      | Article _ -> raise (Todo "render article to string")
+      | Frontmatter _ -> raise (Todo "render frontmatter to string")
+    end
 
 let pp
-    : type a b. dev: bool -> State.t -> a target -> Format.formatter -> b renderable -> unit
-  = fun ~dev forest target fmt renderable ->
-    let stuff =
-      render ~dev forest target renderable
-    in
-    match target with
-    | XML -> P.pp_xml fmt stuff
-    | HTML -> P.pp fmt stuff
-    | JSON -> Yojson.Safe.pp fmt stuff
-    | STRING -> Format.pp_print_string fmt stuff
+  : type a b. dev: bool -> State.t -> a target -> Format.formatter -> b renderable -> unit
+= fun ~dev forest target fmt renderable ->
+  let stuff =
+    render ~dev forest target renderable
+  in
+  match target with
+  | XML -> P.pp_xml fmt stuff
+  | HTML -> P.pp fmt stuff
+  | JSON -> Yojson.Safe.pp fmt stuff
+  | STRING -> Format.pp_print_string fmt stuff
 
 let pp_xml ?stylesheet ~forest ~dev fmt article =
   Format.fprintf fmt {|<?xml version="1.0" encoding="UTF-8"?>|};

@@ -15,7 +15,7 @@ open Forester_core
 module L = Lsp.Types
 
 let compute (document : Lsp.Text_document.t) =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   let config = State.config forest in
   let uri = Lsp.Text_document.documentUri document in
   let iri = Iri_scheme.uri_to_iri ~host: config.host uri in
@@ -26,8 +26,7 @@ let compute (document : Lsp.Text_document.t) =
     |> eval
     |> State.diagnostics
     |> Diagnostic_store.iter
-      (
-        fun uri diagnostics ->
+        (fun uri diagnostics ->
           match diagnostics with
           | [] ->
             Eio.traceln "Clearing diagnostics for %s" (Lsp.Uri.to_path uri);
@@ -35,16 +34,15 @@ let compute (document : Lsp.Text_document.t) =
           | diagnostics ->
             Eio.traceln "publishing %i diagnostics to %s" (List.length diagnostics) (Lsp.Uri.to_path uri);
             List.iter
-              (
-                fun d ->
-                  Eio.traceln
-                    "%s"
-                    (
-                      Asai.Diagnostic.(d.explanation.value)
-                      |> Asai.Diagnostic.string_of_text
-                    )
+              (fun d ->
+                Eio.traceln
+                  "%s"
+                  (
+                    Asai.Diagnostic.(d.explanation.value)
+                    |> Asai.Diagnostic.string_of_text
+                  )
               )
               diagnostics;
             Publish.publish uri diagnostics
-      )
+        )
   )

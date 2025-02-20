@@ -13,11 +13,11 @@ let rec pp_content ~forest ~router fmt = function
   | T.Content c -> c |> List.iter @@ pp_content_node ~forest ~router fmt
 
 and pp_content_node
-    ~forest
-    ~router
-    fmt
-    : 'a T.content_node -> unit
-  = function
+  ~forest
+  ~router
+  fmt
+  : 'a T.content_node -> unit
+= function
   | Text txt | CDATA txt -> Format.pp_print_string fmt txt
   | Iri iri -> pp_iri fmt iri
   | Route_of_iri iri -> Format.fprintf fmt "%s" (router iri)

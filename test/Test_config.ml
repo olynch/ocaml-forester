@@ -22,10 +22,9 @@ let test_parsing () =
       theme = "theme";
     }
     (
-      Forester_core.Reporter.easy_run @@
-        fun () ->
-          Config_parser.parse_forest_config_string
-            {|
+      Forester_core.Reporter.easy_run @@ fun () ->
+      Config_parser.parse_forest_config_string
+        {|
         [forest]
         host = "test"
         trees = ["trees"]
@@ -48,10 +47,9 @@ let test_missing_fields () =
       prefixes = [];
     }
     (
-      Forester_core.Reporter.easy_run @@
-        fun () ->
-          Config_parser.parse_forest_config_string
-            {|
+      Forester_core.Reporter.easy_run @@ fun () ->
+      Config_parser.parse_forest_config_string
+        {|
         [forest]
         host = "test"
         trees = ["trees"]
@@ -65,9 +63,8 @@ let test_missing_host () =
     ()
     (
       Forester_core.Reporter.run
-        ~fatal: (
-          function
-          | { message; explanation; _ } ->
+        ~fatal: (function
+          | {message; explanation; _} ->
             Alcotest.(check Testables.message)
               ""
               Configuration_error
@@ -77,24 +74,23 @@ let test_missing_host () =
               (Asai.Diagnostic.string_of_text explanation.value)
               "You need to set the `host' key in your configuration file; this is a global identifier that will be used to distinguish your forest from other forests (you can use your name, e.g. `johnqpublic')";
         )
-        ~emit: (
-          function
-          | { message; explanation; _ } ->
+        ~emit: (function
+          | {message; explanation; _} ->
             Alcotest.(check Testables.message)
               ""
               Configuration_error
               message
-        ) @@
-        fun () ->
-          let _ =
-            Config_parser.parse_forest_config_string
-              {|
+        )
+        @@ fun () ->
+        let _ =
+          Config_parser.parse_forest_config_string
+            {|
         [forest]
         trees = ["trees"]
         home = "index"
         |}
-          in
-          assert false
+        in
+        assert false
     )
 
 let test_parse_error () =
@@ -103,23 +99,22 @@ let test_parse_error () =
     ()
     (
       Forester_core.Reporter.run
-        ~fatal: (
-          function
-          | { explanation; _ } ->
+        ~fatal: (function
+          | {explanation; _} ->
             Alcotest.(check string)
               ""
               (Asai.Diagnostic.string_of_text explanation.value)
               "Error in <anonymous> at line 2 at column 11 (position 12)";
         )
-        ~emit: (fun _ -> ()) @@
-        fun () ->
-          let _ =
-            Config_parser.parse_forest_config_string
-              {|
+        ~emit: (fun _ -> ())
+        @@ fun () ->
+        let _ =
+          Config_parser.parse_forest_config_string
+            {|
           ]]]
         |}
-          in
-          assert false
+        in
+        assert false
     )
 
 let test_stylesheet_warning () =
@@ -137,19 +132,18 @@ let test_stylesheet_warning () =
     (
       Forester_core.Reporter.run
         ~fatal: (fun _ -> assert false)
-        ~emit: (
-          function
-          | { explanation; _ } ->
+        ~emit: (function
+          | {explanation; _} ->
             (
               Alcotest.(check string)
                 ""
                 "Custom XSL stylesheet injection is no longer supported; please remove the `stylesheet' key from the [forest] group."
                 (Asai.Diagnostic.string_of_text explanation.value)
             )
-        ) @@
-        fun () ->
-          Config_parser.parse_forest_config_string
-            {|[forest]
+        )
+        @@ fun () ->
+        Config_parser.parse_forest_config_string
+          {|[forest]
         host = "test"
         trees = ["trees"]
         home = "index"
@@ -172,19 +166,18 @@ let test_root_warning () =
     (
       Forester_core.Reporter.run
         ~fatal: (fun _ -> assert false)
-        ~emit: (
-          function
-          | { explanation; _ } ->
+        ~emit: (function
+          | {explanation; _} ->
             (
               Alcotest.(check string)
                 ""
                 "In your configuration file, change `root' key to `home' in the [forest] group."
                 (Asai.Diagnostic.string_of_text explanation.value)
             )
-        ) @@
-        fun () ->
-          Config_parser.parse_forest_config_string
-            {|[forest]
+        )
+        @@ fun () ->
+        Config_parser.parse_forest_config_string
+          {|[forest]
         host = "test"
         trees = ["trees"]
         root = "index"

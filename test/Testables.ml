@@ -37,26 +37,26 @@ type 'a diagnostic =
 }
 [@@deriving show]
 
-let message = testable Reporter.Message.pp ( = )
+let message = testable Reporter.Message.pp (=)
 
-let code = testable Code.pp ( = )
-let syn = testable Syn.pp ( = )
-let path = testable Trie.pp_path ( = )
-let data = testable Resolver.P.pp_data ( = )
+let code = testable Code.pp (=)
+let syn = testable Syn.pp (=)
+let path = testable Trie.pp_path (=)
+let data = testable Resolver.P.pp_data (=)
 let diagnostic =
   let pp = pp_diagnostic Reporter.Message.pp in
-  testable pp ( = )
+  testable pp (=)
 
-let iri = testable Iri.pp ( = )
+let iri = testable Iri.pp (=)
 
-let config = Alcotest.testable Config.pp ( = )
+let config = Alcotest.testable Config.pp (=)
 
 let document =
   let pp fmt t = Format.pp_print_string fmt (Lsp.Text_document.text t) in
-  testable pp ( = )
+  testable pp (=)
 
-let code = testable Code.pp ( = )
-let tree = testable Code.pp_tree ( = )
+let code = testable Code.pp (=)
+let tree = testable Code.pp_tree (=)
 
-let result = testable Eval.pp_result ( = )
-let content = testable Types.pp_content ( = )
+let result = testable Eval.pp_result (=)
+let content = testable Types.pp_content (=)

@@ -29,12 +29,12 @@ module Make () = struct
 
   let pop_arg_opt () =
     match T.get () with
-    | Range.{ value = Syn.Group (Braces, arg); _ } as node :: nodes ->
+    | Range.{value = Syn.Group (Braces, arg); _} as node :: nodes ->
       T.set nodes;
-      Some ({ node with value = arg })
-    | Range.{ value = (Syn.Sym _ | Syn.Verbatim _ | Syn.Var _ | Syn.Dx_sequent _ | Syn.Dx_query _); _ } as node :: nodes ->
+      Some ({node with value = arg})
+    | Range.{value = (Syn.Sym _ | Syn.Verbatim _ | Syn.Var _ | Syn.Dx_sequent _ | Syn.Dx_query _); _} as node :: nodes ->
       T.set nodes;
-      Some ({ node with value = [node] })
+      Some ({node with value = [node]})
     | _ -> None
 
   let pop_arg ~loc =

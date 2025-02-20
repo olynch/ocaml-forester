@@ -14,21 +14,20 @@ module L = Lsp.Types
 module Unit_map = Forester_compiler.Expand.Unit_map
 
 let compute
-    ({ query = _; _ }: L.WorkspaceSymbolParams.t)
+    ({query = _; _}: L.WorkspaceSymbolParams.t)
   =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   let render = Render.render ~dev: true forest STRING in
   let trees =
     forest
     |> State.parsed
     |> Forest.to_seq_keys
     |> Seq.filter_map
-      (
-        fun iri ->
+        (fun iri ->
           let title =
             match Forest.get_article iri forest.resources with
             | None -> "untitled"
-            | Some { frontmatter; _ } ->
+            | Some {frontmatter; _} ->
               begin
                 match frontmatter.title with
                 | None -> "untitled"
@@ -47,14 +46,14 @@ let compute
             let location =
               L.Location.{
                 range = L.Range.{
-                  end_ = { character = 0; line = 0; };
-                  start = { character = 0; line = 0; };
+                  end_ = {character = 0; line = 0;};
+                  start = {character = 0; line = 0;};
                 };
                 uri;
               }
             in
             Some (L.SymbolInformation.create ~kind: File ~location ~name: title ())
-      )
+        )
     |> List.of_seq
   in
   let symbols =
@@ -63,13 +62,11 @@ let compute
     |> State.units
     |> Unit_map.to_seq
     |> Seq.concat_map
-      (
-        fun ((iri, exports): iri * _) ->
+        (fun ((iri, exports): iri * _) ->
           exports
           |> Trie.to_seq
           |> Seq.filter_map
-            (
-              fun (path, data) ->
+              (fun (path, data) ->
                 let location =
                   let range =
                     snd data
@@ -83,7 +80,7 @@ let compute
                   in
                   match uri with
                   | Some uri ->
-                    Some (L.Location.{ range; uri })
+                    Some (L.Location.{range; uri})
                   | None -> None
                 in
                 let kind =
@@ -155,8 +152,8 @@ let compute
                         ~name: (Format.asprintf "%a" Resolver.Scope.pp_path path)
                         ()
                     )
-            )
-      )
+              )
+        )
     |> List.of_seq
   in
   Some (trees @ symbols)

@@ -8,7 +8,7 @@ open Forester_prelude
 open Forester_xml_names
 open Base
 
-type xml_qname = Forester_xml_names.xml_qname = { prefix: string; uname: string; xmlns: string option }
+type xml_qname = Forester_xml_names.xml_qname = {prefix: string; uname: string; xmlns: string option}
 
 type 'content vertex =
   | Iri_vertex of iri
@@ -30,17 +30,16 @@ type title_flags = {
 }
 [@@deriving show, repr]
 
-let default_section_flags =
-  {
-    hidden_when_empty = None;
-    included_in_toc = None;
-    header_shown = None;
-    metadata_shown = Some false;
-    numbered = None;
-    expanded = None
-  }
+let default_section_flags = {
+  hidden_when_empty = None;
+  included_in_toc = None;
+  header_shown = None;
+  metadata_shown = Some false;
+  numbered = None;
+  expanded = None
+}
 
-type 'content xml_attr = { key: xml_qname; value: 'content }
+type 'content xml_attr = {key: xml_qname; value: 'content}
 [@@deriving show, repr]
 
 type 'content xml_elt = {
@@ -89,7 +88,7 @@ type 'content article = {
 }
 [@@deriving show, repr]
 
-type asset = { iri: iri; host: string; content: string }
+type asset = {iri: iri; host: string; content: string}
 [@@deriving show, repr]
 
 type 'content resource =
@@ -197,20 +196,18 @@ let trim_whitespace xs =
   in
   trim_back @@ trim_front xs
 
-let default_frontmatter ?iri ?source_path ?designated_parent ?(dates = []) ?(attributions = []) ?taxon ?number ?(metas = []) ?(tags = []) ?title () =
-  { iri; source_path; designated_parent; dates; attributions; taxon; number; metas; tags; title }
+let default_frontmatter ?iri ?source_path ?designated_parent ?(dates = []) ?(attributions = []) ?taxon ?number ?(metas = []) ?(tags = []) ?title () = {iri; source_path; designated_parent; dates; attributions; taxon; number; metas; tags; title}
 
 let article_to_section
-    ?(flags = default_section_flags)
-    ({ frontmatter; mainmatter; _ }: 'a article)
-  =
-  {
-    frontmatter;
-    mainmatter;
-    flags
-  }
+  ?(flags = default_section_flags)
+  ({frontmatter; mainmatter; _}: 'a article)
+= {
+  frontmatter;
+  mainmatter;
+  flags
+}
 
-module Comparators (I: sig val string_of_content : content -> string end) = struct
+module Comparators (I : sig val string_of_content : content -> string end) = struct
   let compare_content =
     Compare.under I.string_of_content String.compare
 
@@ -249,12 +246,12 @@ and apply_modifier_to_content modifier =
 and apply_modifier_to_content_node modifier = function
   | Text str -> Text (apply_modifier_to_string modifier str)
   | Transclude transclusion ->
-    Transclude { transclusion with modifier = compose_modifier modifier transclusion.modifier }
-  | Link link -> Link { link with content = apply_modifier_to_content modifier link.content }
+    Transclude {transclusion with modifier = compose_modifier modifier transclusion.modifier}
+  | Link link -> Link {link with content = apply_modifier_to_content modifier link.content}
   | Prim (p, content) -> Prim (p, apply_modifier_to_content modifier content)
   | node -> node
 
-module TeX_like: sig
+module TeX_like : sig
     val pp_content : Format.formatter -> content -> unit
     val string_of_content : content -> string
   end

@@ -15,34 +15,31 @@ let (let*) = Option.bind
 
 let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
   match params with
-  | {
-    textDocument;
+  | {textDocument;
     _;
   } ->
-    let Lsp_state.{ forest; _ } = Lsp_state.get () in
+    let Lsp_state.{forest; _} = Lsp_state.get () in
     let render = Render.render forest STRING in
     let config = State.config forest in
     let host = config.host in
     match Forest.find_opt (State.parsed forest) (Iri_scheme.uri_to_iri ~host textDocument.uri) with
     | None ->
       None
-    | Some { code; _ } ->
+    | Some {code; _} ->
       forest.resources
       |> Forest.get_all_resources
       |> List.iter
-        (
-          fun resource ->
+          (fun resource ->
             match resource with
-            | Types.Article { frontmatter; _ } ->
+            | Types.Article {frontmatter; _} ->
               Eio.traceln "%a" (Types.(pp_frontmatter pp_content)) frontmatter
             | Types.Asset _ -> ()
-        );
+          );
       code
       |> Analysis.flatten
       |> List.filter_map
-        (
-          fun
-              (Range.{ loc; _ } as node)
+          (fun
+              (Range.{loc; _} as node)
             ->
             match Option.map Range.view loc with
             | None -> None
@@ -57,7 +54,7 @@ let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
                 | None ->
                   (* Eio.traceln "article %a not found" pp_iri iri; *)
                   None
-                | Some { frontmatter; _ } ->
+                | Some {frontmatter; _} ->
                   (* Eio.traceln "got article"; *)
                   match frontmatter.title with
                   | None -> None
@@ -72,5 +69,5 @@ let compute (params : L.InlayHintParams.t) : L.InlayHint.t list option =
                           ~label: (`String content)
                           ()
                       )
-        )
+          )
       |> Option.some

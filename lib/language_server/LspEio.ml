@@ -22,14 +22,12 @@ module Header = struct
     content_type: string
   }
 
-  let empty =
-    {
-      content_length = -1;
-      content_type = "application/vscode-jsonrpc; charset=utf-8"
-    }
+  let empty = {
+    content_length = -1;
+    content_type = "application/vscode-jsonrpc; charset=utf-8"
+  }
 
-  let create ~(content_length : int) : t =
-    { empty with content_length }
+  let create ~(content_length : int) : t = {empty with content_length}
 
   let is_content_length key =
     String.equal (String.lowercase_ascii @@ String.trim key) "content-length"
@@ -49,8 +47,7 @@ module Header = struct
 
   (* If we do see any random header messages, we want to at least print out a decent error message. *)
   let () =
-    Printexc.register_printer @@
-      function
+    Printexc.register_printer @@ function
       | HeaderError (InvalidHeader err) -> Some (Format.asprintf "HeaderError: Invalid Header %s" err)
       | HeaderError (InvalidContentLength n) -> Some (Format.asprintf "HeaderError: Invalid Content Length '%s'" n)
       | _ -> None
@@ -64,10 +61,10 @@ module Header = struct
         | Some n -> n
         | None -> raise (HeaderError (InvalidContentLength value))
       in
-      { headers with content_length }
+      {headers with content_length}
     | [key; value] when is_content_type key ->
       let content_type = String.trim value in
-      { headers with content_type }
+      {headers with content_type}
     | [_; _] ->
       (* We skip any unknown headers. *)
       headers
@@ -119,12 +116,11 @@ module Message = struct
     Flow.copy_string data io.output
 end
 
-let init (env : Eio_unix.Stdenv.base) =
-  {
-    (* [TODO: Reed M, 09/06/2022] I should think about this buffer size... *)
-    input = Buf_read.of_flow ~max_size: 1_000_000 @@ Eio.Stdenv.stdin env;
-    output = Eio.Stdenv.stdout env
-  }
+let init (env : Eio_unix.Stdenv.base) = {
+  (* [TODO: Reed M, 09/06/2022] I should think about this buffer size... *)
+  input = Buf_read.of_flow ~max_size: 1_000_000 @@ Eio.Stdenv.stdin env;
+  output = Eio.Stdenv.stdout env
+}
 
 let recv io =
   Message.read io

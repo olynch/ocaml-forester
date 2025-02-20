@@ -13,10 +13,11 @@ let pp_iri (fmt : Format.formatter) (iri : Iri.t) =
     Iri.to_string ~pctencode: false iri
 
 module Iri_hash_safe : sig
-  type t = private iri
-  val make : iri -> t
-  include Hashtbl.HashedType with type t := t
-end = struct
+    type t = private iri
+    val make : iri -> t
+    include Hashtbl.HashedType with type t := t
+  end
+= struct
   type t = iri
   let make (x : iri) : t = Iri.normalize x
   let equal = Iri.equal ~normalize: false

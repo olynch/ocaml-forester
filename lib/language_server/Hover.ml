@@ -15,14 +15,15 @@ module L = Lsp.Types
 module T = Types
 
 let compute
-    ({
-      position;
+    ({position;
       textDocument;
       _
-    }: L.HoverParams.t)
+    }:
+      L.HoverParams.t
+    )
     : L.Hover.t option
   =
-  let Lsp_state.{ forest; _ } = Lsp_state.get () in
+  let Lsp_state.{forest; _} = Lsp_state.get () in
   let render = Render.render ~dev: true forest STRING in
   let config = State.config forest in
   let host = config.host in
@@ -40,7 +41,7 @@ let compute
         match Forest.get_article iri_under_cursor forest.resources with
         | None ->
           Format.asprintf "Could not get article %a." pp_iri iri_under_cursor
-        | Some { mainmatter; frontmatter; _ } ->
+        | Some {mainmatter; frontmatter; _} ->
           let main = render (Content mainmatter) in
           if main = "" then (Format.asprintf "%a" T.(pp_frontmatter pp_content) frontmatter)
           else main

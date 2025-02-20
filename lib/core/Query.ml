@@ -27,7 +27,7 @@ type ('vertex, 'var) vertex_expr =
   | Var of 'var
 [@@deriving show, repr]
 
-type 'a binder = { body: 'a }
+type 'a binder = {body: 'a}
 [@@deriving show, repr]
 
 type ('vertex, 'var) expr =
@@ -41,36 +41,35 @@ type ('vertex, 'var) expr =
 
 let expr_t vertex_t var_t =
   let open Repr in
-  mu @@
-    fun expr_t ->
-      variant
-        "expr"
-        begin
-          fun rel isect union complement union_fam isect_fam ->
-            function
-            | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
-            | Isect x -> isect x
-            | Union x -> union x
-            | Complement x -> complement x
-            | Union_fam (x, y) -> union_fam (x, y)
-            | Isect_fam (x, y) -> isect_fam (x, y)
-        end
-      |~ case1
-        "Rel"
-        (quad mode_t polarity_t rel_t (vertex_expr_t vertex_t var_t))
-        (fun (x1, x2, x3, x4) -> Rel (x1, x2, x3, x4))
-      |~ case1 "Isect" (list expr_t) (fun x -> Isect x)
-      |~ case1 "Union" (list expr_t) (fun x -> Union x)
-      |~ case1 "Complement" expr_t (fun x -> Complement x)
-      |~ case1
-        "Union_fam"
-        (pair expr_t (binder_t expr_t))
-        (fun (x, y) -> Union_fam (x, y))
-      |~ case1
-        "Isect_fam"
-        (pair expr_t (binder_t expr_t))
-        (fun (x, y) -> Isect_fam (x, y))
-      |> sealv
+  mu @@ fun expr_t ->
+  variant
+    "expr"
+    begin
+      fun rel isect union complement union_fam isect_fam ->
+        function
+          | Rel (x1, x2, x3, x4) -> rel (x1, x2, x3, x4)
+          | Isect x -> isect x
+          | Union x -> union x
+          | Complement x -> complement x
+          | Union_fam (x, y) -> union_fam (x, y)
+          | Isect_fam (x, y) -> isect_fam (x, y)
+    end
+  |~ case1
+      "Rel"
+      (quad mode_t polarity_t rel_t (vertex_expr_t vertex_t var_t))
+      (fun (x1, x2, x3, x4) -> Rel (x1, x2, x3, x4))
+  |~ case1 "Isect" (list expr_t) (fun x -> Isect x)
+  |~ case1 "Union" (list expr_t) (fun x -> Union x)
+  |~ case1 "Complement" expr_t (fun x -> Complement x)
+  |~ case1
+      "Union_fam"
+      (pair expr_t (binder_t expr_t))
+      (fun (x, y) -> Union_fam (x, y))
+  |~ case1
+      "Isect_fam"
+      (pair expr_t (binder_t expr_t))
+      (fun (x, y) -> Isect_fam (x, y))
+  |> sealv
 
 (** A heuristic for computing an intersection of queries. *)
 let rec query_cost q =
@@ -88,15 +87,13 @@ let rec query_cost q =
 
 let sort_by_ascending_cost qs =
   qs
-  |> List.sort @@
-    fun q0 q1 ->
-      compare (query_cost q0) (query_cost q1)
+  |> List.sort @@ fun q0 q1 ->
+    compare (query_cost q0) (query_cost q1)
 
 let sort_by_descending_cost qs =
   qs
-  |> List.sort @@
-    fun q0 q1 ->
-      compare (query_cost q1) (query_cost q0)
+  |> List.sort @@ fun q0 q1 ->
+    compare (query_cost q1) (query_cost q0)
 
 let rel mode pol rel a =
   Rel (mode, pol, rel, a)
@@ -129,8 +126,7 @@ let rec close_expr k x = function
   | Union_fam (q, scope) -> Union_fam (close_expr k x q, close_scope k x scope)
   | Isect_fam (q, scope) -> Isect_fam (close_expr k x q, close_scope k x scope)
 
-and close_scope k x scope =
-  { body = close_expr (k + 1) x scope.body }
+and close_scope k x scope = {body = close_expr (k + 1) x scope.body}
 
 and close_vertex_expr k x = function
   | Vertex vertex -> Vertex vertex
@@ -147,12 +143,12 @@ module type Name = sig
   val fresh : unit -> t
 end
 
-module Global_name: Name = struct
+module Global_name : Name = struct
   type t = int
   let fresh () = Oo.id object end
 end
 
-module Locally_nameless (N: Name) = struct
+module Locally_nameless (N : Name) = struct
   type 'vertex lnexpr = ('vertex, N.t lnvar) expr
 
   exception Distill of N.t
@@ -165,8 +161,7 @@ module Locally_nameless (N: Name) = struct
     | Union_fam (q, scope) -> Union_fam (distill q, distill_scope scope)
     | Isect_fam (q, scope) -> Isect_fam (distill q, distill_scope scope)
 
-  and distill_scope scope =
-    { body = distill scope.body }
+  and distill_scope scope = {body = distill scope.body}
 
   and distill_vertex_expr = function
     | Vertex vertex -> Vertex vertex
@@ -176,8 +171,7 @@ module Locally_nameless (N: Name) = struct
     | F name -> raise @@ Distill name
     | B ix -> ix
 
-  let bind x qx : (_, _ lnvar) expr binder =
-    { body = close_expr 0 x qx }
+  let bind x qx : (_, _ lnvar) expr binder = {body = close_expr 0 x qx}
 
   let isect_fam q x qx =
     Isect_fam (q, bind x qx)

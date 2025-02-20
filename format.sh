@@ -4,8 +4,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-export TOPIARY_LANGUAGE_DIR=topiary
-
 topiary format bin/**/*.ml
 topiary format lib/**/*.ml
 topiary format lib/**/*.mli

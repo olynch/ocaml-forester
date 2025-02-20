@@ -10,16 +10,16 @@ module Unit_map = Iri_map
 
 type exports = (Resolver.P.data, Asai.Range.t option) Trie.t
 
-module Env: sig
+module Env : sig
   type t = exports Unit_map.t
   val empty : t
 end
 
 val builtins : (string list * Syn.node) list
 
-module Builtins:
+module Builtins :
 sig
-  module Transclude:
+  module Transclude :
   sig
     val expanded_sym : Symbol.t
     val show_heading_sym : Symbol.t

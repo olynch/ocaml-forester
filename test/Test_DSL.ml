@@ -10,11 +10,11 @@ open Query
 module T = Types
 
 let content_node =
-  (module struct
-    type t = T.content T.content_node
-    let equal = ( = )
-    let pp = T.pp_content_node T.pp_content
-  end: Alcotest.TESTABLE with type t = T.content T.content_node)
+(module struct
+  type t = T.content T.content_node
+  let equal = (=)
+  let pp = T.pp_content_node T.pp_content
+end: Alcotest.TESTABLE with type t = T.content T.content_node)
 
 let content =
   p
@@ -91,9 +91,9 @@ let test () =
                 (
                   Section
                     {
-                      frontmatter = { iri = None; title = None; dates = []; attributions = []; taxon = None; number = None; designated_parent = None; source_path = None; tags = []; metas = [] };
+                      frontmatter = {iri = None; title = None; dates = []; attributions = []; taxon = None; number = None; designated_parent = None; source_path = None; tags = []; metas = []};
                       mainmatter = (Content [(Prim (`P, (Content [(Text "section")])))]);
-                      flags = { hidden_when_empty = None; included_in_toc = None; header_shown = None; metadata_shown = (Some false); numbered = None; expanded = None }
+                      flags = {hidden_when_empty = None; included_in_toc = None; header_shown = None; metadata_shown = (Some false); numbered = None; expanded = None}
                     }
                 );
                 (Prim (`Em, (Content [(Text "Emphasized item")])));
@@ -104,15 +104,15 @@ let test () =
                 (Prim (`Figure, (Content [(Text "figure")])));
                 (Prim (`Figcaption, (Content [(Text "caption")])));
                 (CDATA "cdata");
-                (Xml_elt { name = { prefix = ""; uname = "html"; xmlns = None }; attrs = []; content = (Content []) });
-                (Transclude { href = Iri.of_string "foo-001"; target = Mainmatter; modifier = Identity });
+                (Xml_elt {name = {prefix = ""; uname = "html"; xmlns = None}; attrs = []; content = (Content [])});
+                (Transclude {href = Iri.of_string "foo-001"; target = Mainmatter; modifier = Identity});
                 (Contextual_number (Iri.of_string "chapter-3"));
                 (Results_of_query (Query.Union []));
                 (KaTeX (Inline, (Content [(Text "a = b")])));
                 (TeX_cs (Word {|\begin{}|}));
-                (Link { href = Iri.of_string "https://git.sr.ht/~jonsterling/ocaml-forester"; content = (Content [(Text "Forester")]) });
+                (Link {href = Iri.of_string "https://git.sr.ht/~jonsterling/ocaml-forester"; content = (Content [(Text "Forester")])});
                 (Img (Remote "img.png"));
-                (Artefact { hash = ""; content = (Content [(Text "res")]); sources = [] })
+                (Artefact {hash = ""; content = (Content [(Text "res")]); sources = []})
               ]
           )
         )

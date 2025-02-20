@@ -17,11 +17,10 @@ module Xmlns = struct
   include Xmlns_effect.Make ()
 
   let run =
-    let xmlns_prefix =
-      {
-        prefix = X.reserved_prefix;
-        xmlns = X.forester_xmlns
-      }
+    let xmlns_prefix = {
+      prefix = X.reserved_prefix;
+      xmlns = X.forester_xmlns
+    }
     in
     run ~reserved: [xmlns_prefix]
 end
@@ -114,7 +113,7 @@ let get_sorted_articles (forest : State.t) addrs =
 
 let get_expanded_title frontmatter forest =
   let scope = Scope.read () in
-  let title = Forest.get_expanded_title ?scope ~flags: T.{ empty_when_untitled = true } frontmatter forest in
+  let title = Forest.get_expanded_title ?scope ~flags: T.{empty_when_untitled = true} frontmatter forest in
   T.apply_modifier_to_content Sentence_case title
 
 let render_xml_qname qname =
@@ -123,7 +122,7 @@ let render_xml_qname qname =
   | "" -> qname.uname
   | _ -> Format.sprintf "%s:%s" qname.prefix qname.uname
 
-let render_xml_attr (forest : State.t) T.{ key; value } =
+let render_xml_attr (forest : State.t) T.{key; value} =
   let str_value = Plain_text_client.string_of_content ~forest: forest.resources ~router: (route forest) value in
   P.string_attr (render_xml_qname key) "%s" str_value
 
@@ -131,23 +130,22 @@ let render_prim_node p =
   X.prim p []
 
 let render_img = function
-  | T.Inline { format; base64 } ->
+  | T.Inline {format; base64} ->
     X.img [X.src "data:image/%s;base64,%s" format base64]
   | T.Remote url ->
     X.img [X.src "%s" url]
 
-let render_xmlns_prefix Xmlns.{ prefix; xmlns } =
+let render_xmlns_prefix Xmlns.{prefix; xmlns} =
   P.string_attr ("xmlns:" ^ prefix) "%s" xmlns
 
-let render_section_flags (dict : T.section_flags) =
-  [
-    X.optional_ X.show_heading dict.header_shown;
-    X.optional_ X.show_metadata dict.metadata_shown;
-    X.optional_ X.hidden_when_empty dict.hidden_when_empty;
-    X.optional_ X.expanded dict.expanded;
-    X.optional_ X.toc dict.included_in_toc;
-    X.optional_ X.numbered dict.numbered
-  ]
+let render_section_flags (dict : T.section_flags) = [
+  X.optional_ X.show_heading dict.header_shown;
+  X.optional_ X.show_metadata dict.metadata_shown;
+  X.optional_ X.hidden_when_empty dict.hidden_when_empty;
+  X.optional_ X.expanded dict.expanded;
+  X.optional_ X.toc dict.included_in_toc;
+  X.optional_ X.numbered dict.numbered
+]
 
 let add_seen_iri iri kont =
   let@ () = Loop_detection.scope @@ Iri_set.add iri in
@@ -223,101 +221,99 @@ and render_content (forest : State.t) (Content content: T.content) : P.node list
   | [] -> []
 
 and render_content_node
-    : State.t -> 'a T.content_node -> P.node list
-  = fun forest node ->
-    let config = State.config forest in
-    match node with
-    | Text str ->
-      [P.txt "%s" str]
-    | CDATA str ->
-      [P.txt ~raw: true "<![CDATA[%s]]>" str]
-    | Iri iri ->
-      let relativised = Iri_scheme.relativise_iri ~host: config.host iri in
-      let str = Format.asprintf "%a" pp_iri relativised in
-      [P.txt "%s" str]
-    | Route_of_iri iri ->
-      [P.txt "%s" (route forest iri)]
-    | Xml_elt elt ->
-      let prefixes_to_add, (name, attrs, content) =
-        let@ () = Xmlns.within_scope in
-        render_xml_qname elt.name,
-        List.map (render_xml_attr forest) elt.attrs,
-        render_content forest elt.content
-      in
-      let attrs =
-        let xmlns_attrs = List.map render_xmlns_prefix prefixes_to_add in
-        attrs @ xmlns_attrs
-      in
-      [P.std_tag name attrs content]
-    | Prim (p, content) ->
-      [render_prim_node p @@ render_content forest content]
-    | Transclude transclusion ->
-      render_transclusion forest transclusion
-    | Contextual_number addr ->
-      let custom_number =
-        let@ resource = Option.bind @@ Forest.find_opt forest.resources addr in
-        match resource with
-        | T.Article article ->
-          article.frontmatter.number
-        | T.Asset _ -> None
-      in
-      begin
-        match custom_number with
-        | None -> [X.contextual_number [X.addr_ "%s" @@ iri_to_string ~config addr]]
-        | Some num -> [P.txt "%s" num]
-      end
-    | Link link ->
-      render_link forest link
-    | Results_of_query q ->
-      let article_to_section =
-        T.article_to_section
-          ~flags: {
-            T.default_section_flags with
-            expanded = Some false;
-            numbered = Some false;
-            included_in_toc = Some false;
-            metadata_shown = Some true
-          }
-      in
-      let module Legacy_query_engine = (val (Forest.legacy_query_engine (State.graphs forest))) in
-      Legacy_query_engine.run_query q
-      |> get_sorted_articles forest
-      |> List.map article_to_section
-      |> List.map (render_section forest)
-    | Results_of_datalog_query q ->
-      let article_to_section =
-        T.article_to_section
-          ~flags: {
-            T.default_section_flags with
-            expanded = Some false;
-            numbered = Some false;
-            included_in_toc = Some false;
-            metadata_shown = Some true
-          }
-      in
-      Forest.run_datalog_query (State.graphs forest) q
-      |> get_sorted_articles forest
-      |> List.map article_to_section
-      |> List.map (render_section forest)
-    | Section section ->
-      [render_section forest section]
-    | KaTeX (mode, content) ->
-      let display =
-        match mode with
-        | Inline -> "inline"
-        | Display -> "block"
-      in
-      let body = Format.asprintf "%a" T.TeX_like.pp_content content in
-      [X.tex [X.display "%s" display] "<![CDATA[%s]]>" body]
-    | TeX_cs cs ->
-      (* Should not happen! *)
-      (* assert false *)
-      [P.txt ~raw: true "\\%s" @@ TeX_cs.show cs]
-    | Img img ->
-      [render_img img]
-    | Artefact resource ->
-      [render_artefact forest resource]
-    | Datalog_script _ -> []
+  : State.t -> 'a T.content_node -> P.node list
+= fun forest node ->
+  let config = State.config forest in
+  match node with
+  | Text str ->
+    [P.txt "%s" str]
+  | CDATA str ->
+    [P.txt ~raw: true "<![CDATA[%s]]>" str]
+  | Iri iri ->
+    let relativised = Iri_scheme.relativise_iri ~host: config.host iri in
+    let str = Format.asprintf "%a" pp_iri relativised in
+    [P.txt "%s" str]
+  | Route_of_iri iri ->
+    [P.txt "%s" (route forest iri)]
+  | Xml_elt elt ->
+    let prefixes_to_add, (name, attrs, content) =
+      let@ () = Xmlns.within_scope in
+      render_xml_qname elt.name,
+      List.map (render_xml_attr forest) elt.attrs,
+      render_content forest elt.content
+    in
+    let attrs =
+      let xmlns_attrs = List.map render_xmlns_prefix prefixes_to_add in
+      attrs @ xmlns_attrs
+    in
+    [P.std_tag name attrs content]
+  | Prim (p, content) ->
+    [render_prim_node p @@ render_content forest content]
+  | Transclude transclusion ->
+    render_transclusion forest transclusion
+  | Contextual_number addr ->
+    let custom_number =
+      let@ resource = Option.bind @@ Forest.find_opt forest.resources addr in
+      match resource with
+      | T.Article article ->
+        article.frontmatter.number
+      | T.Asset _ -> None
+    in
+    begin
+      match custom_number with
+      | None -> [X.contextual_number [X.addr_ "%s" @@ iri_to_string ~config addr]]
+      | Some num -> [P.txt "%s" num]
+    end
+  | Link link ->
+    render_link forest link
+  | Results_of_query q ->
+    let article_to_section =
+      T.article_to_section
+        ~flags: {T.default_section_flags with
+          expanded = Some false;
+          numbered = Some false;
+          included_in_toc = Some false;
+          metadata_shown = Some true
+        }
+    in
+    let module Legacy_query_engine = (val (Forest.legacy_query_engine (State.graphs forest))) in
+    Legacy_query_engine.run_query q
+    |> get_sorted_articles forest
+    |> List.map article_to_section
+    |> List.map (render_section forest)
+  | Results_of_datalog_query q ->
+    let article_to_section =
+      T.article_to_section
+        ~flags: {T.default_section_flags with
+          expanded = Some false;
+          numbered = Some false;
+          included_in_toc = Some false;
+          metadata_shown = Some true
+        }
+    in
+    Forest.run_datalog_query (State.graphs forest) q
+    |> get_sorted_articles forest
+    |> List.map article_to_section
+    |> List.map (render_section forest)
+  | Section section ->
+    [render_section forest section]
+  | KaTeX (mode, content) ->
+    let display =
+      match mode with
+      | Inline -> "inline"
+      | Display -> "block"
+    in
+    let body = Format.asprintf "%a" T.TeX_like.pp_content content in
+    [X.tex [X.display "%s" display] "<![CDATA[%s]]>" body]
+  | TeX_cs cs ->
+    (* Should not happen! *)
+    (* assert false *)
+    [P.txt ~raw: true "\\%s" @@ TeX_cs.show cs]
+  | Img img ->
+    [render_img img]
+  | Artefact resource ->
+    [render_artefact forest resource]
+  | Datalog_script _ -> []
 
 and render_artefact forest (resource : T.content T.artefact) =
   X.resource
@@ -383,13 +379,13 @@ and render_attributions =
             let articles =
               let positives = [Builtin_relation.has_indirect_contributor @* [const (T.Iri_vertex scope); var "X"]] in
               let negatives = [] in
-              Datalog_expr.{ var = "X"; positives; negatives }
+              Datalog_expr.{var = "X"; positives; negatives}
               |> Forest.run_datalog_query (State.graphs forest)
               |> get_sorted_articles forest
             in
             let@ biotree = List.filter_map @~ articles in
             let@ iri = Option.map @~ biotree.frontmatter.iri in
-            T.{ vertex = T.Iri_vertex iri; role = Contributor }
+            T.{vertex = T.Iri_vertex iri; role = Contributor}
           in
           let all_attributions =
             List_util.nub @@
@@ -415,8 +411,8 @@ and render_attribution forest (attrib : _ T.attribution) =
 and render_attribution_vertex (forest : State.t) vtx =
   match vtx with
   | T.Iri_vertex href ->
-    let content = T.Content [T.Transclude { href; target = Title { empty_when_untitled = false }; modifier = Identity }] in
-    render_link forest T.{ href; content }
+    let content = T.Content [T.Transclude {href; target = Title {empty_when_untitled = false}; modifier = Identity}] in
+    render_link forest T.{href; content}
   | T.Content_vertex content ->
     render_content forest content
 
@@ -444,7 +440,7 @@ and render_date forest (date : Human_datetime.t) =
 let render_article forest (article : T.content T.article) : P.node =
   let@ () = Reporter.tracef "when rendering article %a" Format.(pp_print_option Iri.pp) article.frontmatter.iri in
   let config = State.config forest in
-  let xmlns_prefix = Xmlns.{ prefix = X.reserved_prefix; xmlns = X.forester_xmlns } in
+  let xmlns_prefix = Xmlns.{prefix = X.reserved_prefix; xmlns = X.forester_xmlns} in
   let@ () = Loop_detection.run ~env: Iri_set.empty in
   let@ () = Scope.run ~env: article.frontmatter.iri in
   let@ () = Xmlns.run in

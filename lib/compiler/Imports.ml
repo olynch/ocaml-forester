@@ -28,7 +28,7 @@ let resolve_iri_to_code iri (forest : State.t) =
         begin
           match Parse.parse_file path with
           | Ok code ->
-            Some Code.{ code; iri = Some iri; source_path = Some path }
+            Some Code.{code; iri = Some iri; source_path = Some path}
           | Error _ -> None
         end
       | None -> None
@@ -42,8 +42,7 @@ let rec analyse_tree roots (tree : Code.tree) =
   let roots =
     Option.fold
       ~none: roots
-      ~some: (
-        fun x -> x :: roots
+      ~some: (fun x -> x :: roots
       )
       iri_opt
   in
@@ -76,10 +75,10 @@ and analyse_node roots (node : Code.node Asai.Range.located) =
     analyse_tree
       roots
       (* Consider using the env to keep track of the current source path *)
-      { iri; code; source_path = None }
+      {iri; code; source_path = None}
   | Scope code | Namespace (_, code) | Group (_, code) | Math (_, code) | Let (_, _, code) | Fun (_, code) | Def (_, _, code) ->
     analyse_code roots code
-  | Object { methods; _ } | Patch { methods; _ } ->
+  | Object {methods; _} | Patch {methods; _} ->
     let@ _, code = List.iter @~ methods in
     analyse_code roots code
   | Dx_prop (rel, args) ->
@@ -95,23 +94,23 @@ and analyse_node roots (node : Code.node Asai.Range.located) =
 
 let dependencies tree forest =
   let graph = Forest_graph.create () in
-  let env = { graph; forest; follow = true } in
+  let env = {graph; forest; follow = true} in
   let@ () = Analysis_env.run ~env in
   analyse_tree [] tree;
   env.graph
 
 let _minimal_dependency_graph
-    : addr: iri -> Forest_graph.t
-  = fun ~addr ->
-    let dep_graph = Forest_graph.create () in
-    let rec f v =
-      Forest_graph.iter_succ
-        (fun w -> Forest_graph.add_edge dep_graph v w; f w)
-        dep_graph
-        v
-    in
-    f (T.Iri_vertex addr);
-    dep_graph
+  : addr: iri -> Forest_graph.t
+= fun ~addr ->
+  let dep_graph = Forest_graph.create () in
+  let rec f v =
+    Forest_graph.iter_succ
+      (fun w -> Forest_graph.add_edge dep_graph v w; f w)
+      dep_graph
+      v
+  in
+  f (T.Iri_vertex addr);
+  dep_graph
 
 let run_builder ?root env =
   let@ () = Analysis_env.run ~env in
@@ -138,5 +137,5 @@ let run_builder ?root env =
 
 let build forest =
   let graph = Forest_graph.create () in
-  let env = { graph; forest; follow = false } in
+  let env = {graph; forest; follow = false} in
   run_builder env

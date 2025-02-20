@@ -11,7 +11,7 @@ module type S = sig
   val run_query : Types.query -> Vertex_set.t
 end
 
-module Make (Graphs: Forest_graphs.S) : S = struct
+module Make (Graphs : Forest_graphs.S) : S = struct
   module Q = Query
 
   let eval_vertex ~env : (_, Q.dbix) Q.vertex_expr -> _ = function

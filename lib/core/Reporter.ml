@@ -106,10 +106,10 @@ let lsp_run ?init_loc ?init_backtrace publish path k =
     ~emit: push_diagnostic
     ~fatal: push_diagnostic
     ?init_loc
-    ?init_backtrace @@
-    fun () ->
-      let result = k () in
-      publish path !diagnostics;
-      result
+    ?init_backtrace
+    @@ fun () ->
+    let result = k () in
+    publish path !diagnostics;
+    result
 
 let ignore = run ~emit: (fun _ -> ()) ~fatal: (fun _ -> fatalf Message.Internal_error "ignoring error")

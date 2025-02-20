@@ -9,8 +9,7 @@ include Asai.Range
 let pp_located pp_arg fmt (x : 'a located) =
   pp_arg fmt x.value
 
-let map f node =
-  { node with value = f node.value }
+let map f node = {node with value = f node.value}
 
 type string_source = Asai.Range.string_source = {
   title: string option;
@@ -18,8 +17,10 @@ type string_source = Asai.Range.string_source = {
 }
 [@@deriving repr]
 
-type source = [`File of string
-| `String of string_source]
+type source = [
+  | `File of string
+  | `String of string_source
+]
 [@@deriving repr]
 
 type position = Asai.Range.position = {
@@ -44,5 +45,5 @@ let t : t Repr.t =
   |~ case1 "End_of_file" position_t eof
   |> sealv
 
-type 'a located = 'a Asai.Range.located = { loc: t option; value: 'a }
+type 'a located = 'a Asai.Range.located = {loc: t option; value: 'a}
 [@@deriving repr]
