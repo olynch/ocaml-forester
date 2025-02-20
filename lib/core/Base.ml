@@ -14,11 +14,6 @@ let pp_iri (fmt : Format.formatter) (iri : Iri.t) =
 
 module String_map = Map.Make(String)
 
-module Iri_ord_unsafe = struct
-  type t = Iri.t
-  let compare = Iri.compare ~normalize: true
-end
-
 module Iri_hash_unsafe = struct
   type t = iri
   let equal = Iri.equal ~normalize: false
@@ -29,26 +24,8 @@ module Iri_hash_unsafe = struct
   let hash iri = Hashtbl.hash (distill iri)
 end
 
-module Iri_set = struct
-  module M = Set.Make(Iri_ord_unsafe)
-  type t = M.t
-  type elt = M.elt
-  let empty = M.empty
-  let add iri = M.add (Iri.normalize iri)
-  let mem iri = M.mem (Iri.normalize iri)
-end
-
-module Iri_map = struct
-  module M = Map.Make(Iri_ord_unsafe)
-  type 'a t = 'a M.t
-  type key = M.key
-  let empty = M.empty
-  let add iri = M.add (Iri.normalize iri)
-  let find_opt iri = M.find_opt (Iri.normalize iri)
-  let to_seq = M.to_seq
-  let cardinal = M.cardinal
-  let to_list = M.to_list
-end
+module Iri_set = Iri.Set
+module Iri_map = Iri.Map
 
 module Iri_tbl = struct
   module Tbl = Hashtbl.Make(Iri_hash_unsafe)

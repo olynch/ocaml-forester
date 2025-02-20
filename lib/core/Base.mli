@@ -12,25 +12,8 @@ type iri = Iri.t
 val iri_t : Iri.t Repr.t
 val pp_iri : Format.formatter -> Iri.t -> unit
 
-module Iri_set: sig
-  type t
-  type elt = iri
-  val add : elt -> t -> t
-  val mem : elt -> t -> bool
-  val empty : t
-end
-
-module Iri_map: sig
-  type 'a t
-  type key = iri
-  val empty : 'a t
-  val find_opt : key -> 'a t -> 'a option
-  val add : key -> 'a -> 'a t -> 'a t
-  val cardinal : 'a t -> int
-  val to_seq : 'a t -> (key * 'a) Seq.t
-  val to_list : 'a t -> (key * 'a) list
-end
-
+module Iri_set: Set.S with type elt = iri
+module Iri_map: Map.S with type key = iri
 module Iri_tbl: sig
   type 'a t
   type key = iri
