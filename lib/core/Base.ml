@@ -12,8 +12,6 @@ let pp_iri (fmt : Format.formatter) (iri : Iri.t) =
   Format.fprintf fmt "%s" @@
     Iri.to_string ~pctencode: false iri
 
-module String_map = Map.Make(String)
-
 module Iri_hash_safe : sig
   type t = private iri
   val make : iri -> t
