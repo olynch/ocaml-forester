@@ -20,9 +20,11 @@ module Iri_hash_safe : sig
 = struct
   type t = iri
   let make (x : iri) : t = Iri.normalize x
-  let equal = Iri.equal ~normalize: false
 
   let distill iri = Iri.scheme iri, Iri.host iri, Iri.port iri, Iri.user iri, Iri.path iri
+
+  (* It _ought_ to be enough to do `Iri.equal ~normalize: false`, but this results in some false negatives for unknown reasons. The code below with `distill` is significantly slower, but we have no choice at the moment. *)
+  let equal x y = distill x = distill y
 
   (* IRI has mutable state that seems to be interfering with Hashtbl.hash *)
   let hash (iri : t) = Hashtbl.hash (distill iri)
