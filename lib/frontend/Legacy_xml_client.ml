@@ -62,7 +62,8 @@ let home_iri ~(config : Config.t) =
 let iri_is_home ~config iri =
   match home_iri ~config with
   | Some home_iri ->
-    Iri.equal ~normalize: true home_iri iri
+    (* By this point, any IRI should be in normal form. *)
+    Iri.equal ~normalize: false home_iri iri
   | None -> false
 
 let route_resource_iri ~suffix forest iri =
