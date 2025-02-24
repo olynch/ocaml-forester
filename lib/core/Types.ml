@@ -99,7 +99,7 @@ type 'content resource =
 type 'content forest = 'content resource list
 [@@deriving show, repr]
 
-type 'content content_target =
+type content_target =
   | Full of section_flags
   | Mainmatter
   | Title of title_flags
@@ -112,7 +112,7 @@ type modifier =
 
 type 'content transclusion = {
   href: iri;
-  target: 'content content_target;
+  target: content_target;
   modifier: modifier
 }
 [@@deriving show, repr]
@@ -198,14 +198,17 @@ let trim_whitespace xs =
 
 let default_frontmatter ?iri ?source_path ?designated_parent ?(dates = []) ?(attributions = []) ?taxon ?number ?(metas = []) ?(tags = []) ?title () = {iri; source_path; designated_parent; dates; attributions; taxon; number; metas; tags; title}
 
-let article_to_section
-  ?(flags = default_section_flags)
-  ({frontmatter; mainmatter; _}: 'a article)
-= {
-  frontmatter;
-  mainmatter;
-  flags
-}
+let article_to_section ?(flags = default_section_flags) (article : 'a article) =
+  let mainmatter =
+    match article.frontmatter.iri with
+    | Some href -> Content [Transclude {href; target = Mainmatter; modifier = Identity}]
+    | None -> article.mainmatter
+  in
+  {
+    frontmatter = article.frontmatter;
+    mainmatter;
+    flags
+  }
 
 module Comparators (I : sig val string_of_content : content -> string end) = struct
   let compare_content =
