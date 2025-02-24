@@ -30,7 +30,9 @@ module Loop_detection = Algaeff.Reader.Make(struct type t = Iri_set.t end)
 
 (* It's fine to have a global transclusion cache since iris fully qualify a tree*)
 let transclusion_cache = Hashtbl.create 1000
-let frontmatter_cache = Hashtbl.create 1000
+
+(* This would be nice, but it is interfering with the stupid breadcrumb titles! Need to make that stuff stateless. *)
+(* let frontmatter_cache = Hashtbl.create 1000 *)
 
 let forester_iri_to_string ~host ~path ~(config : Config.t) =
   if host = config.host then
@@ -182,9 +184,9 @@ let rec render_section forest (section : T.content T.section) : P.node =
     ]
 
 and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
-  match Hashtbl.find_opt frontmatter_cache frontmatter with
-  | Some cached -> cached
-  | None ->
+  (* match Hashtbl.find_opt frontmatter_cache frontmatter with *)
+  (* | Some cached -> cached *)
+  (* | None -> *)
     let config = State.config forest in
     let result =
       X.frontmatter
@@ -209,7 +211,7 @@ and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
           X.null (List.map (render_meta forest) frontmatter.metas)
         ]
     in
-    Hashtbl.add frontmatter_cache frontmatter result;
+    (* Hashtbl.add frontmatter_cache frontmatter result; *)
     result
 
 and render_meta forest (key, body) =
