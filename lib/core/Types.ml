@@ -198,18 +198,12 @@ let trim_whitespace xs =
 
 let default_frontmatter ?iri ?source_path ?designated_parent ?(dates = []) ?(attributions = []) ?taxon ?number ?(metas = []) ?(tags = []) ?title () = {iri; source_path; designated_parent; dates; attributions; taxon; number; metas; tags; title}
 
-let mainmatter_of_article (article : 'a article) =
-  match article.frontmatter.iri with
-  | Some href -> Content [Transclude {href; target = Mainmatter; modifier = Identity}]
-  | None -> article.mainmatter
-
-let mainmatter_of_section (section : 'a section) =
-  match section.frontmatter.iri with
-  | Some href -> Content [Transclude {href; target = Mainmatter; modifier = Identity}]
-  | None -> section.mainmatter
-
 let article_to_section ?(flags = default_section_flags) (article : 'a article) =
-  let mainmatter = mainmatter_of_article article in
+  let mainmatter =
+    match article.frontmatter.iri with
+    | Some href -> Content [Transclude {href; target = Mainmatter; modifier = Identity}]
+    | None -> article.mainmatter
+  in
   {
     frontmatter = article.frontmatter;
     mainmatter;

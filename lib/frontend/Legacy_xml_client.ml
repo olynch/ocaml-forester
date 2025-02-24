@@ -178,7 +178,7 @@ let rec render_section forest (section : T.content T.section) : P.node =
           [X.info [] [P.txt "Transclusion loop detected, rendering stopped."]]
         else
           let@ () = add_seen_iri_opt section.frontmatter.iri in
-          render_content forest @@ T.mainmatter_of_section section
+          render_content forest section.mainmatter
     ]
 
 and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
@@ -460,7 +460,7 @@ let render_article forest (article : T.content T.article) : P.node =
       X.mainmatter [] @@
         begin
           let@ () = add_seen_iri_opt article.frontmatter.iri in
-          render_content forest @@ T.mainmatter_of_article article
+          render_content forest article.mainmatter
         end;
       X.backmatter [] @@ render_content forest article.backmatter
     ]
