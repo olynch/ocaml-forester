@@ -30,6 +30,7 @@ module Loop_detection = Algaeff.Reader.Make(struct type t = Iri_set.t end)
 
 (* It's fine to have a global transclusion cache since iris fully qualify a tree*)
 let transclusion_cache = Hashtbl.create 1000
+let frontmatter_cache = Hashtbl.create 1000
 
 let forester_iri_to_string ~host ~path ~(config : Config.t) =
   if host = config.host then
@@ -180,31 +181,35 @@ let rec render_section forest (section : T.content T.section) : P.node =
     ]
 
 and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
-  let config = State.config forest in
-  X.frontmatter
-    []
-    [
-      render_attributions forest frontmatter.iri frontmatter.attributions;
-      render_dates forest frontmatter.dates;
-      X.conditional forest.dev (X.optional (X.source_path [] "%s") frontmatter.source_path);
-      X.optional (fun iri -> X.addr [] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
-      X.optional (X.route [] "%s") @@
-        Option.map
-          (fun iri -> route forest iri)
-          frontmatter.iri;
-      begin
-        let title = get_expanded_title frontmatter forest.resources in
-        X.title [X.text_ "%s" @@ Plain_text_client.string_of_content ~forest: forest.resources ~router: (route forest) title] @@
-          render_content forest title
-      end;
-      begin
-        match frontmatter.taxon with
-        | None -> X.null []
-        | Some taxon ->
-          X.taxon [] @@ render_content forest (T.apply_modifier_to_content T.Sentence_case taxon)
-      end;
-      X.null (List.map (render_meta forest) frontmatter.metas)
-    ]
+  match Hashtbl.find_opt frontmatter_cache frontmatter with
+  | Some cached -> cached
+  | None ->
+    let config = State.config forest in
+    let result =
+      X.frontmatter
+        []
+        [
+          render_attributions forest frontmatter.iri frontmatter.attributions;
+          render_dates forest frontmatter.dates;
+          X.conditional forest.dev (X.optional (X.source_path [] "%s") frontmatter.source_path);
+          X.optional (fun iri -> X.addr [] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
+          X.optional (X.route [] "%s") @@ Option.map (route forest) frontmatter.iri;
+          begin
+            let title = get_expanded_title frontmatter forest.resources in
+            X.title [X.text_ "%s" @@ Plain_text_client.string_of_content ~forest: forest.resources ~router: (route forest) title] @@
+              render_content forest title
+          end;
+          begin
+            match frontmatter.taxon with
+            | None -> X.null []
+            | Some taxon ->
+              X.taxon [] @@ render_content forest (T.apply_modifier_to_content T.Sentence_case taxon)
+          end;
+          X.null (List.map (render_meta forest) frontmatter.metas)
+        ]
+    in
+    Hashtbl.add frontmatter_cache frontmatter result;
+    result
 
 and render_meta forest (key, body) =
   X.meta [X.name "%s" key] @@
