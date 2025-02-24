@@ -396,10 +396,9 @@ and render_attributions =
             T.{vertex = T.Iri_vertex iri; role = Contributor}
           in
           let all_attributions =
-            List_util.nub @@
             attributions @
             let@ attribution = List.filter_map @~ indirect_attributions in
-            if List.exists (fun (existing : _ T.attribution) -> attribution.vertex = existing.vertex) attributions then None
+            if List.exists (fun (existing : _ T.attribution) -> Vertex.equal attribution.vertex existing.vertex) attributions then None
             else
               Some attribution
           in

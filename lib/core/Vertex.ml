@@ -15,8 +15,8 @@ let clean = function
 
 let hash x = Hashtbl.hash (clean x)
 
-let compare = compare
-let equal = (=)
+let compare x y = compare (clean x) (clean y)
+let equal x y = clean x = clean y
 
 let iri_of_vertex : _ Types.vertex -> Iri.t option = function
   | Iri_vertex iri -> Some iri
