@@ -23,7 +23,7 @@ module Iri_hash_safe : sig
 
   let distill iri = Iri.scheme iri, Iri.host iri, Iri.port iri, Iri.user iri, Iri.path iri
 
-  (* It _ought_ to be enough to do `Iri.equal ~normalize: false`, but this results in some false negatives for unknown reasons. The code below with `distill` is significantly slower, but we have no choice at the moment. *)
+  (* It _ought_ to be enough to do `Iri.equal ~normalize: false`, but this results in some false negatives for unknown reasons. *)
   let equal x y = distill x = distill y
 
   (* IRI has mutable state that seems to be interfering with Hashtbl.hash *)
