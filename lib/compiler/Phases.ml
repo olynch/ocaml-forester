@@ -440,7 +440,7 @@ let plant_assets
   Logs.debug (fun m -> m "planting %i assets" (Seq.length paths));
   let module EP = Eio.Path in
   begin
-    let@ path = Eio.Fiber.List.iter @~ List.of_seq paths in
+    let@ path = Eio.Fiber.List.iter ~max_fibers: 20 @~ List.of_seq paths in
     let content = EP.load path in
     let source_path = EP.native_exn path in
     let iri = Asset_router.install ~host: state.config.host ~source_path ~content in
