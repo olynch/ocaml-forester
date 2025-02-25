@@ -191,7 +191,7 @@ let rec get_expanded_title ?scope ?(flags = T.{empty_when_untitled = false}) (fr
   in
   Option.value ~default: short_title @@
     match frontmatter.designated_parent with
-    | Some parent_iri when not (scope = frontmatter.designated_parent) ->
+    | Some parent_iri when not (Option.equal Iri.equal scope frontmatter.designated_parent) ->
       let@ parent = Option.map @~ get_article parent_iri forest in
       let parent_title = get_expanded_title parent.frontmatter forest in
       let parent_link = T.Link {href = parent_iri; content = parent_title} in
