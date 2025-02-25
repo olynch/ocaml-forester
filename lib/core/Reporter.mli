@@ -28,7 +28,9 @@ sig
     | IO_error
     | Log
   val pp :
-    Ppx_deriving_runtime.Format.formatter -> t -> Ppx_deriving_runtime.unit
+    Ppx_deriving_runtime.Format.formatter ->
+    t ->
+    Ppx_deriving_runtime.unit
   val show : t -> Ppx_deriving_runtime.string
   val default_severity : t -> Asai.Diagnostic.severity
   val short_code : t -> string
@@ -44,14 +46,14 @@ val easy_run : (unit -> 'a) -> 'a
 val silence : (unit -> 'a) -> 'a
 val test_run : (unit -> 'a) -> 'a
 val lsp_run :
-  ?init_loc: Asai__.Range.t ->
-  ?init_backtrace: Asai__.Diagnostic.backtrace ->
-  ('a -> Message.t Asai__.Diagnostic.t list -> unit) ->
+  ?init_loc: Asai.Range.t ->
+  ?init_backtrace: Asai.Diagnostic.backtrace ->
+  ('a -> Message.t Asai.Diagnostic.t list -> unit) ->
   'a ->
   (unit -> unit) ->
   unit
 val ignore :
-  ?init_loc: Asai__.Range.t ->
-  ?init_backtrace: Asai__.Diagnostic.backtrace ->
+  ?init_loc: Asai.Range.t ->
+  ?init_backtrace: Asai.Diagnostic.backtrace ->
   (unit -> 'a) ->
   'a

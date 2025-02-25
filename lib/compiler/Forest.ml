@@ -24,9 +24,7 @@ module Dx = Datalog_expr
 
 type env = (module Forest_graphs.S)
 
-let legacy_query_engine
-  : env -> (module Legacy_query_engine.S)
-= fun env ->
+let legacy_query_engine (env : env) : (module Legacy_query_engine.S) =
   let module Graphs = (val env) in
   (module Legacy_query_engine.Make(Graphs))
 
@@ -37,9 +35,7 @@ let execute_datalog_script graphs script =
 
 (* let () = execute_datalog_script Builtin_relation.axioms *)
 
-let run_datalog_query
-  : env -> (string, Vertex.t) Dx.query -> Vertex_set.t
-= fun graphs q ->
+let run_datalog_query (graphs : env) (q : (string, Vertex.t) Dx.query) : Vertex_set.t =
   let () = execute_datalog_script graphs Builtin_relation.axioms in
   let module Graphs = (val graphs) in
   Datalog_eval.run_query Graphs.dl_db q
@@ -162,9 +158,7 @@ let get_article
     None
   | Some (T.Article article) -> Some article
 
-let plant_resource
-  : resource -> (module Forest_graphs.S) -> resource t -> unit
-= fun resource graphs resources ->
+let plant_resource (resource : resource) (graphs : (module Forest_graphs.S)) (resources : resource t) : unit =
   let module Graphs = (val graphs) in
   analyse_resource graphs resource;
   let@ iri = Option.iter @~ iri_for_resource resource in

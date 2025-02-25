@@ -187,32 +187,32 @@ and render_frontmatter forest (frontmatter : T.content T.frontmatter) : P.node =
   (* match Hashtbl.find_opt frontmatter_cache frontmatter with *)
   (* | Some cached -> cached *)
   (* | None -> *)
-    let config = State.config forest in
-    let result =
-      X.frontmatter
-        []
-        [
-          render_attributions forest frontmatter.iri frontmatter.attributions;
-          render_dates forest frontmatter.dates;
-          X.conditional forest.dev (X.optional (X.source_path [] "%s") frontmatter.source_path);
-          X.optional (fun iri -> X.addr [] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
-          X.optional (X.route [] "%s") @@ Option.map (route forest) frontmatter.iri;
-          begin
-            let title = get_expanded_title frontmatter forest.resources in
-            X.title [X.text_ "%s" @@ Plain_text_client.string_of_content ~forest: forest.resources ~router: (route forest) title] @@
-              render_content forest title
-          end;
-          begin
-            match frontmatter.taxon with
-            | None -> X.null []
-            | Some taxon ->
-              X.taxon [] @@ render_content forest (T.apply_modifier_to_content T.Sentence_case taxon)
-          end;
-          X.null (List.map (render_meta forest) frontmatter.metas)
-        ]
-    in
-    (* Hashtbl.add frontmatter_cache frontmatter result; *)
-    result
+  let config = State.config forest in
+  let result =
+    X.frontmatter
+      []
+      [
+        render_attributions forest frontmatter.iri frontmatter.attributions;
+        render_dates forest frontmatter.dates;
+        X.conditional forest.dev (X.optional (X.source_path [] "%s") frontmatter.source_path);
+        X.optional (fun iri -> X.addr [] "%s" @@ iri_to_string ~config iri) frontmatter.iri;
+        X.optional (X.route [] "%s") @@ Option.map (route forest) frontmatter.iri;
+        begin
+          let title = get_expanded_title frontmatter forest.resources in
+          X.title [X.text_ "%s" @@ Plain_text_client.string_of_content ~forest: forest.resources ~router: (route forest) title] @@
+            render_content forest title
+        end;
+        begin
+          match frontmatter.taxon with
+          | None -> X.null []
+          | Some taxon ->
+            X.taxon [] @@ render_content forest (T.apply_modifier_to_content T.Sentence_case taxon)
+        end;
+        X.null (List.map (render_meta forest) frontmatter.metas)
+      ]
+  in
+  (* Hashtbl.add frontmatter_cache frontmatter result; *)
+  result
 
 and render_meta forest (key, body) =
   X.meta [X.name "%s" key] @@
@@ -397,10 +397,10 @@ and render_attributions =
           in
           let all_attributions =
             attributions @
-            let@ attribution = List.filter_map @~ indirect_attributions in
-            if List.exists (fun (existing : _ T.attribution) -> Vertex.equal attribution.vertex existing.vertex) attributions then None
-            else
-              Some attribution
+              let@ attribution = List.filter_map @~ indirect_attributions in
+              if List.exists (fun (existing : _ T.attribution) -> Vertex.equal attribution.vertex existing.vertex) attributions then None
+              else
+                Some attribution
           in
           X.authors [] @@ List.map (render_attribution forest) all_attributions
       in

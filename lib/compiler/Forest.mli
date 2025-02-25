@@ -26,12 +26,19 @@ val analyse_resource : (module Forest_graphs.S) -> T.content T.resource -> unit
     - When encountering a {{!Forester_core.Types.Datalog_script}[Datalog_script script]}, it runs the script and records the results in {{!Forester_core.Forest_graphs.S}[graphs]}.
     *)
 
-val iri_for_resource : 'a T.resource -> Forester_core__.Base.iri option
+val iri_for_resource :
+  'a T.resource ->
+  iri option
 
-val get_article : key -> T.content T.resource t -> T.content T.article option
+val get_article :
+  key ->
+  T.content T.resource t ->
+  T.content T.article option
 
 val run_datalog_query :
-  (module Forest_graphs.S) -> (string, Forester_core.Vertex.t) Dx.query -> Forester_core.Vertex_set.t
+  (module Forest_graphs.S) ->
+  (string, Forester_core.Vertex.t) Dx.query ->
+  Forester_core.Vertex_set.t
 
 val plant_resource :
   T.content T.resource ->
@@ -47,7 +54,9 @@ val get_expanded_title :
   T.content
 
 val get_content_of_transclusion :
-  T.content T.transclusion -> T.content T.resource t -> T.content option
+  T.content T.transclusion ->
+  T.content T.resource t ->
+  T.content option
 
 val get_title_or_content_of_vertex :
   ?not_found: (key -> T.content option) ->
