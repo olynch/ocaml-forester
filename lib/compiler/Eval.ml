@@ -655,6 +655,13 @@ and eval_node node : V.t =
   | Dx_execute ->
     let script = eval_pop_arg ~loc: node.loc |> extract_dx_sequent in
     emit_content_node ~loc: node.loc @@ T.Datalog_script [script]
+  | Current_tree ->
+    let iri = match (Frontmatter.get ()).iri with
+      | Some iri -> iri
+      | None -> Reporter.fatalf ?loc: node.loc Internal_error "No iri for tree"
+    in
+    emit_content_node ~loc: node.loc @@ T.Iri iri
+
 
 and eval_var ~loc x =
   match Env.find_opt x @@ Lex_env.read () with

@@ -138,7 +138,8 @@ let compute
                     | Syn.Dx_const (_, _)
                     | Syn.Dx_execute
                     | Syn.Route_asset
-                    | Syn.Publish_results_of_query ->
+                    | Syn.Publish_results_of_query
+                    | Syn.Current_tree ->
                       L.SymbolKind.File
                 in
                 match location with

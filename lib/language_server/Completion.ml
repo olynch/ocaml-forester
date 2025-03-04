@@ -64,7 +64,8 @@ let kind
   | Dx_var _
   | Dx_const (_, _)
   | Dx_execute
-  | Publish_results_of_query ->
+  | Publish_results_of_query
+  | Current_tree ->
     None
 
 let insert_text path = String.concat "/" path

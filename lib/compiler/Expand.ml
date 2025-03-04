@@ -433,7 +433,8 @@ let builtins = [
   ["rel"; "in-host"], Syn.Text Builtin_relation.in_host;
   ["execute"], Syn.Dx_execute;
   ["route-asset"], Syn.Route_asset;
-  ["publish-query"], Syn.Publish_results_of_query
+  ["publish-query"], Syn.Publish_results_of_query;
+  ["current-tree"], Syn.Current_tree;
 ]
 
 let expand_tree
