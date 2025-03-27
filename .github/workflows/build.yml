@@ -28,10 +28,6 @@ jobs:
           opam switch set . --confirm-level=unsafe-yes
         shell: alpine.sh {0}
 
-      - name: Install dependencies
-        run: opam install . --deps-only --confirm-level=unsafe-yes
-        shell: alpine.sh {0}
-
       - name: Build
         run: opam exec -- dune build
         shell: alpine.sh {0}
