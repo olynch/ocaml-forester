@@ -7,7 +7,38 @@ on:
 permissions: read-all
 
 jobs:
-  build:
+  build-static:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v4
+
+      - name: Setup Alpine Linux environment
+        uses: jirutka/setup-alpine@v1.3.0
+
+      - name: Install opam
+        run: apk add opam
+
+      - name: Install static ocaml
+        run: |
+          opam init
+          source ~/.opam/opam-init/init.sh
+          opam switch create . --packages "ocaml-option-static,ocaml.5.3.0"
+          opam switch set .
+
+      - name: Install dependencies
+        run: opam install . --deps-only
+
+      - name: Build
+        run: opam exec -- dune build
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-static-binary
+          path: |
+            _build/default/bin/forester/main.exe
+  build-dynamic:
     strategy:
       fail-fast: false
       matrix:
@@ -28,7 +59,7 @@ jobs:
         with:
           ocaml-compiler: 5
 
-      - run: opam install . --deps-only --with-test
+      - run: opam install . --deps-only
 
       - run: opam exec -- dune build
 
