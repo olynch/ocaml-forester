@@ -25,7 +25,7 @@ jobs:
           opam init --disable-sandboxing
           source ~/.opam/opam-init/init.sh
           opam switch create . --packages "ocaml-option-static,ocaml.5.3.0" --confirm-level=unsafe-yes
-          opam switch set . --confirm-level=unsafe-yes
+          eval $(opam env --set-switch)
         shell: alpine.sh {0}
 
       - name: Build
