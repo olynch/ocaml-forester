@@ -18,6 +18,7 @@ jobs:
 
       - name: Install opam
         run: apk add opam
+        shell: alpine.sh --root {0}
 
       - name: Install static ocaml
         run: |
@@ -25,12 +26,15 @@ jobs:
           source ~/.opam/opam-init/init.sh
           opam switch create . --packages "ocaml-option-static,ocaml.5.3.0"
           opam switch set .
+        shell: alpine.sh {0}
 
       - name: Install dependencies
         run: opam install . --deps-only
+        shell: alpine.sh {0}
 
       - name: Build
         run: opam exec -- dune build
+        shell: alpine.sh {0}
 
       - name: Upload
         uses: actions/upload-artifact@v4
