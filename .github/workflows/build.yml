@@ -22,7 +22,7 @@ jobs:
 
       - name: Install static ocaml
         run: |
-          opam init
+          opam init --disable-sandboxing
           source ~/.opam/opam-init/init.sh
           opam switch create . --packages "ocaml-option-static,ocaml.5.3.0"
           opam switch set .
