@@ -34,6 +34,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: binary
+          name: ${{ matrix.os }}-binary
           path: |
             _build/default/bin/forester/main.exe
