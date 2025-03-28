@@ -2,10 +2,14 @@
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
+(env
+ (static (flags (-g -ccopt -static)))
+ (_ (flags (-g))))
+
 (executable
  (public_name forester)
  (name main)
- (flags (-g))
+ (flags (:standard))
  (link_flags (-g))
  (preprocess
   (pps ppx_deriving.show))
