@@ -1,0 +1,78 @@
+name: Build forester
+
+on:
+  - push
+  - pull_request
+
+permissions: read-all
+
+jobs:
+  build-static:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v4
+
+      - name: Setup Alpine Linux environment
+        uses: jirutka/setup-alpine@v1.3.0
+
+      - name: Install opam
+        run: apk add linux-headers bash alpine-sdk opam
+        shell: alpine.sh --root {0}
+
+      - name: Install static ocaml
+        run: |
+          opam init --disable-sandboxing
+          source ~/.opam/opam-init/init.sh
+          opam switch create . --packages "ocaml-option-static,ocaml.5.3.0" --confirm-level=unsafe-yes
+          eval $(opam env --set-switch)
+        shell: alpine.sh {0}
+
+      - name: Build
+        run: |
+          opam exec -- dune build --profile=static
+          mkdir built
+          opam exec -- dune install --relocatable --prefix=built --profile=static
+          tar -czf forester.tar.gz built
+        shell: alpine.sh {0}
+
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-static-binary
+          path: forester.tar.gz
+
+  build-dynamic:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - macos-13
+          - windows-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v4
+
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5
+
+      - run: opam install . --deps-only
+
+      - run: |
+          opam exec -- dune build
+          mkdir built
+          opam exec -- dune install --relocatable --prefix=built
+          tar -czf forester.tar.gz built
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-binary
+          path: forester.tar.gz
